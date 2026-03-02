@@ -1,0 +1,37 @@
+// ==================== GLOBAL ERROR HANDLER ====================
+
+function errorHandler(err, req, res, _next) {
+  console.error(`[ERROR] ${req.method} ${req.url}:`, err.message);
+
+  // Database constraint errors
+  if (err.message?.includes('SQLITE_CONSTRAINT')) {
+    return res.status(409).json({
+      error: 'Dữ liệu bị xung đột',
+      detail: err.message
+    });
+  }
+
+  // Validation errors
+  if (err.status === 400 || err.name === 'ValidationError') {
+    return res.status(400).json({
+      error: err.message || 'Dữ liệu không hợp lệ'
+    });
+  }
+
+  // Default 500
+  res.status(err.status || 500).json({
+    error: 'Lỗi máy chủ nội bộ',
+    detail: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+}
+
+// ==================== 404 HANDLER ====================
+
+function notFoundHandler(req, res) {
+  res.status(404).json({
+    error: 'Không tìm thấy API endpoint',
+    path: req.originalUrl
+  });
+}
+
+module.exports = { errorHandler, notFoundHandler };

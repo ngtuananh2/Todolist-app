@@ -1,0 +1,57 @@
+{
+  "name": "taskflow",
+  "version": "1.0.0",
+  "main": "electron.js",
+  "description": "TaskFlow — Ứng dụng quản lý công việc thông minh",
+  "author": "TaskFlow",
+  "license": "ISC",
+  "scripts": {
+    "start": "node server.js",
+    "electron": "electron .",
+    "build": "electron-builder --win",
+    "build:portable": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.taskflow.app",
+    "productName": "TaskFlow",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron.js",
+      "server.js",
+      "src/**/*",
+      ".env",
+      "public/**/*",
+      "node_modules/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerHeaderIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TaskFlow"
+    }
+  },
+  "keywords": ["todo", "task", "productivity"],
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "better-sqlite3": "^12.6.2",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "electron": "^40.6.1",
+    "electron-builder": "^26.8.1"
+  }
+}
