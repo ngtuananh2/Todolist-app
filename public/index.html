@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="ai-chat.css">
+  <link rel="stylesheet" href="global-utils.css">
 </head>
 <body>
 
@@ -18,7 +20,50 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         <span>TaskFlow</span>
       </a>
+      <div class="nav-center">
+        <a href="/dashboard.html" class="nav-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Dashboard
+        </a>
+        <a href="/" class="nav-link active">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Công việc
+        </a>
+        <a href="/habit.html" class="nav-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Habit Tracker
+        </a>
+        <a href="/brain.html" class="nav-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Second Brain
+        </a>
+        <a href="/english.html" class="nav-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          English
+        </a>
+        <a href="/trading.html" class="nav-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          Trading
+        </a>
+        <a href="/schedule.html" class="nav-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Lịch trình
+        </a>
+      </div>
       <div class="nav-right">
+        <button class="nav-btn" id="btn-theme" title="Đổi giao diện">
+          <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="nav-btn" id="btn-pomodoro" title="Pomodoro Timer">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </button>
+        <button class="nav-btn" id="btn-dashboard" title="Thống kê">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </button>
+        <a class="nav-btn" href="/settings.html" title="Cài đặt">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </a>
         <span class="nav-date" id="nav-date"></span>
         <div class="nav-avatar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -76,10 +121,34 @@
           </div>
         </div>
 
+        <!-- Projects filter -->
+        <div class="sidebar-section">
+          <h3 class="sidebar-title">Dự án</h3>
+          <div class="projects-list" id="sidebar-projects">
+            <button class="project-filter-btn active" data-project="">Tất cả</button>
+          </div>
+        </div>
+
         <button id="btn-clear" class="btn-clear" style="display:none">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           Xóa việc đã xong
         </button>
+
+        <!-- Export/Import -->
+        <div class="sidebar-section">
+          <h3 class="sidebar-title">Dữ liệu</h3>
+          <div class="data-actions">
+            <button id="btn-export" class="btn-data" title="Xuất dữ liệu">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Xuất JSON
+            </button>
+            <button id="btn-import" class="btn-data" title="Nhập dữ liệu">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Nhập JSON
+            </button>
+            <input type="file" id="import-file" accept=".json" style="display:none">
+          </div>
+        </div>
       </aside>
 
       <!-- Content -->
@@ -129,11 +198,27 @@
                 <div class="form-tags-dropdown" id="form-tags-dropdown"></div>
               </div>
             </div>
+            <div class="form-option">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              <select id="todo-recurrence" class="recurrence-select">
+                <option value="none">Không lặp</option>
+                <option value="daily">Hàng ngày</option>
+                <option value="weekly">Hàng tuần</option>
+                <option value="monthly">Hàng tháng</option>
+              </select>
+            </div>
+            <div class="form-option">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <input type="text" id="todo-project" class="project-input" placeholder="Dự án..." list="project-list" maxlength="50">
+              <datalist id="project-list"></datalist>
+            </div>
           </div>
           <!-- Description -->
           <div class="form-desc-row">
             <textarea id="todo-desc" class="desc-input" placeholder="Ghi chú thêm (tùy chọn)..." rows="1" maxlength="1000"></textarea>
+            <button type="button" class="btn-templates" id="btn-templates" title="Mẫu công việc">📋 Mẫu</button>
           </div>
+          <div class="templates-dropdown" id="templates-dropdown" style="display:none"></div>
         </form>
 
         <!-- Tabs -->
@@ -144,12 +229,47 @@
             <button class="tab" data-filter="completed">Hoàn thành</button>
           </div>
           <div class="tabs-right">
-            <button class="sort-priority-btn" id="sort-priority-btn" title="Ưu tiên lên đầu">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-              <span>Ưu tiên trước</span>
-            </button>
+            <div class="sort-dropdown-wrap">
+              <button class="sort-btn" id="btn-sort" title="Sắp xếp">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="8" y2="18"/></svg>
+                <span>Sắp xếp</span>
+              </button>
+              <div class="sort-dropdown" id="sort-dropdown">
+                <button data-sort="date-desc" class="sort-option active">Mới nhất</button>
+                <button data-sort="date-asc" class="sort-option">Cũ nhất</button>
+                <button data-sort="name-asc" class="sort-option">Tên A-Z</button>
+                <button data-sort="name-desc" class="sort-option">Tên Z-A</button>
+                <button data-sort="deadline" class="sort-option">Deadline gần</button>
+                <button data-sort="priority" class="sort-option">Ưu tiên cao</button>
+              </div>
+            </div>
+            <div class="filter-tags-wrap">
+              <button class="filter-tag-btn" id="btn-filter-tags" title="Lọc theo nhãn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                <span>Nhãn</span>
+              </button>
+              <div class="filter-tags-dropdown" id="filter-tags-dropdown"></div>
+            </div>
             <span class="tab-count" id="tab-count"></span>
+            <button class="view-toggle-btn" id="btn-view-toggle" onclick="toggleView()" title="Chuyển chế độ xem">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="6" height="18" rx="1"/><rect x="9" y="3" width="6" height="11" rx="1"/><rect x="16" y="3" width="6" height="14" rx="1"/></svg><span>Kanban</span>
+            </button>
+            <button class="view-toggle-btn" id="btn-bulk-mode" onclick="enterBulkMode()" title="Chọn nhiều">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Chọn</span>
+            </button>
           </div>
+        </div>
+
+        <!-- Bulk action bar -->
+        <div id="bulk-bar" class="bulk-bar" style="display:none">
+          <label class="bulk-select-all"><input type="checkbox" id="bulk-select-all" onchange="toggleSelectAll(this.checked)"> Chọn tất cả</label>
+          <span id="bulk-count" class="bulk-count">0 đã chọn</span>
+          <div class="bulk-actions">
+            <button class="bulk-btn bulk-btn-done" onclick="bulkComplete()">✓ Hoàn thành</button>
+            <button class="bulk-btn bulk-btn-move" onclick="bulkMoveProject()">📁 Chuyển dự án</button>
+            <button class="bulk-btn bulk-btn-del" onclick="bulkDelete()">✕ Xóa</button>
+          </div>
+          <button class="bulk-close" onclick="exitBulkMode()" title="Thoát">✕</button>
         </div>
 
         <!-- Todo list -->
@@ -205,27 +325,8 @@
         </button>
       </div>
     </div>
-    <div class="ai-messages" id="ai-messages">
-      <div class="ai-msg ai-msg-bot">
-        <div class="ai-msg-avatar">🤖</div>
-        <div class="ai-msg-content">
-          <p>Xin chào! Tôi là <strong>TaskFlow AI</strong> — trợ lý quản lý công việc của bạn.</p>
-          <p>Tôi có thể giúp bạn:</p>
-          <ul>
-            <li>📝 Tạo công việc mới bằng ngôn ngữ tự nhiên</li>
-            <li>📊 Phân tích tiến độ & đề xuất ưu tiên</li>
-            <li>💡 Lên kế hoạch & tổ chức công việc</li>
-            <li>⏰ Nhắc nhở deadline & quản lý thời gian</li>
-          </ul>
-          <p>Hãy hỏi tôi bất cứ điều gì!</p>
-        </div>
-      </div>
-    </div>
-    <div class="ai-suggestions" id="ai-suggestions">
-      <button class="ai-suggestion-chip" data-msg="Phân tích tiến độ công việc của tôi">📊 Phân tích tiến độ</button>
-      <button class="ai-suggestion-chip" data-msg="Tôi nên ưu tiên việc gì trước?">🎯 Đề xuất ưu tiên</button>
-      <button class="ai-suggestion-chip" data-msg="Giúp tôi lên kế hoạch hôm nay">📋 Kế hoạch hôm nay</button>
-    </div>
+    <div class="ai-messages" id="ai-messages"></div>
+    <div class="ai-suggestions" id="ai-suggestions"></div>
     <form class="ai-input-form" id="ai-input-form">
       <input type="text" id="ai-input" class="ai-input" placeholder="Hỏi AI trợ lý..." autocomplete="off" maxlength="500">
       <button type="submit" class="ai-send-btn" id="ai-send-btn" title="Gửi">
@@ -234,6 +335,60 @@
     </form>
   </div>
 
+  <!-- ===== DASHBOARD MODAL ===== -->
+  <div class="modal-overlay" id="dashboard-modal" style="display:none">
+    <div class="modal dashboard-modal">
+      <div class="modal-header">
+        <h3>📊 Thống kê & Báo cáo</h3>
+        <button class="modal-close" id="dashboard-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="dash-grid">
+          <div class="dash-card dash-total"><span class="dash-num" id="dash-total">0</span><span class="dash-label">Tổng</span></div>
+          <div class="dash-card dash-active"><span class="dash-num" id="dash-active">0</span><span class="dash-label">Đang làm</span></div>
+          <div class="dash-card dash-done"><span class="dash-num" id="dash-done">0</span><span class="dash-label">Hoàn thành</span></div>
+          <div class="dash-card dash-overdue"><span class="dash-num" id="dash-overdue">0</span><span class="dash-label">Quá hạn</span></div>
+        </div>
+        <div class="dash-section">
+          <h4>Ưu tiên</h4>
+          <div class="dash-priorities" id="dash-priorities"></div>
+        </div>
+        <div class="dash-section">
+          <h4>7 ngày qua</h4>
+          <div class="dash-chart" id="dash-chart"></div>
+        </div>
+        <div class="dash-section">
+          <h4>🤖 Báo cáo AI tuần</h4>
+          <button class="btn-ai-report" id="btn-ai-report">Tạo báo cáo</button>
+          <div class="ai-report" id="ai-report"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pomodoro now handled by global-utils.js (Ctrl+P or btn-pomodoro) -->
+
+  <!-- ===== UNDO TOAST ===== -->
+  <div class="undo-toast" id="undo-toast" style="display:none">
+    <span>Đã xóa công việc</span>
+    <button id="undo-btn">Hoàn tác</button>
+  </div>
+
+  <!-- ===== NOTIFICATION PERMISSION ===== -->
+  <div class="notif-banner" id="notif-banner" style="display:none">
+    <span>🔔 Bật thông báo để nhận nhắc nhở deadline?</span>
+    <button id="notif-allow" class="notif-allow-btn">Cho phép</button>
+    <button id="notif-dismiss" class="notif-dismiss-btn">&times;</button>
+  </div>
+
   <script src="app.js"></script>
+  <script src="ai-chat.js"></script>
+  <script>
+    initAIChat({
+      page: 'todo',
+      onAction: () => { if (typeof fetchTodos === 'function') fetchTodos(); }
+    });
+  </script>
+  <script src="global-utils.js"></script>
 </body>
 </html>

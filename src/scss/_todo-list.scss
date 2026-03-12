@@ -1,0 +1,264 @@
+// ==============================================
+//   TaskFlow — Todo List & Items
+// ==============================================
+@use 'variables' as *;
+@use 'mixins' as *;
+
+.todo-list {
+  list-style: none;
+  @include flex-col(20px);
+}
+
+// ---- Day Groups ----
+.day-group {
+  @include flex-col(6px);
+}
+
+.day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 6px;
+  border-bottom: 1px solid var(--border-lt);
+  margin-bottom: 2px;
+}
+
+.day-label {
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--text-2);
+  letter-spacing: -.01em;
+}
+
+.day-count {
+  font-size: .7rem;
+  color: var(--text-4);
+  background: var(--stone-100);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.day-list {
+  list-style: none;
+  @include flex-col(4px);
+}
+
+// ---- Todo Item ----
+.todo-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  @include card;
+  transition: all .2s var(--ease);
+  animation: slideUp .3s var(--ease);
+
+  &:hover {
+    border-color: var(--border);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, .03);
+
+    .todo-actions {
+      opacity: 1;
+    }
+  }
+
+  // Completed state
+  &.completed {
+    background: var(--stone-50);
+    border-color: transparent;
+
+    &:hover {
+      border-color: var(--border-lt);
+    }
+
+    .todo-title {
+      text-decoration: line-through;
+      color: var(--text-4);
+    }
+
+    .todo-checkbox {
+      background: var(--done);
+      border-color: var(--done);
+
+      &::after {
+        content: '';
+        width: 5px;
+        height: 9px;
+        border: solid #fff;
+        border-width: 0 1.5px 1.5px 0;
+        transform: rotate(45deg) translate(-0.5px, -0.5px);
+      }
+    }
+
+    .meta-deadline {
+      color: var(--text-4);
+      font-weight: 400;
+      text-decoration: line-through;
+    }
+  }
+
+  // Priority borders
+  &.priority-high   { border-left: 3px solid var(--priority-high); }
+  &.priority-medium { border-left: 3px solid var(--priority-medium); }
+  &.priority-low    { border-left: 3px solid var(--priority-low); }
+
+  // Edit mode: show actions
+  &:has(.todo-edit-input) .todo-actions {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// ---- Checkbox ----
+.todo-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--stone-300);
+  border-radius: 6px;
+  cursor: pointer;
+  @include flex-center;
+  flex-shrink: 0;
+  transition: all .2s var(--ease);
+  margin-top: 2px;
+
+  &:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+}
+
+// ---- Body ----
+.todo-body {
+  flex: 1;
+  min-width: 0;
+  @include flex-col(5px);
+}
+
+.todo-title-row {
+  @include flex-row(8px);
+}
+
+// Priority dots
+.priority-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &-high   { background: var(--priority-high); }
+  &-medium { background: var(--priority-medium); }
+  &-low    { background: var(--priority-low); }
+}
+
+.todo-title {
+  font-size: .875rem;
+  color: var(--text);
+  word-break: break-word;
+  line-height: 1.45;
+}
+
+// ---- Description ----
+.todo-desc-text {
+  font-size: .76rem;
+  color: var(--text-3);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+// ---- Tags Pills ----
+.todo-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: .65rem;
+  font-weight: 500;
+  color: var(--tag-clr, var(--accent));
+  background: color-mix(in srgb, var(--tag-clr, var(--accent)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tag-clr, var(--accent)) 25%, transparent);
+  line-height: 1.6;
+}
+
+// ---- Meta ----
+.todo-meta {
+  @include flex-row(12px);
+  flex-wrap: wrap;
+}
+
+.todo-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .7rem;
+  color: var(--text-4);
+  line-height: 1;
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+.meta-deadline {
+  color: var(--text-3);
+
+  &.overdue {
+    color: var(--danger);
+    font-weight: 500;
+  }
+
+  &.soon {
+    color: #b8860b;
+    font-weight: 500;
+  }
+}
+
+.meta-completed-at {
+  color: var(--done);
+}
+
+.meta-created {
+  color: var(--text-4);
+}
+
+// ---- Actions ----
+.todo-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity .2s var(--ease);
+  margin-top: 2px;
+}
+
+.btn-action {
+  @include icon-btn(30px);
+  font-size: .82rem;
+  color: var(--text-4);
+
+  &:hover {
+    color: var(--text-2);
+    background: var(--stone-100);
+  }
+}
+
+.btn-edit:hover {
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+}
+
+.btn-delete:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}

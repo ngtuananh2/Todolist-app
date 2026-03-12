@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Habit Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="habit.css">
+  <link rel="stylesheet" href="ai-chat.css">
+  <link rel="stylesheet" href="global-utils.css">
+</head>
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/" class="logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>TaskFlow</span>
+      </a>
+      <div class="nav-center">
+        <a href="/dashboard.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Dashboard
+        </a>
+        <a href="/" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Công việc
+        </a>
+        <a href="/habit.html" class="nav-link active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Habit Tracker
+        </a>
+        <a href="/brain.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Second Brain
+        </a>        <a href="/english.html" class="nav-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          English
+        </a>
+        <a href="/trading.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          Trading
+        </a>
+        <a href="/schedule.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Lịch trình
+        </a>
+      </div>
+      <div class="nav-right">
+        <button class="nav-btn" id="btn-theme" title="Đổi giao diện">
+          <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="nav-btn" id="btn-report" title="Báo cáo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </button>
+        <a class="nav-btn" href="/settings.html" title="Cài đặt">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </a>
+        <span class="nav-date" id="nav-date"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== MAIN ===== -->
+  <main class="ht-main">
+    <div class="ht-container">
+
+      <!-- Header -->
+      <div class="ht-header">
+        <div class="ht-header-left">
+          <h1 class="ht-title">🔥 Habit Tracker</h1>
+          <p class="ht-subtitle" id="ht-subtitle">Theo dõi thói quen hàng ngày</p>
+        </div>
+        <div class="ht-header-right">
+          <div class="ht-nav-arrows">
+            <button class="ht-arrow" id="btn-prev" title="Tuần trước">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button class="ht-today-btn" id="btn-today">Hôm nay</button>
+            <button class="ht-arrow" id="btn-next" title="Tuần sau">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+          <button class="ht-add-btn" style="background:#10b981" onclick="window.globalUtils?.exportModule('habit')" title="Xuất dữ liệu Habit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Xuất
+          </button>
+          <button class="ht-add-btn" id="btn-add-habit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Thêm habit
+          </button>
+        </div>
+      </div>
+
+      <!-- Habit Grid Table -->
+      <div class="ht-table-wrap">
+        <table class="ht-table" id="ht-table">
+          <thead id="ht-thead"></thead>
+          <tbody id="ht-tbody"></tbody>
+        </table>
+        <div class="ht-empty" id="ht-empty" style="display:none">
+          <div class="ht-empty-icon">📋</div>
+          <p class="ht-empty-title">Chưa có thói quen nào</p>
+          <p class="ht-empty-sub">Nhấn "Thêm habit" để bắt đầu theo dõi</p>
+        </div>
+      </div>
+
+      <!-- Streak Summary -->
+      <div class="ht-streaks" id="ht-streaks"></div>
+
+      <!-- Heatmap Section -->
+      <div class="ht-section">
+        <div class="ht-section-header">
+          <h3>📅 Heatmap hoạt động</h3>
+          <select class="ht-heatmap-select" id="heatmap-habit-select">
+            <option value="all">Tất cả thói quen</option>
+          </select>
+        </div>
+        <div class="ht-heatmap-wrap" id="ht-heatmap"></div>
+        <div class="ht-heatmap-legend">
+          <span>Ít</span>
+          <span class="ht-hm-lv" style="background:#ebedf0"></span>
+          <span class="ht-hm-lv" style="background:#9be9a8"></span>
+          <span class="ht-hm-lv" style="background:#40c463"></span>
+          <span class="ht-hm-lv" style="background:#30a14e"></span>
+          <span class="ht-hm-lv" style="background:#216e39"></span>
+          <span>Nhiều</span>
+        </div>
+      </div>
+
+      <!-- Milestones & Badges -->
+      <div class="ht-section">
+        <h3>🏆 Milestones & Badges</h3>
+        <div class="ht-milestones" id="ht-milestones"></div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ===== ADD HABIT MODAL ===== -->
+  <div class="modal-overlay" id="add-habit-modal" style="display:none">
+    <div class="modal ht-modal">
+      <div class="modal-header">
+        <h3>Thêm thói quen mới</h3>
+        <button class="modal-close" id="add-habit-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="ht-form-group">
+          <label>Tên thói quen</label>
+          <input type="text" id="habit-name" class="ht-input" placeholder="VD: Tập thể dục, Đọc sách..." maxlength="50" autocomplete="off">
+        </div>
+        <div class="ht-form-row">
+          <div class="ht-form-group">
+            <label>Icon</label>
+            <div class="ht-icon-picker" id="icon-picker">
+              <button class="ht-icon-opt active" data-icon="✅">✅</button>
+              <button class="ht-icon-opt" data-icon="📚">📚</button>
+              <button class="ht-icon-opt" data-icon="💪">💪</button>
+              <button class="ht-icon-opt" data-icon="🏃">🏃</button>
+              <button class="ht-icon-opt" data-icon="🧘">🧘</button>
+              <button class="ht-icon-opt" data-icon="💻">💻</button>
+              <button class="ht-icon-opt" data-icon="🎨">🎨</button>
+              <button class="ht-icon-opt" data-icon="🎵">🎵</button>
+              <button class="ht-icon-opt" data-icon="✍️">✍️</button>
+              <button class="ht-icon-opt" data-icon="🍎">🍎</button>
+              <button class="ht-icon-opt" data-icon="💤">💤</button>
+              <button class="ht-icon-opt" data-icon="🧹">🧹</button>
+              <button class="ht-icon-opt" data-icon="🌊">🌊</button>
+              <button class="ht-icon-opt" data-icon="📝">📝</button>
+              <button class="ht-icon-opt" data-icon="☕">☕</button>
+            </div>
+          </div>
+          <div class="ht-form-group">
+            <label>Màu sắc</label>
+            <input type="color" id="habit-color" class="ht-color-input" value="#7c7268">
+          </div>
+        </div>
+        <button class="ht-submit-btn" id="btn-submit-habit">Tạo thói quen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== REPORT MODAL ===== -->
+  <div class="modal-overlay" id="report-modal" style="display:none">
+    <div class="modal ht-report-modal">
+      <div class="modal-header">
+        <h3>📊 Báo cáo 30 ngày</h3>
+        <button class="modal-close" id="report-close">&times;</button>
+      </div>
+      <div class="modal-body" id="report-body">
+        <div class="report-loading">Đang tải...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== EDIT HABIT MODAL ===== -->
+  <div class="modal-overlay" id="edit-habit-modal" style="display:none">
+    <div class="modal ht-modal">
+      <div class="modal-header">
+        <h3>Chỉnh sửa thói quen</h3>
+        <button class="modal-close" id="edit-habit-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="ht-form-group">
+          <label>Tên thói quen</label>
+          <input type="text" id="edit-habit-name" class="ht-input" maxlength="50">
+        </div>
+        <div class="ht-form-row">
+          <div class="ht-form-group">
+            <label>Icon</label>
+            <div class="ht-icon-picker" id="edit-icon-picker">
+              <button class="ht-icon-opt" data-icon="✅">✅</button>
+              <button class="ht-icon-opt" data-icon="📚">📚</button>
+              <button class="ht-icon-opt" data-icon="💪">💪</button>
+              <button class="ht-icon-opt" data-icon="🏃">🏃</button>
+              <button class="ht-icon-opt" data-icon="🧘">🧘</button>
+              <button class="ht-icon-opt" data-icon="💻">💻</button>
+              <button class="ht-icon-opt" data-icon="🎨">🎨</button>
+              <button class="ht-icon-opt" data-icon="🎵">🎵</button>
+              <button class="ht-icon-opt" data-icon="✍️">✍️</button>
+              <button class="ht-icon-opt" data-icon="🍎">🍎</button>
+              <button class="ht-icon-opt" data-icon="💤">💤</button>
+              <button class="ht-icon-opt" data-icon="🧹">🧹</button>
+              <button class="ht-icon-opt" data-icon="🌊">🌊</button>
+              <button class="ht-icon-opt" data-icon="📝">📝</button>
+              <button class="ht-icon-opt" data-icon="☕">☕</button>
+            </div>
+          </div>
+          <div class="ht-form-group">
+            <label>Màu sắc</label>
+            <input type="color" id="edit-habit-color" class="ht-color-input">
+          </div>
+        </div>
+        <div class="ht-edit-actions">
+          <button class="ht-submit-btn" id="btn-save-habit">Lưu thay đổi</button>
+          <button class="ht-delete-btn" id="btn-delete-habit">Xóa thói quen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== AI CHAT PANEL ===== -->
+  <button class="ai-fab" id="ai-fab" title="Trợ lý AI">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7 7 0 0 1 14 23h-4a7 7 0 0 1-6.73-4H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+      <circle cx="9.5" cy="15.5" r="1"/><circle cx="14.5" cy="15.5" r="1"/>
+    </svg>
+    <span class="ai-fab-badge" id="ai-fab-badge" style="display:none"></span>
+  </button>
+
+  <div class="ai-panel" id="ai-panel">
+    <div class="ai-panel-header">
+      <div class="ai-panel-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7 7 0 0 1 14 23h-4a7 7 0 0 1-6.73-4H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+          <circle cx="9.5" cy="15.5" r="1"/><circle cx="14.5" cy="15.5" r="1"/>
+        </svg>
+        <span>TaskFlow AI</span>
+      </div>
+      <div class="ai-panel-actions">
+        <button class="ai-btn-clear" id="ai-btn-clear" title="Xóa lịch sử chat">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+        <button class="ai-btn-close" id="ai-btn-close" title="Đóng">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="ai-messages" id="ai-messages"></div>
+    <div class="ai-suggestions" id="ai-suggestions"></div>
+    <form class="ai-input-form" id="ai-input-form">
+      <input type="text" id="ai-input" class="ai-input" placeholder="Hỏi AI trợ lý..." autocomplete="off" maxlength="500">
+      <button type="submit" class="ai-send-btn" id="ai-send-btn" title="Gửi">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </form>
+  </div>
+
+  <script src="habit.js"></script>
+  <script src="ai-chat.js"></script>
+  <script>
+    initAIChat({
+      page: 'habit',
+      onAction: () => { if (typeof init === 'function') init(); }
+    });
+  </script>
+  <script src="global-utils.js"></script>
+</body>
+</html>

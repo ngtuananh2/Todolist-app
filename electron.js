@@ -1,10 +1,10 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
-const { startServer, PORT } = require('./server');
 
 let mainWindow;
 let tray;
 let server;
+let PORT = 3000;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -89,6 +89,10 @@ function createTray() {
 }
 
 app.whenReady().then(async () => {
+  // Require server AFTER app is ready so database.js can use app.getPath()
+  const { startServer, PORT: serverPort } = require('./server');
+  PORT = serverPort;
+
   // Start Express server first
   server = await startServer();
   console.log('🖥️  Electron app starting...');

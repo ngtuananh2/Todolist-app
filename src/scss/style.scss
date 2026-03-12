@@ -1,0 +1,31 @@
+// ==============================================
+//   TaskFlow — Main SCSS Entry
+//   Compiled output: public/style.css
+// ==============================================
+
+// Foundation (variables loaded by each partial via @use)
+@use 'variables';
+
+// Base
+@use 'base';
+
+// Layout components
+@use 'navbar';
+@use 'content';
+@use 'sidebar';
+
+// Feature components
+@use 'search';
+@use 'form';
+@use 'tabs';
+@use 'todo-list';
+@use 'subtasks';
+@use 'edit';
+@use 'empty';
+@use 'footer';
+
+// AI Panel
+@use 'ai-panel';
+
+// Responsive breakpoints
+@use 'responsive';

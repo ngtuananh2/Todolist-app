@@ -1,0 +1,117 @@
+// ==============================================
+//   TaskFlow — Edit Mode
+// ==============================================
+@use 'variables' as *;
+@use 'mixins' as *;
+
+.edit-form {
+  @include flex-col(8px);
+  width: 100%;
+}
+
+.todo-edit-input {
+  padding: 8px 12px;
+  border: 1.5px solid var(--accent);
+  border-radius: 7px;
+  font-size: .875rem;
+  font-family: inherit;
+  outline: none;
+  background: var(--accent-soft);
+  color: var(--text);
+  transition: box-shadow .2s;
+
+  &:focus {
+    box-shadow: 0 0 0 3px rgba(124, 114, 104, .1);
+  }
+}
+
+.edit-desc {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: .78rem;
+  font-family: inherit;
+  color: var(--text-2);
+  outline: none;
+  resize: vertical;
+  min-height: 36px;
+  background: var(--stone-50);
+
+  &:focus {
+    border-color: var(--stone-400);
+  }
+}
+
+.edit-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.edit-priority,
+.edit-deadline {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: .76rem;
+  font-family: inherit;
+  color: var(--text-2);
+  background: var(--surface);
+  outline: none;
+  cursor: pointer;
+}
+
+.edit-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.edit-tag-option {
+  @include flex-row(4px);
+  font-size: .72rem;
+  color: var(--text-2);
+  cursor: pointer;
+
+  input {
+    accent-color: var(--accent);
+    width: 13px;
+    height: 13px;
+  }
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-save-edit,
+.btn-cancel-edit {
+  padding: 7px 18px;
+  border: none;
+  border-radius: 7px;
+  font-size: .78rem;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.btn-save-edit {
+  background: var(--accent);
+  color: #fff;
+
+  &:hover {
+    background: var(--accent-dark);
+  }
+}
+
+.btn-cancel-edit {
+  background: var(--stone-100);
+  color: var(--text-3);
+
+  &:hover {
+    background: var(--stone-200);
+    color: var(--text-2);
+  }
+}

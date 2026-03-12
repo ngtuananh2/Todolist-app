@@ -1,0 +1,36 @@
+// ==============================================
+//   TaskFlow — Empty State
+// ==============================================
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px 40px;
+  display: none;
+
+  &.show {
+    display: block;
+    animation: fadeUp .4s var(--ease);
+  }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.empty-visual {
+  margin-bottom: 16px;
+  opacity: .5;
+}
+
+.empty-title {
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-bottom: 4px;
+}
+
+.empty-sub {
+  font-size: .8rem;
+  color: var(--text-4);
+}

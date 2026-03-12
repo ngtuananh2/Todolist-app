@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Second Brain</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="brain.css">
+  <link rel="stylesheet" href="ai-chat.css">
+  <link rel="stylesheet" href="global-utils.css">
+</head>
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/" class="logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>TaskFlow</span>
+      </a>
+      <div class="nav-center">
+        <a href="/dashboard.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Dashboard
+        </a>
+        <a href="/" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Công việc
+        </a>
+        <a href="/habit.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Habit Tracker
+        </a>
+        <a href="/brain.html" class="nav-link active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Second Brain
+        </a>        <a href="/english.html" class="nav-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          English
+        </a>
+        <a href="/trading.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          Trading
+        </a>
+        <a href="/schedule.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Lịch trình
+        </a>
+      </div>
+      <div class="nav-right">
+        <button class="nav-btn" id="btn-theme" title="Đổi giao diện">
+          <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <a class="nav-btn" href="/settings.html" title="Cài đặt">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </a>
+        <span class="nav-date" id="nav-date"></span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="sb-main">
+    <div class="sb-container">
+
+      <!-- Header -->
+      <div class="sb-header">
+        <div class="sb-header-left">
+          <h1>🧠 Second Brain</h1>
+          <p class="sb-subtitle">Lưu trữ kiến thức, tài liệu & link</p>
+        </div>
+        <div class="sb-header-right">
+          <button class="sb-btn" onclick="openGraphView()" title="Knowledge Graph">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="6" r="3"/><circle cx="19" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><line x1="7.5" y1="7.5" x2="10.5" y2="16.5"/><line x1="16.5" y1="7.5" x2="13.5" y2="16.5"/></svg>
+            Graph
+          </button>
+          <button class="sb-btn" style="background:#10b981;color:#fff" onclick="window.globalUtils?.exportModule('brain')" title="Xuất dữ liệu Notes">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Xuất
+          </button>
+          <button class="sb-btn" id="btn-note-templates" title="Mẫu ghi chú">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            📋 Mẫu
+          </button>
+          <button class="sb-btn sb-btn-primary" id="btn-add-note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Thêm mới
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="sb-stats" id="sb-stats">
+        <div class="sb-stat-item">
+          <span class="sb-stat-num" id="stat-total">0</span>
+          <span class="sb-stat-label">Tổng</span>
+        </div>
+        <div class="sb-stat-item">
+          <span class="sb-stat-num" id="stat-notes">0</span>
+          <span class="sb-stat-label">Ghi chú</span>
+        </div>
+        <div class="sb-stat-item">
+          <span class="sb-stat-num" id="stat-links">0</span>
+          <span class="sb-stat-label">Link</span>
+        </div>
+        <div class="sb-stat-item">
+          <span class="sb-stat-num" id="stat-images">0</span>
+          <span class="sb-stat-label">Hình ảnh</span>
+        </div>
+        <div class="sb-stat-item">
+          <span class="sb-stat-num" id="stat-pinned">0</span>
+          <span class="sb-stat-label">Ghim</span>
+        </div>
+      </div>
+
+      <!-- Toolbar: Search + Filter + View -->
+      <div class="sb-toolbar">
+        <div class="sb-search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="sb-search-input" placeholder="Tìm kiếm ghi chú, link, tag...">
+        </div>
+        <div class="sb-filters">
+          <select id="sb-filter-type" class="sb-select">
+            <option value="all">Tất cả loại</option>
+            <option value="note">📝 Ghi chú</option>
+            <option value="link">🔗 Link</option>
+            <option value="image">🖼️ Hình ảnh</option>
+          </select>
+          <select id="sb-filter-category" class="sb-select">
+            <option value="">Tất cả danh mục</option>
+          </select>
+        </div>
+        <div class="sb-view-toggle">
+          <button class="sb-view-btn active" id="btn-view-grid" title="Lưới">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </button>
+          <button class="sb-view-btn" id="btn-view-list" title="Danh sách">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </button>
+          <button class="sb-view-btn" id="btn-manage-tags" title="Quản lý tags" onclick="openTagsManager()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Notes grid / list -->
+      <div class="sb-notes sb-grid-view" id="sb-notes">
+        <!-- Notes rendered by JS -->
+      </div>
+
+      <!-- Empty state -->
+      <div class="sb-empty" id="sb-empty" style="display:none">
+        <div class="sb-empty-icon">🧠</div>
+        <h3>Second Brain trống</h3>
+        <p>Thêm ghi chú, link hoặc hình ảnh để bắt đầu xây dựng kho kiến thức của bạn</p>
+        <button class="sb-btn sb-btn-primary" id="btn-add-note-empty">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Thêm mới
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ===== ADD/EDIT NOTE MODAL ===== -->
+  <div class="sb-modal-overlay" id="modal-note" style="display:none">
+    <div class="sb-modal">
+      <div class="sb-modal-header">
+        <h3 id="modal-note-title">Thêm ghi chú mới</h3>
+        <button class="sb-modal-close" id="modal-note-close">&times;</button>
+      </div>
+      <div class="sb-modal-body">
+        <!-- Type tabs -->
+        <div class="sb-type-tabs">
+          <button class="sb-type-tab active" data-type="note">📝 Ghi chú</button>
+          <button class="sb-type-tab" data-type="link">🔗 Link</button>
+          <button class="sb-type-tab" data-type="image">🖼️ Hình ảnh</button>
+        </div>
+
+        <div class="sb-form-group">
+          <label>Tiêu đề <span class="required">*</span></label>
+          <input type="text" id="note-input-title" placeholder="Tiêu đề..." class="sb-input">
+        </div>
+
+        <div class="sb-form-group" id="note-url-group" style="display:none">
+          <label>URL</label>
+          <input type="url" id="note-input-url" placeholder="https://..." class="sb-input">
+        </div>
+
+        <div class="sb-form-group" id="note-content-group">
+          <label>Nội dung <small class="md-hint">Hỗ trợ Markdown</small></label>
+          <div class="md-toolbar">
+            <button type="button" class="md-btn" data-md="bold" title="Bold (Ctrl+B)"><strong>B</strong></button>
+            <button type="button" class="md-btn" data-md="italic" title="Italic (Ctrl+I)"><em>I</em></button>
+            <button type="button" class="md-btn" data-md="code" title="Code">&lt;/&gt;</button>
+            <button type="button" class="md-btn" data-md="h2" title="Heading">H2</button>
+            <button type="button" class="md-btn" data-md="h3" title="Heading">H3</button>
+            <button type="button" class="md-btn" data-md="ul" title="Bullet list">• List</button>
+            <button type="button" class="md-btn" data-md="ol" title="Numbered list">1. List</button>
+            <button type="button" class="md-btn" data-md="link" title="Link">🔗</button>
+            <button type="button" class="md-btn" data-md="quote" title="Quote">❝</button>
+            <button type="button" class="md-btn" data-md="hr" title="Horizontal rule">—</button>
+            <button type="button" class="md-btn" id="md-upload-btn" title="Đính kèm file/ảnh">📎</button>
+            <input type="file" id="md-file-input" style="display:none" accept="image/*,.pdf,.txt,.md,.csv,.json">
+            <span class="md-toolbar-spacer"></span>
+            <button type="button" class="md-btn md-btn-preview" id="md-toggle-preview" title="Preview Markdown">👁 Preview</button>
+          </div>
+          <textarea id="note-input-content" placeholder="Viết ghi chú... (hỗ trợ Markdown: **bold**, *italic*, # heading, - list, `code`)" class="sb-textarea" rows="8"></textarea>
+          <div id="md-preview" class="md-preview" style="display:none"></div>
+        </div>
+
+        <div class="sb-form-row">
+          <div class="sb-form-group sb-form-half">
+            <label>Danh mục</label>
+            <input type="text" id="note-input-category" placeholder="VD: Lập trình, Thiết kế..." class="sb-input" list="category-list">
+            <datalist id="category-list"></datalist>
+          </div>
+          <div class="sb-form-group sb-form-half">
+            <label>Tags (cách nhau bằng dấu phẩy)</label>
+            <input type="text" id="note-input-tags" placeholder="VD: javascript, react, css" class="sb-input">
+          </div>
+        </div>
+
+        <div class="sb-form-group">
+          <label>Màu thẻ</label>
+          <div class="sb-color-picker" id="note-color-picker">
+            <button class="sb-color-opt active" data-color="" style="background: var(--card-bg); border: 2px dashed var(--border);" title="Mặc định"></button>
+            <button class="sb-color-opt" data-color="#fef3c7" title="Vàng"></button>
+            <button class="sb-color-opt" data-color="#dbeafe" title="Xanh dương"></button>
+            <button class="sb-color-opt" data-color="#dcfce7" title="Xanh lá"></button>
+            <button class="sb-color-opt" data-color="#fce7f3" title="Hồng"></button>
+            <button class="sb-color-opt" data-color="#f3e8ff" title="Tím"></button>
+            <button class="sb-color-opt" data-color="#ffedd5" title="Cam"></button>
+            <button class="sb-color-opt" data-color="#e0e7ff" title="Indigo"></button>
+          </div>
+        </div>
+      </div>
+      <div class="sb-modal-footer">
+        <button class="sb-btn sb-btn-ghost" id="modal-note-cancel">Hủy</button>
+        <button class="sb-btn sb-btn-primary" id="modal-note-save">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== VIEW NOTE MODAL ===== -->
+  <div class="sb-modal-overlay" id="modal-view" style="display:none">
+    <div class="sb-modal sb-modal-lg">
+      <div class="sb-modal-header">
+        <h3 id="modal-view-title">Ghi chú</h3>
+        <div class="sb-modal-actions">
+          <button class="sb-btn-icon" id="modal-view-pin" title="Ghim">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76z"/></svg>
+          </button>
+          <button class="sb-btn-icon" id="modal-view-edit" title="Sửa">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="sb-btn-icon" id="modal-view-summarize" title="AI Tóm tắt" onclick="aiSummarizeNote()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </button>
+          <button class="sb-btn-icon" id="modal-view-history" title="Lịch sử phiên bản" onclick="openNoteHistory()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </button>
+          <button class="sb-btn-icon sb-btn-danger" id="modal-view-delete" title="Xóa">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+          <button class="sb-modal-close" id="modal-view-close">&times;</button>
+        </div>
+      </div>
+      <div class="sb-modal-body" id="modal-view-body">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== AI CHAT PANEL ===== -->
+  <button class="ai-fab" id="ai-fab" title="Trợ lý AI">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7 7 0 0 1 14 23h-4a7 7 0 0 1-6.73-4H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+      <circle cx="9.5" cy="15.5" r="1"/><circle cx="14.5" cy="15.5" r="1"/>
+    </svg>
+    <span class="ai-fab-badge" id="ai-fab-badge" style="display:none"></span>
+  </button>
+
+  <div class="ai-panel" id="ai-panel">
+    <div class="ai-panel-header">
+      <div class="ai-panel-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7 7 0 0 1 14 23h-4a7 7 0 0 1-6.73-4H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+          <circle cx="9.5" cy="15.5" r="1"/><circle cx="14.5" cy="15.5" r="1"/>
+        </svg>
+        <span>TaskFlow AI</span>
+      </div>
+      <div class="ai-panel-actions">
+        <button class="ai-btn-clear" id="ai-btn-clear" title="Xóa lịch sử chat">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+        <button class="ai-btn-close" id="ai-btn-close" title="Đóng">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="ai-messages" id="ai-messages"></div>
+    <div class="ai-suggestions" id="ai-suggestions"></div>
+    <form class="ai-input-form" id="ai-input-form">
+      <input type="text" id="ai-input" class="ai-input" placeholder="Hỏi AI trợ lý..." autocomplete="off" maxlength="500">
+      <button type="submit" class="ai-send-btn" id="ai-send-btn" title="Gửi">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </form>
+  </div>
+
+  <script src="brain.js"></script>
+  <script src="ai-chat.js"></script>
+  <script>
+    initAIChat({
+      page: 'brain',
+      onAction: () => { if (typeof loadNotes === 'function') loadNotes(); }
+    });
+  </script>
+  <script src="global-utils.js"></script>
+</body>
+</html>

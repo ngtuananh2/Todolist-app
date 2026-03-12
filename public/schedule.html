@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Thời Gian Biểu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="schedule.css">
+  <link rel="stylesheet" href="global-utils.css">
+  <link rel="stylesheet" href="ai-chat.css">
+</head>
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/" class="logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>TaskFlow</span>
+      </a>
+      <div class="nav-center">
+        <a href="/dashboard.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Dashboard
+        </a>
+        <a href="/" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Công việc
+        </a>
+        <a href="/habit.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Habit Tracker
+        </a>
+        <a href="/brain.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Second Brain
+        </a>
+        <a href="/english.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          English
+        </a>
+        <a href="/trading.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          Trading
+        </a>
+        <a href="/schedule.html" class="nav-link active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Lịch trình
+        </a>
+      </div>
+      <div class="nav-right">
+        <button class="nav-btn" id="btn-theme" title="Đổi giao diện">
+          <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <a class="nav-btn" href="/settings.html" title="Cài đặt">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </a>
+        <span class="nav-date" id="nav-date"></span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="sch-main">
+    <div class="sch-container">
+
+      <!-- Header -->
+      <div class="sch-header">
+        <div class="sch-header-left">
+          <h1>📅 Thời Gian Biểu</h1>
+          <p class="sch-subtitle">Lên lịch trình hàng ngày, nhiều ngày tới hoặc thời khóa biểu tuần với AI</p>
+        </div>
+        <div class="sch-header-actions">
+          <button class="sch-btn sch-btn-secondary" onclick="clearSchedule()">🗑️ Xóa lịch</button>
+          <button class="sch-btn sch-btn-primary" onclick="exportSchedule()">📤 Xuất</button>
+        </div>
+      </div>
+
+      <!-- Mode Tabs -->
+      <div class="sch-mode-tabs">
+        <button class="sch-mode-tab active" data-mode="single" onclick="switchMode('single')">📋 1 ngày</button>
+        <button class="sch-mode-tab" data-mode="multi" onclick="switchMode('multi')">📆 Nhiều ngày</button>
+        <button class="sch-mode-tab" data-mode="weekly" onclick="switchMode('weekly')">🗓️ Thời khóa biểu tuần</button>
+      </div>
+
+      <!-- Two-column layout -->
+      <div class="sch-layout">
+
+        <!-- Left: Task Input -->
+        <div class="sch-panel sch-panel-input">
+          <h3>📝 Danh sách công việc</h3>
+          <p class="sch-desc">Thêm các công việc cần làm, sau đó nhấn "AI Lên lịch" để tạo lịch trình tối ưu.</p>
+
+          <div class="sch-task-form">
+            <input type="text" id="sch-task-title" class="sch-input" placeholder="Tên công việc..." maxlength="100">
+            <div class="sch-task-form-row">
+              <input type="number" id="sch-task-duration" class="sch-input sch-input-sm" placeholder="Phút" min="5" max="480" value="30">
+              <select id="sch-task-priority" class="sch-select">
+                <option value="">Ưu tiên</option>
+                <option value="high">🔴 Cao</option>
+                <option value="medium">🟡 Trung bình</option>
+                <option value="low">🟢 Thấp</option>
+              </select>
+              <input type="text" id="sch-task-deadline" class="sch-input sch-input-sm" placeholder="Hạn (VD: 17:00)">
+            </div>
+            <!-- Day selector for multi/weekly mode -->
+            <div class="sch-task-form-row sch-day-row" id="sch-day-row" style="display:none">
+              <select id="sch-task-day" class="sch-select">
+                <option value="">Ngày (tự động)</option>
+                <option value="Thứ 2">Thứ 2</option>
+                <option value="Thứ 3">Thứ 3</option>
+                <option value="Thứ 4">Thứ 4</option>
+                <option value="Thứ 5">Thứ 5</option>
+                <option value="Thứ 6">Thứ 6</option>
+                <option value="Thứ 7">Thứ 7</option>
+                <option value="Chủ nhật">Chủ nhật</option>
+              </select>
+              <select id="sch-task-recurring" class="sch-select">
+                <option value="">Không lặp</option>
+                <option value="daily">Hàng ngày</option>
+                <option value="weekday">Thứ 2-6</option>
+                <option value="weekend">Cuối tuần</option>
+              </select>
+            </div>
+            <div class="sch-task-form-row" style="margin-top:6px">
+              <button class="sch-btn sch-btn-primary" onclick="addScheduleTask()">+ Thêm</button>
+            </div>
+          </div>
+
+          <div class="sch-task-list" id="sch-task-list">
+            <div class="sch-task-empty">Chưa có công việc nào</div>
+          </div>
+
+          <!-- Multi-day settings -->
+          <div class="sch-multi-opts" id="sch-multi-opts" style="display:none">
+            <h4>📆 Cài đặt nhiều ngày</h4>
+            <div class="sch-prefs-grid">
+              <div class="sch-pref-item">
+                <label>Số ngày:</label>
+                <input type="number" id="sch-days-count" class="sch-input sch-input-sm" value="3" min="2" max="7">
+              </div>
+              <div class="sch-pref-item">
+                <label>Bắt đầu từ:</label>
+                <input type="date" id="sch-start-date" class="sch-input sch-input-sm">
+              </div>
+            </div>
+          </div>
+
+          <!-- Preferences -->
+          <div class="sch-prefs">
+            <h4>⚙️ Tùy chỉnh</h4>
+            <div class="sch-prefs-grid">
+              <div class="sch-pref-item">
+                <label>Thức dậy:</label>
+                <input type="time" id="sch-pref-wake" class="sch-input sch-input-sm" value="07:00">
+              </div>
+              <div class="sch-pref-item">
+                <label>Đi ngủ:</label>
+                <input type="time" id="sch-pref-sleep" class="sch-input sch-input-sm" value="23:00">
+              </div>
+              <div class="sch-pref-item">
+                <label>Nghỉ (phút):</label>
+                <input type="number" id="sch-pref-break" class="sch-input sch-input-sm" value="15" min="5" max="60">
+              </div>
+              <div class="sch-pref-item">
+                <label>Giờ tập trung:</label>
+                <input type="text" id="sch-pref-focus" class="sch-input sch-input-sm" value="8:00-12:00" placeholder="8:00-12:00">
+              </div>
+              <div class="sch-pref-item">
+                <label>Phong cách:</label>
+                <select id="sch-pref-style" class="sch-select">
+                  <option value="balanced">⚖️ Cân bằng</option>
+                  <option value="productive">🚀 Năng suất cao</option>
+                  <option value="relaxed">🧘 Thư giãn</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <button class="sch-btn sch-btn-ai" id="btn-ai-schedule" onclick="generateAISchedule()">
+            🤖 AI Lên lịch trình
+          </button>
+        </div>
+
+        <!-- Right: Schedule View -->
+        <div class="sch-panel sch-panel-timeline">
+
+          <!-- Single day view -->
+          <div id="sch-view-single">
+            <h3>📅 Lịch trình hôm nay</h3>
+            <div class="sch-timeline" id="sch-timeline">
+              <div class="sch-timeline-empty">
+                <div class="sch-empty-icon">📅</div>
+                <p>Thêm công việc và nhấn "AI Lên lịch" để tạo lịch trình</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Multi-day view -->
+          <div id="sch-view-multi" style="display:none">
+            <div class="sch-multi-header">
+              <h3>📆 Lịch trình nhiều ngày</h3>
+              <div class="sch-day-nav" id="sch-day-nav"></div>
+            </div>
+            <div class="sch-timeline" id="sch-timeline-multi">
+              <div class="sch-timeline-empty">
+                <div class="sch-empty-icon">📆</div>
+                <p>Thêm công việc và nhấn "AI Lên lịch" để tạo lịch nhiều ngày</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Weekly timetable view -->
+          <div id="sch-view-weekly" style="display:none">
+            <h3>🗓️ Thời khóa biểu tuần</h3>
+            <div class="sch-weekly-grid" id="sch-weekly-grid">
+              <div class="sch-timeline-empty">
+                <div class="sch-empty-icon">🗓️</div>
+                <p>Thêm công việc và nhấn "AI Lên lịch" để tạo thời khóa biểu tuần</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="sch-tips" id="sch-tips" style="display:none">
+            <h4>💡 Mẹo từ AI:</h4>
+            <ul id="sch-tips-list"></ul>
+          </div>
+          <div class="sch-summary" id="sch-summary" style="display:none"></div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== AI CHAT PANEL ===== -->
+  <button class="ai-fab" id="ai-fab" title="Chat với AI">🤖</button>
+  <div class="ai-panel" id="ai-panel">
+    <div class="ai-panel-header">
+      <div class="ai-panel-title">🤖 AI Trợ lý Lịch trình</div>
+      <div class="ai-panel-actions">
+        <button class="ai-header-btn" id="ai-btn-clear" title="Xóa cuộc trò chuyện">🗑️</button>
+        <button class="ai-header-btn" id="ai-btn-close" title="Đóng">✕</button>
+      </div>
+    </div>
+    <div class="ai-messages" id="ai-messages"></div>
+    <div class="ai-suggestions" id="ai-suggestions"></div>
+    <form class="ai-input-area" id="ai-input-form">
+      <input type="text" id="ai-input" class="ai-input" placeholder="Nhắn để thay đổi lịch trình..." autocomplete="off">
+      <button type="submit" id="ai-send-btn" class="ai-send-btn">➤</button>
+    </form>
+  </div>
+
+  <script src="schedule.js"></script>
+  <script src="ai-chat.js"></script>
+  <script src="global-utils.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      initAIChat({
+        page: 'schedule',
+        getContext: function() {
+          return typeof getScheduleContext === 'function' ? getScheduleContext() : null;
+        },
+        onAction: function(actions) {
+          if (typeof handleScheduleAIActions === 'function') {
+            handleScheduleAIActions(actions);
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+// ==============================================
+//   TaskFlow — Responsive
+// ==============================================
+@use 'variables' as *;
+@use 'mixins' as *;
+
+@include tablet {
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 20px 16px;
+  }
+
+  .sidebar {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-lt);
+    margin-bottom: 24px;
+  }
+
+  .sidebar-section {
+    flex-direction: row;
+    gap: 8px;
+    flex: 1;
+    min-width: 100%;
+
+    &:first-child {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      min-width: 100%;
+
+      .sidebar-title {
+        grid-column: 1 / -1;
+      }
+    }
+  }
+
+  .sidebar-title {
+    width: 100%;
+  }
+
+  .progress-card {
+    flex-direction: row;
+    gap: 16px;
+  }
+
+  .progress-ring-wrap svg {
+    width: 56px;
+    height: 56px;
+  }
+
+  .btn-clear {
+    width: 100%;
+  }
+
+  .tab {
+    padding: 10px 14px;
+    font-size: .78rem;
+  }
+
+  .todo-actions {
+    opacity: 1;
+  }
+
+  .form-options-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
+@include mobile {
+  .nav-inner {
+    padding: 0 16px;
+  }
+
+  .nav-date {
+    display: none;
+  }
+
+  .sidebar-section:first-child {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .stat-card {
+    padding: 10px 12px;
+  }
+
+  .stat-num {
+    font-size: 1.1rem;
+  }
+
+  .content-header h2 {
+    font-size: 1.15rem;
+  }
+
+  // AI panel responsive
+  .ai-panel {
+    width: calc(100vw - 16px);
+    right: 8px;
+    bottom: 80px;
+    max-height: 70vh;
+  }
+
+  .ai-fab {
+    bottom: 16px;
+    right: 16px;
+    width: 50px;
+    height: 50px;
+  }
+}

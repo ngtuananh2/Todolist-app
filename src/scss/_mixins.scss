@@ -1,0 +1,93 @@
+// ==============================================
+//   TaskFlow — SCSS Mixins
+// ==============================================
+@use 'variables' as *;
+
+// Flexbox center
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Flexbox column
+@mixin flex-col($gap: 0) {
+  display: flex;
+  flex-direction: column;
+  @if $gap != 0 {
+    gap: $gap;
+  }
+}
+
+// Flexbox row with alignment
+@mixin flex-row($gap: 0, $align: center) {
+  display: flex;
+  align-items: $align;
+  @if $gap != 0 {
+    gap: $gap;
+  }
+}
+
+// Input base
+@mixin input-base {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: .76rem;
+  font-family: inherit;
+  color: var(--text-2);
+  background: var(--surface);
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+// Input focus ring
+@mixin focus-ring {
+  border-color: var(--stone-400);
+  box-shadow: 0 0 0 3px rgba(124, 114, 104, .08);
+}
+
+// Card style
+@mixin card {
+  background: var(--surface);
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius);
+}
+
+// Icon button base
+@mixin icon-btn($size: 30px) {
+  width: $size;
+  height: $size;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  transition: all .15s;
+}
+
+// Transition shorthand
+@mixin transition($props...) {
+  transition: $props;
+}
+
+// Truncate text
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Responsive
+@mixin tablet {
+  @media (max-width: $bp-tablet) {
+    @content;
+  }
+}
+
+@mixin mobile {
+  @media (max-width: $bp-mobile) {
+    @content;
+  }
+}

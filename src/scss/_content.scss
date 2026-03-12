@@ -1,0 +1,40 @@
+// ==============================================
+//   TaskFlow — Main Layout & Content Header
+// ==============================================
+
+.main {
+  padding-top: var(--nav-h);
+  min-height: 100vh;
+}
+
+.layout {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 28px;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+.content {
+  min-width: 0;
+}
+
+.content-header {
+  margin-bottom: 20px;
+
+  h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -.015em;
+  }
+}
+
+.greeting {
+  font-size: .78rem;
+  color: var(--text-3);
+  font-weight: 400;
+  margin-bottom: 2px;
+}

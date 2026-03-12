@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Học Tiếng Anh</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="english.css">
+  <link rel="stylesheet" href="ai-chat.css">
+  <link rel="stylesheet" href="global-utils.css">
+</head>
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/" class="logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>TaskFlow</span>
+      </a>
+      <div class="nav-center">
+        <a href="/dashboard.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Dashboard
+        </a>
+        <a href="/" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Công việc
+        </a>
+        <a href="/habit.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Habit Tracker
+        </a>
+        <a href="/brain.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Second Brain
+        </a>
+        <a href="/english.html" class="nav-link active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          English
+        </a>
+        <a href="/trading.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          Trading
+        </a>
+        <a href="/schedule.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Lịch trình
+        </a>
+      </div>
+      <div class="nav-right">
+        <button class="nav-btn" id="btn-theme" title="Đổi giao diện">
+          <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <a class="nav-btn" href="/settings.html" title="Cài đặt">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </a>
+        <span class="nav-date" id="nav-date"></span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="en-main">
+    <div class="en-container">
+
+      <!-- Header -->
+      <div class="en-header">
+        <div class="en-header-left">
+          <h1>📚 Học Tiếng Anh</h1>
+          <p class="en-subtitle">Ngữ pháp, bài tập & từ vựng</p>
+        </div>
+        <div class="en-header-stats">
+          <button class="en-stat" style="cursor:pointer;background:#10b981;color:#fff;border-radius:8px" onclick="window.globalUtils?.exportModule('english')" title="Xuất dữ liệu English">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span class="en-stat-label">Xuất</span>
+          </button>
+          <div class="en-stat en-stat-streak" id="stat-streak-box" title="Chuỗi ngày học liên tiếp">
+            <span class="en-stat-num" id="stat-streak">🔥 0</span><span class="en-stat-label">Streak</span>
+          </div>
+          <div class="en-stat"><span class="en-stat-num" id="stat-lessons">0</span><span class="en-stat-label">Bài học</span></div>
+          <div class="en-stat"><span class="en-stat-num" id="stat-vocab">0</span><span class="en-stat-label">Từ vựng</span></div>
+          <div class="en-stat"><span class="en-stat-num" id="stat-score">0%</span><span class="en-stat-label">Điểm TB</span></div>
+          <div class="en-stat en-stat-xp" title="Hệ thống Level & XP">
+            <span class="en-stat-num" id="stat-xp">0</span><span class="en-stat-label">XP</span>
+          </div>
+          <div class="en-stat en-stat-level" title="Level hiện tại">
+            <span class="en-stat-num" id="stat-level">Lv.1</span><span class="en-stat-label">Level</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="en-tabs">
+        <button class="en-tab active" data-tab="grammar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Ngữ pháp
+        </button>
+        <button class="en-tab" data-tab="exercises">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Bài tập
+        </button>
+        <button class="en-tab" data-tab="vocab">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Từ vựng
+        </button>
+        <button class="en-tab" data-tab="flashcard">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M12 4v16"/></svg>
+          Flashcard
+        </button>
+        <button class="en-tab" data-tab="conversation">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Hội thoại
+        </button>
+        <button class="en-tab" data-tab="quiz-game">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Quiz Game
+        </button>
+        <button class="en-tab" data-tab="grammar-check">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/></svg>
+          Grammar Check
+        </button>
+        <button class="en-tab" data-tab="random-ex">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 20 16 8 16 8 13"/><line x1="7" y1="7" x2="12" y2="7"/><line x1="7" y1="10" x2="10" y2="10"/></svg>
+          Bài tập ngẫu nhiên
+        </button>
+        <button class="en-tab" data-tab="listening">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+          Luyện nghe
+        </button>
+        <button class="en-tab" data-tab="reading">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Đọc hiểu
+        </button>
+        <button class="en-tab" data-tab="daily-challenge">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Thử thách
+        </button>
+      </div>
+
+      <!-- ===== TAB: Grammar Lessons ===== -->
+      <div class="en-tab-content active" id="tab-grammar">
+        <div class="en-lessons-grid" id="lessons-grid">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <!-- ===== TAB: Exercises ===== -->
+      <div class="en-tab-content" id="tab-exercises">
+        <div class="en-exercise-area" id="exercise-area">
+          <div class="en-exercise-select">
+            <h3>🎯 Chọn bài tập</h3>
+            <p>Chọn một thì hoặc chủ đề ngữ pháp để bắt đầu làm bài tập</p>
+            <div class="en-exercise-list" id="exercise-list">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: Vocabulary ===== -->
+      <div class="en-tab-content" id="tab-vocab">
+        <div class="en-vocab-header">
+          <div class="en-vocab-search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="vocab-search" placeholder="Tìm từ vựng..." class="en-input-search">
+          </div>
+          <div class="en-vocab-filters">
+            <select id="vocab-level" class="en-select">
+              <option value="">Tất cả level</option>
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+            <button class="en-btn en-btn-secondary" id="btn-import-vocab" title="Import CSV">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Import CSV
+            </button>
+            <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none">
+            <button class="en-btn en-btn-primary" id="btn-add-vocab">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Thêm từ
+            </button>
+          </div>
+        </div>
+
+        <!-- Word of the Day -->
+        <div class="en-wotd" id="wotd-box" style="display:none">
+          <div class="en-wotd-label">📖 Từ vựng hôm nay</div>
+          <div class="en-wotd-word" id="wotd-word"></div>
+          <div class="en-wotd-phonetic" id="wotd-phonetic"></div>
+          <div class="en-wotd-meaning" id="wotd-meaning"></div>
+          <div class="en-wotd-example" id="wotd-example"></div>
+        </div>
+
+        <div class="en-vocab-grid" id="vocab-grid">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <!-- ===== TAB: Flashcard / Spaced Repetition ===== -->
+      <div class="en-tab-content" id="tab-flashcard">
+        <div class="en-fc-header">
+          <div>
+            <h3>🃏 Flashcard — Ôn tập từ vựng</h3>
+            <p class="en-fc-sub">Hệ thống Spaced Repetition (SM-2) tự động lên lịch ôn tập</p>
+          </div>
+          <div class="en-fc-stats">
+            <span class="en-fc-stat"><strong id="fc-due-count">0</strong> từ cần ôn</span>
+            <button class="en-btn en-btn-primary" id="btn-start-flashcard">Bắt đầu ôn tập</button>
+          </div>
+        </div>
+        <div class="en-fc-area" id="fc-area" style="display:none">
+          <div class="en-fc-progress">
+            <span id="fc-progress-text">1/10</span>
+            <div class="en-fc-bar"><div class="en-fc-bar-fill" id="fc-bar-fill"></div></div>
+          </div>
+          <div class="en-fc-card" id="fc-card">
+            <div class="en-fc-card-inner" id="fc-card-inner">
+              <div class="en-fc-front">
+                <span class="en-fc-word" id="fc-word"></span>
+                <span class="en-fc-phonetic" id="fc-phonetic"></span>
+                <p class="en-fc-hint">Nhấn để xem nghĩa</p>
+              </div>
+              <div class="en-fc-back">
+                <span class="en-fc-meaning" id="fc-meaning"></span>
+                <span class="en-fc-example" id="fc-example"></span>
+              </div>
+            </div>
+          </div>
+          <div class="en-fc-rating" id="fc-rating" style="display:none">
+            <p>Mức độ nhớ:</p>
+            <div class="en-fc-rating-btns">
+              <button class="en-fc-rbtn" data-q="0" style="--rbtn-clr:#ef4444">Quên hoàn toàn</button>
+              <button class="en-fc-rbtn" data-q="2" style="--rbtn-clr:#f59e0b">Nhớ mang máng</button>
+              <button class="en-fc-rbtn" data-q="3" style="--rbtn-clr:#3b82f6">Hơi khó</button>
+              <button class="en-fc-rbtn" data-q="4" style="--rbtn-clr:#10b981">Nhớ tốt</button>
+              <button class="en-fc-rbtn" data-q="5" style="--rbtn-clr:#059669">Dễ dàng!</button>
+            </div>
+          </div>
+        </div>
+        <div class="en-fc-done" id="fc-done" style="display:none">
+          <div class="en-fc-done-icon">🎉</div>
+          <h3>Hoàn thành ôn tập!</h3>
+          <p id="fc-done-msg"></p>
+          <button class="en-btn en-btn-primary" id="btn-fc-restart">Ôn tiếp</button>
+        </div>
+      </div>
+
+      <!-- ===== TAB: Conversation Practice ===== -->
+      <div class="en-tab-content" id="tab-conversation">
+        <div class="conv-header">
+          <div>
+            <h3>💬 Luyện Hội Thoại AI</h3>
+            <p class="en-fc-sub">Thực hành giao tiếp tiếng Anh với AI trong các tình huống thực tế</p>
+          </div>
+        </div>
+        <div class="conv-config">
+          <div class="conv-config-row">
+            <label>Tình huống:</label>
+            <select id="conv-scenario" class="en-select">
+              <option value="general">🗣️ Trò chuyện chung</option>
+              <option value="restaurant">🍕 Nhà hàng</option>
+              <option value="shopping">🛒 Mua sắm</option>
+              <option value="interview">💼 Phỏng vấn</option>
+              <option value="travel">✈️ Du lịch</option>
+              <option value="doctor">🏥 Khám bệnh</option>
+            </select>
+            <label>Trình độ:</label>
+            <select id="conv-level" class="en-select">
+              <option value="beginner">Cơ bản</option>
+              <option value="intermediate" selected>Trung cấp</option>
+              <option value="advanced">Nâng cao</option>
+            </select>
+            <button class="en-btn en-btn-primary" onclick="startConversation()">Bắt đầu</button>
+          </div>
+        </div>
+        <div class="conv-chat" id="conv-chat" style="display:none">
+          <div class="conv-messages" id="conv-messages"></div>
+          <div class="conv-input-area">
+            <input type="text" id="conv-input" class="conv-text-input" placeholder="Nhập câu trả lời bằng tiếng Anh..." maxlength="500">
+            <button class="en-btn en-btn-primary" id="conv-send-btn" onclick="sendConvMessage()">Gửi</button>
+          </div>
+          <div class="conv-actions">
+            <span id="conv-turn-count" class="conv-turns">0 lượt</span>
+            <button class="en-btn" onclick="endConversation()">Kết thúc</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: Quiz Game ===== -->
+      <div class="en-tab-content" id="tab-quiz-game">
+        <div class="qg-header">
+          <div>
+            <h3>⭐ Vocab Quiz Game</h3>
+            <p class="en-fc-sub">Kiểm tra từ vựng qua các mini game vui nhộn. Cần có ít nhất 4 từ trong danh sách từ vựng.</p>
+          </div>
+          <div class="qg-score-board">
+            <span class="qg-score-item">🏆 Điểm cao: <strong id="qg-highscore">0</strong></span>
+            <span class="qg-score-item">⚡ Combo: <strong id="qg-combo">0</strong></span>
+          </div>
+        </div>
+        <div class="qg-mode-select" id="qg-mode-select">
+          <div class="qg-mode" onclick="startQuizGame('meaning')">
+            <div class="qg-mode-icon">🎯</div>
+            <div class="qg-mode-name">Chọn nghĩa đúng</div>
+            <div class="qg-mode-desc">Xem từ tiếng Anh → Chọn nghĩa tiếng Việt</div>
+          </div>
+          <div class="qg-mode" onclick="startQuizGame('word')">
+            <div class="qg-mode-icon">📝</div>
+            <div class="qg-mode-name">Chọn từ đúng</div>
+            <div class="qg-mode-desc">Xem nghĩa tiếng Việt → Chọn từ tiếng Anh</div>
+          </div>
+          <div class="qg-mode" onclick="startQuizGame('typing')">
+            <div class="qg-mode-icon">⌨️</div>
+            <div class="qg-mode-name">Điền từ</div>
+            <div class="qg-mode-desc">Xem nghĩa → Gõ từ tiếng Anh</div>
+          </div>
+          <div class="qg-mode" onclick="startQuizGame('listening')">
+            <div class="qg-mode-icon">🔊</div>
+            <div class="qg-mode-name">Nghe & chọn</div>
+            <div class="qg-mode-desc">Nghe phát âm → Chọn từ đúng</div>
+          </div>
+        </div>
+        <div class="qg-play-area" id="qg-play-area" style="display:none">
+          <div class="qg-play-header">
+            <span class="qg-play-progress" id="qg-play-progress">1/10</span>
+            <span class="qg-play-score" id="qg-play-score">Điểm: 0</span>
+            <span class="qg-play-timer" id="qg-play-timer">⏱️ 15s</span>
+          </div>
+          <div class="qg-play-question" id="qg-play-question"></div>
+          <div class="qg-play-options" id="qg-play-options"></div>
+          <div class="qg-play-feedback" id="qg-play-feedback" style="display:none"></div>
+        </div>
+        <div class="qg-result" id="qg-result" style="display:none">
+          <div class="qg-result-icon">🎉</div>
+          <h3 id="qg-result-title">Kết quả</h3>
+          <div class="qg-result-stats" id="qg-result-stats"></div>
+          <div id="qg-ai-analysis"></div>
+          <button class="en-btn en-btn-primary" onclick="document.getElementById('qg-mode-select').style.display='';document.getElementById('qg-result').style.display='none'">Chơi lại</button>
+        </div>
+      </div>
+
+      <!-- ===== TAB: Grammar Check ===== -->
+      <div class="en-tab-content" id="tab-grammar-check">
+        <div class="gc-header">
+          <h3>✅ AI Grammar Check</h3>
+          <p class="en-fc-sub">Nhập văn bản tiếng Anh để AI kiểm tra ngữ pháp, chính tả và gợi ý sửa lỗi</p>
+        </div>
+        <div class="gc-input-area">
+          <textarea id="gc-input" class="gc-textarea" rows="6" placeholder="Enter your English text here...&#10;&#10;Example: Yesterday I go to the market and buyed some fruit." maxlength="2000"></textarea>
+          <div class="gc-actions">
+            <span class="gc-charcount"><span id="gc-charcount">0</span>/2000</span>
+            <button class="en-btn en-btn-primary" id="btn-grammar-check" onclick="runGrammarCheck()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+              Kiểm tra ngữ pháp
+            </button>
+          </div>
+        </div>
+        <div class="gc-result" id="gc-result" style="display:none">
+          <div class="gc-score-bar">
+            <div class="gc-score-circle" id="gc-score-circle">
+              <span id="gc-score-num">0</span>
+            </div>
+            <div class="gc-score-info">
+              <div class="gc-score-label">Điểm ngữ pháp</div>
+              <div class="gc-feedback" id="gc-feedback"></div>
+            </div>
+          </div>
+          <div class="gc-corrected" id="gc-corrected" style="display:none">
+            <h4>📝 Bản sửa:</h4>
+            <div class="gc-corrected-text" id="gc-corrected-text"></div>
+          </div>
+          <div class="gc-errors" id="gc-errors"></div>
+          <div class="gc-suggestions" id="gc-suggestions" style="display:none">
+            <h4>💡 Gợi ý cải thiện:</h4>
+            <ul id="gc-suggestions-list"></ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: Random Exercises ===== -->
+      <div class="en-tab-content" id="tab-random-ex">
+        <div class="rex-header">
+          <div>
+            <h3>🎲 Bài Tập Ngẫu Nhiên</h3>
+            <p class="en-fc-sub">AI tạo bài tập tiếng Anh ngẫu nhiên theo cấp độ của bạn</p>
+          </div>
+        </div>
+        <div class="rex-config">
+          <div class="rex-config-row">
+            <div class="rex-config-item">
+              <label>Cấp độ:</label>
+              <select id="rex-difficulty" class="en-select">
+                <option value="easy">Dễ (A1-A2)</option>
+                <option value="medium" selected>Trung bình (B1-B2)</option>
+                <option value="hard">Khó (C1-C2)</option>
+              </select>
+            </div>
+            <div class="rex-config-item">
+              <label>Số câu:</label>
+              <select id="rex-count" class="en-select">
+                <option value="3">3 câu</option>
+                <option value="5" selected>5 câu</option>
+                <option value="8">8 câu</option>
+                <option value="10">10 câu</option>
+              </select>
+            </div>
+            <div class="rex-config-item">
+              <label>Chủ đề:</label>
+              <select id="rex-topic" class="en-select">
+                <option value="">🎲 Ngẫu nhiên</option>
+                <optgroup label="Ngữ pháp">
+                  <option value="tenses">Các thì</option>
+                  <option value="conditionals">Câu điều kiện</option>
+                  <option value="passive voice">Bị động</option>
+                  <option value="reported speech">Câu tường thuật</option>
+                  <option value="relative clauses">Mệnh đề quan hệ</option>
+                  <option value="articles">Mạo từ (a/an/the)</option>
+                  <option value="modal verbs">Động từ khuyết thiếu</option>
+                  <option value="comparatives and superlatives">So sánh</option>
+                  <option value="gerund vs infinitive">V-ing vs To V</option>
+                  <option value="subject-verb agreement">Hòa hợp chủ vị</option>
+                </optgroup>
+                <optgroup label="Từ vựng">
+                  <option value="vocabulary">Từ vựng tổng hợp</option>
+                  <option value="phrasal verbs">Cụm động từ</option>
+                  <option value="idioms">Thành ngữ</option>
+                  <option value="collocations">Collocation</option>
+                  <option value="confusing words">Từ dễ nhầm</option>
+                  <option value="word formation">Cấu tạo từ</option>
+                </optgroup>
+                <optgroup label="Khác">
+                  <option value="prepositions">Giới từ</option>
+                  <option value="conjunctions">Liên từ</option>
+                  <option value="quantifiers">Lượng từ</option>
+                </optgroup>
+              </select>
+            </div>
+            <button class="en-btn en-btn-primary" id="btn-gen-random" onclick="generateRandomExercises()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6"/><path d="M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3"/><path d="M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+              Tạo bài tập
+            </button>
+            <button class="en-btn en-btn-outline" id="btn-clear-rex-history" onclick="clearRexHistory(); this.innerHTML='✅ Đã xóa'" title="Xóa lịch sử câu hỏi để cho phép tạo lại từ đầu">
+              🗑️ Xóa lịch sử
+            </button>
+          </div>
+        </div>
+        <div class="rex-exercises" id="rex-exercises"></div>
+        <div class="rex-result" id="rex-result" style="display:none">
+          <div class="rex-result-summary" id="rex-result-summary"></div>
+          <div class="rex-ai-grading" id="rex-ai-grading"></div>
+          <div class="rex-result-actions">
+            <button class="en-btn en-btn-primary" onclick="generateRandomExercises()">🎲 Tạo bài mới</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: Listening Practice ===== -->
+      <div class="en-tab-content" id="tab-listening">
+        <div class="lst-header">
+          <div>
+            <h3>🎧 Luyện Nghe AI</h3>
+            <p class="en-fc-sub">AI tạo bài nghe → TTS đọc → bạn trả lời câu hỏi</p>
+          </div>
+        </div>
+        <div class="lst-config">
+          <div class="lst-config-row">
+            <div class="lst-config-item">
+              <label>Trình độ:</label>
+              <select id="lst-level" class="en-select">
+                <option value="beginner">Cơ bản (A1-A2)</option>
+                <option value="intermediate" selected>Trung cấp (B1-B2)</option>
+                <option value="advanced">Nâng cao (C1-C2)</option>
+              </select>
+            </div>
+            <div class="lst-config-item">
+              <label>Chủ đề:</label>
+              <select id="lst-topic" class="en-select">
+                <option value="">Ngẫu nhiên</option>
+                <option value="travel">Du lịch</option>
+                <option value="work">Công việc</option>
+                <option value="daily life">Đời sống</option>
+                <option value="technology">Công nghệ</option>
+                <option value="health">Sức khỏe</option>
+                <option value="education">Giáo dục</option>
+              </select>
+            </div>
+            <div class="lst-config-item">
+              <label>Tốc độ:</label>
+              <select id="lst-speed" class="en-select">
+                <option value="0.7">Chậm</option>
+                <option value="0.9" selected>Bình thường</option>
+                <option value="1.1">Nhanh</option>
+              </select>
+            </div>
+            <button class="en-btn en-btn-primary" id="btn-gen-listening" onclick="generateListening()">
+              🎧 Tạo bài nghe
+            </button>
+          </div>
+        </div>
+        <div class="lst-area" id="lst-area" style="display:none">
+          <div class="lst-player">
+            <div class="lst-title" id="lst-title"></div>
+            <div class="lst-controls">
+              <button class="en-btn en-btn-primary lst-play-btn" id="lst-play-btn" onclick="playListening()">
+                ▶️ Nghe bài
+              </button>
+              <button class="en-btn en-btn-secondary" onclick="playListening()" title="Nghe lại">🔁 Nghe lại</button>
+              <span class="lst-plays" id="lst-plays">Đã nghe: 0 lần</span>
+            </div>
+          </div>
+          <div class="lst-questions" id="lst-questions"></div>
+          <div class="lst-actions" id="lst-actions" style="display:none">
+            <button class="en-btn en-btn-primary" onclick="submitListening()">📝 Nộp bài</button>
+          </div>
+          <div class="lst-result" id="lst-result" style="display:none"></div>
+          <div class="lst-transcript" id="lst-transcript" style="display:none">
+            <h4>📄 Transcript</h4>
+            <div class="lst-transcript-text" id="lst-transcript-text"></div>
+            <div class="lst-vocab-list" id="lst-vocab-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: Reading Comprehension ===== -->
+      <div class="en-tab-content" id="tab-reading">
+        <div class="rdg-header">
+          <div>
+            <h3>📖 Đọc Hiểu AI</h3>
+            <p class="en-fc-sub">AI tạo bài đọc theo trình độ với câu hỏi comprehension</p>
+          </div>
+        </div>
+        <div class="rdg-config">
+          <div class="rdg-config-row">
+            <div class="rdg-config-item">
+              <label>Trình độ:</label>
+              <select id="rdg-level" class="en-select">
+                <option value="beginner">Cơ bản (A1-A2)</option>
+                <option value="intermediate" selected>Trung cấp (B1-B2)</option>
+                <option value="advanced">Nâng cao (C1-C2)</option>
+              </select>
+            </div>
+            <div class="rdg-config-item">
+              <label>Chủ đề:</label>
+              <select id="rdg-topic" class="en-select">
+                <option value="">Ngẫu nhiên</option>
+                <option value="science">Khoa học</option>
+                <option value="history">Lịch sử</option>
+                <option value="technology">Công nghệ</option>
+                <option value="environment">Môi trường</option>
+                <option value="culture">Văn hóa</option>
+                <option value="society">Xã hội</option>
+              </select>
+            </div>
+            <button class="en-btn en-btn-primary" id="btn-gen-reading" onclick="generateReading()">
+              📖 Tạo bài đọc
+            </button>
+          </div>
+        </div>
+        <div class="rdg-area" id="rdg-area" style="display:none">
+          <div class="rdg-passage-box">
+            <div class="rdg-passage-title" id="rdg-passage-title"></div>
+            <div class="rdg-passage-meta" id="rdg-passage-meta"></div>
+            <div class="rdg-passage-text" id="rdg-passage-text"></div>
+          </div>
+          <div class="rdg-questions" id="rdg-questions"></div>
+          <div class="rdg-actions" id="rdg-actions" style="display:none">
+            <button class="en-btn en-btn-primary" onclick="submitReading()">📝 Nộp bài</button>
+          </div>
+          <div class="rdg-result" id="rdg-result" style="display:none"></div>
+          <div class="rdg-extras" id="rdg-extras" style="display:none">
+            <div class="rdg-summary" id="rdg-summary"></div>
+            <div class="rdg-vocab-list" id="rdg-vocab-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: Daily Challenge ===== -->
+      <div class="en-tab-content" id="tab-daily-challenge">
+        <div class="dc-header">
+          <div>
+            <h3>🎯 Thử Thách Hàng Ngày</h3>
+            <p class="en-fc-sub">Hoàn thành 4 mini-task mỗi ngày để nhận XP bonus!</p>
+          </div>
+          <div class="dc-header-stats">
+            <span class="dc-streak-badge" id="dc-streak-badge">🔥 0 ngày liên tiếp</span>
+          </div>
+        </div>
+        <div class="dc-status" id="dc-status"></div>
+        <div class="dc-config">
+          <div class="dc-config-row">
+            <div class="dc-config-item">
+              <label>Trình độ:</label>
+              <select id="dc-level" class="en-select">
+                <option value="beginner">Cơ bản</option>
+                <option value="intermediate" selected>Trung cấp</option>
+                <option value="advanced">Nâng cao</option>
+              </select>
+            </div>
+            <button class="en-btn en-btn-primary" id="btn-gen-dc" onclick="generateDailyChallenge()">
+              🎯 Bắt đầu thử thách
+            </button>
+          </div>
+        </div>
+        <div class="dc-tasks" id="dc-tasks"></div>
+        <div class="dc-result" id="dc-result" style="display:none"></div>
+      </div>
+
+      <!-- ===== XP / Level Panel (shown below tabs) ===== -->
+      <div class="xp-panel" id="xp-panel">
+        <div class="xp-bar-outer">
+          <div class="xp-bar-inner" id="xp-bar-inner" style="width:0%"></div>
+        </div>
+        <div class="xp-info">
+          <span id="xp-level-text">Level 1</span>
+          <span id="xp-progress-text">0 / 100 XP</span>
+        </div>
+        <div class="xp-badges" id="xp-badges"></div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ===== LESSON DETAIL MODAL ===== -->
+  <div class="en-modal-overlay" id="lesson-modal" style="display:none">
+    <div class="en-modal en-modal-lesson">
+      <div class="en-modal-header">
+        <h3 id="lesson-modal-title">Bài học</h3>
+        <button class="en-modal-close" id="lesson-modal-close">&times;</button>
+      </div>
+      <div class="en-modal-body" id="lesson-modal-body">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== EXERCISE QUIZ MODAL ===== -->
+  <div class="en-modal-overlay" id="quiz-modal" style="display:none">
+    <div class="en-modal en-modal-quiz">
+      <div class="en-modal-header">
+        <h3 id="quiz-modal-title">Bài tập</h3>
+        <div class="en-quiz-progress">
+          <span id="quiz-progress-text">1/10</span>
+          <div class="en-quiz-bar"><div class="en-quiz-bar-fill" id="quiz-bar-fill"></div></div>
+        </div>
+        <button class="en-modal-close" id="quiz-modal-close">&times;</button>
+      </div>
+      <div class="en-modal-body" id="quiz-modal-body">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="en-modal-footer" id="quiz-modal-footer">
+        <button class="en-btn en-btn-secondary" id="quiz-btn-prev" style="display:none">← Trước</button>
+        <button class="en-btn en-btn-primary" id="quiz-btn-next">Tiếp →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ADD VOCAB MODAL ===== -->
+  <div class="en-modal-overlay" id="vocab-modal" style="display:none">
+    <div class="en-modal en-modal-sm">
+      <div class="en-modal-header">
+        <h3 id="vocab-modal-title">Thêm từ vựng</h3>
+        <button class="en-modal-close" id="vocab-modal-close">&times;</button>
+      </div>
+      <div class="en-modal-body">
+        <div class="en-form-group">
+          <label>Từ tiếng Anh <span class="en-required">*</span></label>
+          <div class="en-input-row">
+            <input type="text" id="vocab-word" class="en-input" placeholder="Nhập từ mới, VD: accomplish" style="flex:1">
+            <button class="en-btn en-btn-ai" id="btn-ai-lookup" title="AI tự động điền">🤖 AI</button>
+          </div>
+          <div class="en-ai-status" id="ai-lookup-status" style="display:none"></div>
+        </div>
+        <div id="vocab-detail-fields">
+          <div class="en-form-group">
+            <label>Phiên âm</label>
+            <input type="text" id="vocab-phonetic" class="en-input" placeholder="/phiên âm IPA/">
+          </div>
+          <div class="en-form-group">
+            <label>Nghĩa tiếng Việt <span class="en-required">*</span></label>
+            <input type="text" id="vocab-meaning" class="en-input" placeholder="Nghĩa tiếng Việt">
+          </div>
+          <div class="en-form-group">
+            <label>Ví dụ</label>
+            <input type="text" id="vocab-example" class="en-input" placeholder="Câu ví dụ">
+          </div>
+          <div class="en-form-row">
+            <div class="en-form-group">
+              <label>Danh mục</label>
+              <input type="text" id="vocab-category" class="en-input" placeholder="e.g. business">
+            </div>
+            <div class="en-form-group">
+              <label>Cấp độ</label>
+              <select id="vocab-level-input" class="en-select">
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="en-modal-footer">
+        <button class="en-btn en-btn-secondary" id="vocab-modal-cancel">Hủy</button>
+        <button class="en-btn en-btn-primary" id="vocab-modal-save">💾 Lưu</button>
+        <button class="en-btn en-btn-ai-save" id="vocab-ai-save" title="AI điền + Lưu luôn">🤖 AI + Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== AI CHAT PANEL ===== -->
+  <button class="ai-fab" id="ai-fab" title="Trợ lý AI">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7 7 0 0 1 14 23h-4a7 7 0 0 1-6.73-4H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+      <circle cx="9.5" cy="15.5" r="1"/><circle cx="14.5" cy="15.5" r="1"/>
+    </svg>
+    <span class="ai-fab-badge" id="ai-fab-badge" style="display:none"></span>
+  </button>
+
+  <div class="ai-panel" id="ai-panel">
+    <div class="ai-panel-header">
+      <div class="ai-panel-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7 7 0 0 1 14 23h-4a7 7 0 0 1-6.73-4H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+          <circle cx="9.5" cy="15.5" r="1"/><circle cx="14.5" cy="15.5" r="1"/>
+        </svg>
+        <span>TaskFlow AI</span>
+      </div>
+      <div class="ai-panel-actions">
+        <button class="ai-btn-clear" id="ai-btn-clear" title="Xóa lịch sử chat">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+        <button class="ai-btn-close" id="ai-btn-close" title="Đóng">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="ai-messages" id="ai-messages"></div>
+    <div class="ai-suggestions" id="ai-suggestions"></div>
+    <form class="ai-input-form" id="ai-input-form">
+      <input type="text" id="ai-input" class="ai-input" placeholder="Hỏi AI về tiếng Anh..." autocomplete="off" maxlength="500">
+      <button type="submit" class="ai-send-btn" id="ai-send-btn" title="Gửi">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </form>
+  </div>
+
+  <script src="english.js"></script>
+  <script src="ai-chat.js"></script>
+  <script>
+    initAIChat({
+      page: 'english',
+      onAction: () => { if (typeof loadVocab === 'function') loadVocab(); }
+    });
+  </script>
+  <script src="global-utils.js"></script>
+</body>
+</html>

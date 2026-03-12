@@ -1,0 +1,225 @@
+// ==============================================
+//   TaskFlow — Form
+// ==============================================
+@use 'variables' as *;
+@use 'mixins' as *;
+
+.todo-form {
+  margin-bottom: 24px;
+  @include flex-col(8px);
+
+  input::placeholder {
+    color: var(--text-4);
+  }
+
+  input[type="text"]#todo-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: .875rem;
+    font-family: inherit;
+    color: var(--text);
+    outline: none;
+    padding: 11px 0;
+  }
+}
+
+.form-main-row {
+  display: flex;
+}
+
+.input-group {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 4px 4px 0;
+  transition: border-color .2s, box-shadow .2s;
+
+  &:focus-within {
+    @include focus-ring;
+
+    .input-icon {
+      color: var(--accent);
+    }
+  }
+}
+
+.input-icon {
+  @include flex-center;
+  width: 44px;
+  flex-shrink: 0;
+  color: var(--text-4);
+  transition: color .2s;
+}
+
+#btn-add {
+  padding: 10px 22px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: .8rem;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, transform .15s;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--accent-dark);
+  }
+
+  &:active {
+    transform: scale(.97);
+  }
+}
+
+// ---- Options Row ----
+.form-options-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.form-option {
+  @include flex-row(6px);
+  color: var(--text-4);
+}
+
+.deadline-input,
+.priority-select {
+  @include input-base;
+  padding: 6px 10px;
+  cursor: pointer;
+
+  &:focus {
+    @include focus-ring;
+  }
+}
+
+.deadline-input {
+  &::-webkit-calendar-picker-indicator {
+    opacity: .5;
+    cursor: pointer;
+  }
+}
+
+// ---- Form Tags Dropdown ----
+.form-tags-option {
+  position: relative;
+}
+
+.form-tags-select {
+  @include flex-row(6px);
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: .76rem;
+  color: var(--text-3);
+  background: var(--surface);
+  min-width: 120px;
+  position: relative;
+  transition: border-color .2s;
+  user-select: none;
+
+  &:hover {
+    border-color: var(--stone-400);
+  }
+}
+
+.form-tags-placeholder {
+  flex: 1;
+  @include truncate;
+
+  &.has-selection {
+    color: var(--text-2);
+    font-weight: 500;
+  }
+}
+
+.form-tags-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  z-index: 50;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .08);
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+
+  &.open {
+    display: flex;
+  }
+}
+
+.form-tag-option {
+  @include flex-row(8px);
+  padding: 6px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: .76rem;
+  color: var(--text-2);
+  transition: background .15s;
+
+  &:hover {
+    background: var(--stone-50);
+  }
+
+  input {
+    accent-color: var(--accent);
+  }
+}
+
+.form-tag-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.form-tags-empty {
+  padding: 8px;
+  font-size: .72rem;
+  color: var(--text-4);
+  text-align: center;
+}
+
+// ---- Description Textarea ----
+.form-desc-row {
+  display: flex;
+}
+
+.desc-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-size: .78rem;
+  font-family: inherit;
+  color: var(--text-2);
+  background: var(--surface);
+  outline: none;
+  resize: none;
+  min-height: 34px;
+  transition: border-color .2s, box-shadow .2s;
+
+  &:focus {
+    @include focus-ring;
+  }
+
+  &::placeholder {
+    color: var(--text-4);
+  }
+}

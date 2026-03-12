@@ -1,13 +1,47 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 
-// ==================== GEMINI AI CONFIG ====================
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// ==================== GROQ CONFIG ====================
+const AI_NOT_CONFIGURED_MESSAGE = 'AI chưa được cấu hình (thiếu GROQ_API_KEY)';
 
-function getModel(systemPrompt) {
-  return genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    systemInstruction: { parts: [{ text: systemPrompt }] }
-  });
+function createAIConfigError() {
+  const err = new Error(AI_NOT_CONFIGURED_MESSAGE);
+  err.code = 'AI_NOT_CONFIGURED';
+  err.status = 503;
+  return err;
 }
 
-module.exports = { genAI, getModel };
+let groq;
+let isGroqConfigured = false;
+try {
+  if (process.env.GROQ_API_KEY) {
+    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    isGroqConfigured = true;
+  } else {
+    console.warn('⚠️ GROQ_API_KEY chưa được cấu hình — tính năng AI sẽ bị tắt');
+  }
+} catch (err) {
+  console.warn('⚠️ Không thể khởi tạo Groq client:', err.message);
+}
+
+if (!groq) {
+  groq = {
+    chat: {
+      completions: {
+        create: async () => {
+          throw createAIConfigError();
+        }
+      }
+    }
+  };
+}
+
+// Model: llama-3.3-70b-versatile (free tier: 30 req/min, 14400 req/day)
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+
+module.exports = {
+  groq,
+  GROQ_MODEL,
+  isGroqConfigured,
+  AI_NOT_CONFIGURED_MESSAGE,
+  createAIConfigError
+};

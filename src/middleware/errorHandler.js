@@ -3,18 +3,25 @@
 function errorHandler(err, req, res, _next) {
   console.error(`[ERROR] ${req.method} ${req.url}:`, err.message);
 
-  // Database constraint errors
-  if (err.message?.includes('SQLITE_CONSTRAINT')) {
+  // MongoDB duplicate key error
+  if (err.code === 11000) {
     return res.status(409).json({
       error: 'Dữ liệu bị xung đột',
       detail: err.message
     });
   }
 
-  // Validation errors
-  if (err.status === 400 || err.name === 'ValidationError') {
+  // Mongoose validation error
+  if (err.name === 'ValidationError') {
     return res.status(400).json({
       error: err.message || 'Dữ liệu không hợp lệ'
+    });
+  }
+
+  // Mongoose CastError (invalid ObjectId)
+  if (err.name === 'CastError') {
+    return res.status(400).json({
+      error: 'ID không hợp lệ'
     });
   }
 

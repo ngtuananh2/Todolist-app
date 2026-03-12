@@ -1,0 +1,61 @@
+// ==============================================
+//   TaskFlow — SCSS Variables & CSS Custom Properties
+// ==============================================
+
+// SCSS Variables (for use in mixins, calculations, etc.)
+$font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+$radius: 10px;
+$ease: cubic-bezier(.4, 0, .2, 1);
+$nav-h: 56px;
+$sidebar-w: 260px;
+
+// Breakpoints
+$bp-tablet: 768px;
+$bp-mobile: 480px;
+
+// CSS Custom Properties (runtime theming)
+:root {
+  // Stone palette
+  --stone-50:  #fafaf9;
+  --stone-100: #f5f5f4;
+  --stone-200: #e7e5e4;
+  --stone-300: #d6d3d1;
+  --stone-400: #a8a29e;
+  --stone-500: #78716c;
+  --stone-600: #57534e;
+  --stone-700: #44403c;
+  --stone-800: #292524;
+  --stone-900: #1c1917;
+
+  // Semantic colors
+  --bg:        #f4f3f1;
+  --surface:   #ffffff;
+  --border:    #e5e3e0;
+  --border-lt: #eeedeb;
+  --text:      #2c2825;
+  --text-2:    #5c5650;
+  --text-3:    #918a84;
+  --text-4:    #c0bab4;
+
+  // Accent
+  --accent:      #7c7268;
+  --accent-dark: #5e554d;
+  --accent-soft: #edeae7;
+
+  // Status
+  --done:        #6d8f63;
+  --done-soft:   #ebf1e9;
+  --danger:      #b86565;
+  --danger-soft: #f8eded;
+
+  // Priority
+  --priority-high:   #d9534f;
+  --priority-medium: #e8a838;
+  --priority-low:    #5a9bd5;
+
+  // Layout
+  --radius: #{$radius};
+  --ease: #{$ease};
+  --nav-h: #{$nav-h};
+  --sidebar-w: #{$sidebar-w};
+}

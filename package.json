@@ -7,6 +7,9 @@
   "license": "ISC",
   "scripts": {
     "start": "node server.js",
+    "sass": "sass src/scss/style.scss public/style.css",
+    "sass:watch": "sass --watch src/scss/style.scss public/style.css",
+    "dev": "npm run sass && node server.js",
     "electron": "electron .",
     "build": "electron-builder --win",
     "build:portable": "electron-builder --win portable"
@@ -30,7 +33,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -43,15 +48,20 @@
       "shortcutName": "TaskFlow"
     }
   },
-  "keywords": ["todo", "task", "productivity"],
+  "keywords": [
+    "todo",
+    "task",
+    "productivity"
+  ],
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
-    "better-sqlite3": "^12.6.2",
     "dotenv": "^17.3.1",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "groq-sdk": "^0.37.0",
+    "mongoose": "^9.2.4"
   },
   "devDependencies": {
     "electron": "^40.6.1",
-    "electron-builder": "^26.8.1"
+    "electron-builder": "^26.8.1",
+    "sass": "^1.97.3"
   }
 }

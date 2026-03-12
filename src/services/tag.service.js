@@ -1,4 +1,4 @@
-const db = require('../config/database');
+const { Tag, Todo } = require('../config/database');
 
 // ==================== TAG SERVICE ====================
 
@@ -6,26 +6,29 @@ class TagService {
   /**
    * Get all tags sorted by name
    */
-  getAll() {
-    return db.prepare('SELECT * FROM tags ORDER BY name').all();
+  async getAll() {
+    const tags = await Tag.find().sort({ name: 1 });
+    return tags.map(t => t.toJSON());
   }
 
   /**
    * Create a new tag
    */
-  create(name, color = '#78716c') {
-    const result = db.prepare('INSERT INTO tags (name, color) VALUES (?, ?)')
-      .run(name.trim(), color || '#78716c');
-    return db.prepare('SELECT * FROM tags WHERE id = ?').get(result.lastInsertRowid);
+  async create(name, color = '#78716c') {
+    const tag = await Tag.create({ name: name.trim(), color: color || '#78716c' });
+    return tag.toJSON();
   }
 
   /**
-   * Delete a tag by ID
+   * Delete a tag by ID (also remove from all todos)
    */
-  delete(id) {
-    db.prepare('DELETE FROM tags WHERE id = ?').run(id);
+  async delete(id) {
+    await Tag.findByIdAndDelete(id);
+    // Xóa tag khỏi tất cả todos
+    await Todo.updateMany({ tags: id }, { $pull: { tags: id } });
     return { id, deleted: true };
   }
 }
 
 module.exports = new TagService();
+

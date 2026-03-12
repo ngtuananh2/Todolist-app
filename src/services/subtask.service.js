@@ -1,4 +1,4 @@
-const db = require('../config/database');
+const { Todo } = require('../config/database');
 
 // ==================== SUBTASK SERVICE ====================
 
@@ -6,44 +6,46 @@ class SubtaskService {
   /**
    * Add a subtask to a todo
    */
-  create(todoId, title) {
-    const todo = db.prepare('SELECT id FROM todos WHERE id = ?').get(todoId);
+  async create(todoId, title) {
+    const todo = await Todo.findById(todoId);
     if (!todo) return { error: 'NOT_FOUND' };
 
-    const result = db.prepare('INSERT INTO subtasks (todoId, title, completed) VALUES (?, ?, 0)')
-      .run(todoId, title.trim());
+    todo.subtasks.push({ title: title.trim(), completed: false });
+    await todo.save();
 
-    const subtask = db.prepare('SELECT * FROM subtasks WHERE id = ?').get(result.lastInsertRowid);
-    subtask.completed = !!subtask.completed;
-    return subtask;
+    const sub = todo.subtasks[todo.subtasks.length - 1];
+    return { id: sub._id.toString(), title: sub.title, completed: sub.completed };
   }
 
   /**
    * Update a subtask (title and/or completed status)
    */
-  update(id, data) {
-    const sub = db.prepare('SELECT * FROM subtasks WHERE id = ?').get(id);
+  async update(id, data) {
+    const todo = await Todo.findOne({ 'subtasks._id': id });
+    if (!todo) return null;
+
+    const sub = todo.subtasks.id(id);
     if (!sub) return null;
 
-    if (data.title !== undefined) {
-      db.prepare('UPDATE subtasks SET title = ? WHERE id = ?').run(data.title.trim(), id);
-    }
-    if (data.completed !== undefined) {
-      db.prepare('UPDATE subtasks SET completed = ? WHERE id = ?').run(data.completed ? 1 : 0, id);
-    }
+    if (data.title !== undefined) sub.title = data.title.trim();
+    if (data.completed !== undefined) sub.completed = !!data.completed;
 
-    const updated = db.prepare('SELECT * FROM subtasks WHERE id = ?').get(id);
-    updated.completed = !!updated.completed;
-    return updated;
+    await todo.save();
+    return { id: sub._id.toString(), title: sub.title, completed: sub.completed };
   }
 
   /**
    * Delete a subtask
    */
-  delete(id) {
-    db.prepare('DELETE FROM subtasks WHERE id = ?').run(id);
+  async delete(id) {
+    const todo = await Todo.findOne({ 'subtasks._id': id });
+    if (!todo) return { id, deleted: true };
+
+    todo.subtasks.pull({ _id: id });
+    await todo.save();
     return { id, deleted: true };
   }
 }
 
 module.exports = new SubtaskService();
+

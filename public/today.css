@@ -1,0 +1,145 @@
+/* ===== TODAY FOCUS CSS ===== */
+:root {
+  --bg: #fafaf9; --bg2: #ffffff; --bg3: #f5f5f4;
+  --text: #1c1917; --text2: #57534e; --text3: #a8a29e;
+  --border: #e7e5e4; --shadow: 0 1px 3px rgba(0,0,0,.06);
+  --accent: #7c7268; --accent-bg: #f5f0eb;
+  --radius: 12px; --radius-sm: 8px;
+  --font: 'Inter', system-ui, sans-serif;
+}
+[data-theme="dark"] {
+  --bg: #1a1a1a; --bg2: #242424; --bg3: #2a2a2a;
+  --text: #e7e5e4; --text2: #a8a29e; --text3: #78716c;
+  --border: #3a3a3a; --shadow: 0 1px 3px rgba(0,0,0,.3);
+  --accent: #a8a29e; --accent-bg: #2a2622;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ─── Navbar ─── */
+.navbar { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 0 24px; height: 52px; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+.nav-inner { display: flex; align-items: center; width: 100%; max-width: 1400px; margin: 0 auto; gap: 20px; }
+.logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: var(--text); text-decoration: none; }
+.nav-center { display: flex; gap: 4px; flex: 1; justify-content: center; }
+.nav-link { display: flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 8px; font-size: 13px; color: var(--text2); text-decoration: none; transition: .15s; font-weight: 500; white-space: nowrap; }
+.nav-link:hover { background: var(--bg3); color: var(--text); }
+.nav-link.active { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+.nav-right { display: flex; align-items: center; gap: 8px; }
+.nav-btn { background: none; border: 1px solid var(--border); border-radius: 8px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text2); transition: .15s; text-decoration: none; }
+.nav-btn:hover { background: var(--bg3); color: var(--text); }
+.nav-date { font-size: 12px; color: var(--text3); white-space: nowrap; }
+
+/* ─── Main ─── */
+.today-main { padding: 24px; }
+.today-container { max-width: 1100px; margin: 0 auto; }
+.today-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.today-header h1 { font-size: 22px; font-weight: 700; }
+.today-subtitle { font-size: 13px; color: var(--text2); margin-top: 2px; }
+.today-header-actions { display: flex; gap: 8px; }
+.today-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: .15s; }
+.today-btn-outline { background: var(--bg2); border: 1px solid var(--border); color: var(--text2); }
+.today-btn-outline:hover { background: var(--bg3); color: var(--text); }
+
+/* ─── Summary Cards ─── */
+.today-summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
+.today-sum-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 4px; box-shadow: var(--shadow); transition: .2s; }
+.today-sum-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.today-sum-icon { font-size: 22px; }
+.today-sum-num { font-size: 24px; font-weight: 700; }
+.today-sum-label { font-size: 11px; color: var(--text3); text-align: center; }
+.today-sum-card.overdue .today-sum-num { color: #ef4444; }
+.today-sum-card.due .today-sum-num { color: #f59e0b; }
+.today-sum-card.habits .today-sum-num { color: #8b5cf6; }
+.today-sum-card.vocab .today-sum-num { color: #10b981; }
+.today-sum-card.trades .today-sum-num { color: #3b82f6; }
+
+/* ─── Sections Grid ─── */
+.today-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.today-section { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.today-section-title { font-size: 14px; font-weight: 600; padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+.today-section-icon { font-size: 16px; }
+.today-section-count { margin-left: auto; font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--bg3); color: var(--text2); font-weight: 600; }
+.today-section-body { max-height: 320px; overflow-y: auto; }
+.today-empty { padding: 24px; text-align: center; color: var(--text3); font-size: 13px; }
+
+/* ─── Todo Items ─── */
+.today-todo-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--bg3); transition: .1s; }
+.today-todo-item:last-child { border-bottom: none; }
+.today-todo-item:hover { background: var(--bg3); }
+.today-todo-priority { width: 4px; height: 32px; border-radius: 2px; flex-shrink: 0; }
+.today-todo-info { flex: 1; min-width: 0; }
+.today-todo-title { font-size: 13px; font-weight: 500; display: block; }
+.today-todo-desc { font-size: 11px; color: var(--text3); display: block; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.today-todo-meta { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; align-items: center; }
+.today-todo-deadline { font-size: 10px; padding: 1px 6px; border-radius: 4px; background: var(--bg3); color: var(--text2); }
+.today-todo-deadline.overdue { background: #fef2f2; color: #ef4444; }
+[data-theme="dark"] .today-todo-deadline.overdue { background: #4a1a1a; }
+.today-tag { font-size: 10px; padding: 1px 6px; border-radius: 4px; }
+.today-goto { text-decoration: none; color: var(--text3); font-size: 16px; padding: 4px 8px; border-radius: 6px; transition: .15s; }
+.today-goto:hover { background: var(--accent-bg); color: var(--accent); }
+
+/* ─── Habit Items ─── */
+.today-habit-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--bg3); transition: .1s; }
+.today-habit-item:last-child { border-bottom: none; }
+.today-habit-item:hover { background: var(--bg3); }
+.today-habit-icon { font-size: 18px; }
+.today-habit-name { flex: 1; font-size: 13px; font-weight: 500; }
+.today-habit-item.done { opacity: .5; }
+.today-habit-item.done .today-habit-name { text-decoration: line-through; }
+.today-habit-check { color: #10b981; font-weight: 700; font-size: 14px; }
+
+/* ─── Vocab Items ─── */
+.today-vocab-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--bg3); transition: .1s; }
+.today-vocab-item:last-child { border-bottom: none; }
+.today-vocab-item:hover { background: var(--bg3); }
+.today-vocab-word { font-size: 13px; font-weight: 600; min-width: 100px; }
+.today-vocab-meaning { flex: 1; font-size: 12px; color: var(--text2); }
+.today-more { padding: 10px 16px; text-align: center; }
+.today-more a { font-size: 12px; color: var(--accent); text-decoration: none; }
+.today-more a:hover { text-decoration: underline; }
+
+/* ─── Trade Items ─── */
+.today-trade-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--bg3); transition: .1s; }
+.today-trade-item:last-child { border-bottom: none; }
+.today-trade-item:hover { background: var(--bg3); }
+.today-trade-type { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
+.today-trade-type.buy, .today-trade-type.long { background: #d1fae5; color: #059669; }
+.today-trade-type.sell, .today-trade-type.short { background: #fee2e2; color: #dc2626; }
+[data-theme="dark"] .today-trade-type.buy, [data-theme="dark"] .today-trade-type.long { background: #1a3d2e; color: #34d399; }
+[data-theme="dark"] .today-trade-type.sell, [data-theme="dark"] .today-trade-type.short { background: #4a1a1a; color: #f87171; }
+.today-trade-info { flex: 1; }
+.today-trade-symbol { font-size: 13px; font-weight: 600; display: block; }
+.today-trade-detail { font-size: 11px; color: var(--text3); display: block; margin-top: 2px; }
+
+/* ─── Responsive ─── */
+@media (max-width: 900px) {
+  .today-summary { grid-template-columns: repeat(3, 1fr); }
+  .today-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .today-summary { grid-template-columns: repeat(2, 1fr); }
+  .nav-center { display: none; }
+  .today-main { padding: 16px; }
+  .today-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+}
+@media (max-width: 400px) {
+  .today-summary { grid-template-columns: 1fr; }
+  .today-main { padding: 12px; }
+}
+
+/* ─── Animations ─── */
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.today-sum-card { animation: fadeInUp 0.3s ease both; }
+.today-sum-card:nth-child(1) { animation-delay: 0s; }
+.today-sum-card:nth-child(2) { animation-delay: .05s; }
+.today-sum-card:nth-child(3) { animation-delay: .1s; }
+.today-sum-card:nth-child(4) { animation-delay: .15s; }
+.today-sum-card:nth-child(5) { animation-delay: .2s; }
+.today-section { animation: fadeInUp 0.4s ease both; }
+.today-section:nth-child(1) { animation-delay: .1s; }
+.today-section:nth-child(2) { animation-delay: .15s; }
+.today-section:nth-child(3) { animation-delay: .2s; }
+.today-section:nth-child(4) { animation-delay: .25s; }
+.today-section:nth-child(5) { animation-delay: .3s; }
+.today-section:nth-child(6) { animation-delay: .35s; }

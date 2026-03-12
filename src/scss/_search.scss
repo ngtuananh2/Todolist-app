@@ -1,0 +1,57 @@
+// ==============================================
+//   TaskFlow — Search Bar
+// ==============================================
+@use 'variables' as *;
+@use 'mixins' as *;
+
+.search-bar {
+  @include flex-row;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 12px;
+  margin-bottom: 16px;
+  transition: border-color .2s, box-shadow .2s;
+
+  &:focus-within {
+    @include focus-ring;
+
+    .search-icon {
+      color: var(--accent);
+    }
+  }
+}
+
+.search-icon {
+  color: var(--text-4);
+  flex-shrink: 0;
+  transition: color .2s;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 10px;
+  font-size: .84rem;
+  font-family: inherit;
+  color: var(--text);
+  outline: none;
+
+  &::placeholder {
+    color: var(--text-4);
+  }
+}
+
+.search-clear {
+  @include icon-btn(22px);
+  background: var(--stone-200);
+  color: var(--text-3);
+  border-radius: 50%;
+  font-size: .85rem;
+
+  &:hover {
+    background: var(--stone-300);
+    color: var(--text);
+  }
+}

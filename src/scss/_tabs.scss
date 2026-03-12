@@ -1,0 +1,83 @@
+// ==============================================
+//   TaskFlow — Tabs Bar
+// ==============================================
+@use 'variables' as *;
+@use 'mixins' as *;
+
+.tabs-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-lt);
+  padding-bottom: 0;
+}
+
+.tab-group {
+  display: flex;
+  gap: 0;
+}
+
+.tab {
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  font-size: .8rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--text-3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color .2s, border-color .2s;
+  position: relative;
+  top: 1px;
+
+  &:hover {
+    color: var(--text-2);
+  }
+
+  &.active {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+}
+
+.tabs-right {
+  @include flex-row(10px);
+}
+
+.sort-priority-btn {
+  @include flex-row(5px);
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-4);
+  font-size: .72rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .2s var(--ease);
+  white-space: nowrap;
+
+  &:hover {
+    border-color: var(--stone-400);
+    color: var(--text-2);
+  }
+
+  &.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-dark);
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+.tab-count {
+  font-size: .72rem;
+  color: var(--text-4);
+  padding-right: 4px;
+}

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="global-utils.css">
+</head>
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/" class="logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>TaskFlow</span>
+      </a>
+      <div class="nav-center">
+        <a href="/dashboard.html" class="nav-link active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Dashboard
+        </a>
+        <a href="/" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Công việc
+        </a>
+        <a href="/habit.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Habit Tracker
+        </a>
+        <a href="/brain.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Second Brain
+        </a>
+        <a href="/english.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          English
+        </a>
+        <a href="/trading.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          Trading
+        </a>
+        <a href="/schedule.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Lịch trình
+        </a>
+      </div>
+      <div class="nav-right">
+        <button class="nav-btn" id="btn-theme" title="Đổi giao diện">
+          <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="nav-btn" id="btn-backup" title="Sao lưu dữ liệu">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <button class="nav-btn" id="btn-restore" title="Khôi phục dữ liệu">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </button>
+        <input type="file" id="restore-file" accept=".json" style="display:none">
+        <a class="nav-btn" href="/settings.html" title="Cài đặt">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </a>
+        <span class="nav-date" id="nav-date"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== GLOBAL SEARCH OVERLAY ===== -->
+  <div class="gs-overlay" id="gs-overlay" style="display:none">
+    <div class="gs-modal">
+      <div class="gs-search-bar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="gs-input" placeholder="Tìm kiếm toàn bộ TaskFlow... (Ctrl+K)" autocomplete="off">
+        <kbd class="gs-kbd">ESC</kbd>
+      </div>
+      <div class="gs-results" id="gs-results">
+        <div class="gs-empty">Nhập từ khóa để tìm kiếm...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MAIN ===== -->
+  <main class="db-main">
+    <div class="db-container">
+      <div class="db-header">
+        <div>
+          <h1>📊 Global Dashboard</h1>
+          <p class="db-subtitle">Tổng quan toàn bộ TaskFlow</p>
+        </div>
+        <div class="db-header-actions">
+          <button class="db-btn db-btn-outline" id="btn-search-open">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Tìm kiếm <kbd>Ctrl+K</kbd>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Cards Row -->
+      <div class="db-kpi-row" id="db-kpi-row">
+        <div class="db-kpi" data-module="todo">
+          <div class="db-kpi-icon todo">📝</div>
+          <div class="db-kpi-info">
+            <span class="db-kpi-num" id="kpi-todo">0</span>
+            <span class="db-kpi-label">Công việc</span>
+            <span class="db-kpi-sub" id="kpi-todo-sub">—</span>
+          </div>
+          <a href="/" class="db-kpi-link">Xem →</a>
+        </div>
+        <div class="db-kpi" data-module="habit">
+          <div class="db-kpi-icon habit">🔥</div>
+          <div class="db-kpi-info">
+            <span class="db-kpi-num" id="kpi-habit">0</span>
+            <span class="db-kpi-label">Thói quen</span>
+            <span class="db-kpi-sub" id="kpi-habit-sub">—</span>
+          </div>
+          <a href="/habit.html" class="db-kpi-link">Xem →</a>
+        </div>
+        <div class="db-kpi" data-module="brain">
+          <div class="db-kpi-icon brain">🧠</div>
+          <div class="db-kpi-info">
+            <span class="db-kpi-num" id="kpi-brain">0</span>
+            <span class="db-kpi-label">Ghi chú</span>
+            <span class="db-kpi-sub" id="kpi-brain-sub">—</span>
+          </div>
+          <a href="/brain.html" class="db-kpi-link">Xem →</a>
+        </div>
+        <div class="db-kpi" data-module="english">
+          <div class="db-kpi-icon english">📚</div>
+          <div class="db-kpi-info">
+            <span class="db-kpi-num" id="kpi-english">0</span>
+            <span class="db-kpi-label">Từ vựng</span>
+            <span class="db-kpi-sub" id="kpi-english-sub">—</span>
+          </div>
+          <a href="/english.html" class="db-kpi-link">Xem →</a>
+        </div>
+        <div class="db-kpi" data-module="trading">
+          <div class="db-kpi-icon trading">📈</div>
+          <div class="db-kpi-info">
+            <span class="db-kpi-num" id="kpi-trading">0</span>
+            <span class="db-kpi-label">Giao dịch</span>
+            <span class="db-kpi-sub" id="kpi-trading-sub">—</span>
+          </div>
+          <a href="/trading.html" class="db-kpi-link">Xem →</a>
+        </div>
+      </div>
+
+      <!-- ===== WEEKLY SCHEDULE ===== -->
+      <div class="db-card db-card-full" id="db-schedule-card" style="display:none">
+        <div class="db-card-header">
+          <h3>📅 Thời khóa biểu tuần</h3>
+          <a href="/schedule.html" class="db-btn-sm">Mở lịch trình →</a>
+        </div>
+        <div class="db-schedule-week" id="db-schedule-week"></div>
+      </div>
+
+      <!-- Detail Panels -->
+      <div class="db-grid">
+        <!-- Todo Progress -->
+        <div class="db-card">
+          <h3>📝 Tiến độ công việc</h3>
+          <div class="db-progress-ring-wrap">
+            <svg class="db-progress-ring" width="120" height="120" viewBox="0 0 120 120">
+              <circle class="db-ring-bg" cx="60" cy="60" r="50"/>
+              <circle class="db-ring-fill" id="todo-ring" cx="60" cy="60" r="50"/>
+            </svg>
+            <span class="db-ring-text" id="todo-ring-text">0%</span>
+          </div>
+          <div class="db-mini-stats" id="todo-mini-stats"></div>
+        </div>
+
+        <!-- Habit Today -->
+        <div class="db-card">
+          <h3>🔥 Thói quen hôm nay</h3>
+          <div class="db-habit-today" id="db-habit-today">
+            <div class="db-habit-circle-wrap">
+              <svg class="db-progress-ring" width="120" height="120" viewBox="0 0 120 120">
+                <circle class="db-ring-bg" cx="60" cy="60" r="50"/>
+                <circle class="db-ring-fill" id="habit-ring" cx="60" cy="60" r="50" style="stroke:var(--c-habit)"/>
+              </svg>
+              <span class="db-ring-text" id="habit-ring-text">0/0</span>
+            </div>
+            <div class="db-mini-stats" id="habit-mini-stats"></div>
+          </div>
+        </div>
+
+        <!-- Trading Summary -->
+        <div class="db-card">
+          <h3>📈 Trading P&L</h3>
+          <div class="db-trading-summary" id="db-trading-summary">
+            <div class="db-big-pnl" id="db-big-pnl">$0.00</div>
+            <div class="db-mini-stats" id="trading-mini-stats"></div>
+          </div>
+        </div>
+
+        <!-- English Progress -->
+        <div class="db-card">
+          <h3>📚 Tiến độ English</h3>
+          <div class="db-english-summary" id="db-english-summary">
+            <div class="db-eng-bars" id="db-eng-bars"></div>
+            <div class="db-mini-stats" id="english-mini-stats"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== GOAL SETTING ===== -->
+      <div class="db-card db-card-full">
+        <div class="db-card-header">
+          <h3>🎯 Mục tiêu</h3>
+          <div class="goal-header-actions">
+            <select class="goal-period-select" id="goal-period">
+              <option value="weekly">Tuần này</option>
+              <option value="monthly">Tháng này</option>
+            </select>
+            <button class="db-btn-sm" id="btn-add-goal" onclick="openGoalModal()">+ Thêm mục tiêu</button>
+          </div>
+        </div>
+        <div class="goal-list" id="goal-list">
+          <div class="goal-empty">Chưa có mục tiêu nào. Nhấn "+ Thêm mục tiêu" để bắt đầu!</div>
+        </div>
+      </div>
+
+      <!-- Activity Timeline -->
+      <div class="db-card db-card-full">
+        <div class="db-card-header">
+          <h3>🕐 Hoạt động gần đây</h3>
+          <button class="db-btn-sm" id="btn-refresh-timeline">Làm mới</button>
+        </div>
+        <div class="db-timeline" id="db-timeline">
+          <div class="db-timeline-empty">Đang tải...</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ===== GOAL MODAL ===== -->
+  <div class="goal-modal-overlay" id="goal-modal" style="display:none">
+    <div class="goal-modal">
+      <div class="goal-modal-header">
+        <h3 id="goal-modal-title">🎯 Thêm mục tiêu</h3>
+        <button class="goal-modal-close" onclick="closeGoalModal()">&times;</button>
+      </div>
+      <div class="goal-modal-body">
+        <div class="goal-form-group">
+          <label>Mục tiêu</label>
+          <input type="text" id="goal-input-title" class="goal-input" placeholder="VD: Hoàn thành 10 task, Học 20 từ mới...">
+        </div>
+        <div class="goal-form-row">
+          <div class="goal-form-group">
+            <label>Module</label>
+            <select id="goal-input-module" class="goal-input">
+              <option value="general">🌐 Chung</option>
+              <option value="todo">📝 Công việc</option>
+              <option value="habit">🔥 Thói quen</option>
+              <option value="brain">🧠 Ghi chú</option>
+              <option value="english">📚 Tiếng Anh</option>
+              <option value="trading">📈 Trading</option>
+            </select>
+          </div>
+          <div class="goal-form-group">
+            <label>Loại</label>
+            <select id="goal-input-period" class="goal-input">
+              <option value="weekly">Tuần</option>
+              <option value="monthly">Tháng</option>
+            </select>
+          </div>
+        </div>
+        <div class="goal-form-row">
+          <div class="goal-form-group">
+            <label>Giá trị mục tiêu</label>
+            <input type="number" id="goal-input-target" class="goal-input" placeholder="VD: 10" min="1">
+          </div>
+          <div class="goal-form-group">
+            <label>Tiến độ hiện tại</label>
+            <input type="number" id="goal-input-current" class="goal-input" placeholder="VD: 3" min="0" value="0">
+          </div>
+        </div>
+      </div>
+      <div class="goal-modal-footer">
+        <button class="db-btn-sm" onclick="closeGoalModal()">Hủy</button>
+        <button class="db-btn-sm goal-btn-save" onclick="saveGoal()">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== KEYBOARD SHORTCUTS MODAL ===== -->
+  <div class="ks-overlay" id="ks-overlay" style="display:none">
+    <div class="ks-modal">
+      <div class="ks-header">
+        <h3>⌨️ Phím tắt</h3>
+        <button class="ks-close" id="ks-close">&times;</button>
+      </div>
+      <div class="ks-body">
+        <div class="ks-group">
+          <div class="ks-title">Chung</div>
+          <div class="ks-item"><kbd>Ctrl</kbd>+<kbd>K</kbd> <span>Tìm kiếm toàn cục</span></div>
+          <div class="ks-item"><kbd>Ctrl</kbd>+<kbd>D</kbd> <span>Đổi giao diện</span></div>
+          <div class="ks-item"><kbd>?</kbd> <span>Hiện phím tắt</span></div>
+        </div>
+        <div class="ks-group">
+          <div class="ks-title">Navigation</div>
+          <div class="ks-item"><kbd>Alt</kbd>+<kbd>1</kbd> <span>Dashboard</span></div>
+          <div class="ks-item"><kbd>Alt</kbd>+<kbd>2</kbd> <span>Công việc</span></div>
+          <div class="ks-item"><kbd>Alt</kbd>+<kbd>3</kbd> <span>Habit Tracker</span></div>
+          <div class="ks-item"><kbd>Alt</kbd>+<kbd>4</kbd> <span>Second Brain</span></div>
+          <div class="ks-item"><kbd>Alt</kbd>+<kbd>5</kbd> <span>English</span></div>
+          <div class="ks-item"><kbd>Alt</kbd>+<kbd>6</kbd> <span>Trading</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="global-utils.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

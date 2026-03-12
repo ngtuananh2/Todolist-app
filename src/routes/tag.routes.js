@@ -6,33 +6,39 @@ const router = Router();
 // ==================== TAG ROUTES ====================
 
 // GET /api/tags
-router.get('/', (req, res) => {
-  res.json(tagService.getAll());
+router.get('/', async (req, res, next) => {
+  try {
+    const tags = await tagService.getAll();
+    res.json(tags);
+  } catch (err) { next(err); }
 });
 
 // POST /api/tags
-router.post('/', (req, res) => {
-  const { name, color } = req.body;
-
-  if (!name || !name.trim()) {
-    return res.status(400).json({ error: 'Tên tag không được để trống' });
-  }
-
+router.post('/', async (req, res, next) => {
   try {
-    const tag = tagService.create(name, color);
+    const { name, color } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Tên tag không được để trống' });
+    }
+
+    const tag = await tagService.create(name, color);
     res.status(201).json(tag);
   } catch (e) {
-    if (e.message.includes('UNIQUE')) {
+    if (e.message.includes('duplicate') || e.code === 11000) {
       return res.status(409).json({ error: 'Tag đã tồn tại' });
     }
-    throw e;
+    next(e);
   }
 });
 
 // DELETE /api/tags/:id
-router.delete('/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  res.json(tagService.delete(id));
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const result = await tagService.delete(id);
+    res.json(result);
+  } catch (err) { next(err); }
 });
 
 module.exports = router;

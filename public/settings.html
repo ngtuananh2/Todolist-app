@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Cài đặt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="settings.css">
+  <link rel="stylesheet" href="global-utils.css">
+</head>
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/" class="logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>TaskFlow</span>
+      </a>
+      <div class="nav-center">
+        <a href="/dashboard.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Dashboard
+        </a>
+        <a href="/" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Công việc
+        </a>
+        <a href="/habit.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Habit
+        </a>
+        <a href="/brain.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Brain
+        </a>
+        <a href="/english.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          English
+        </a>
+        <a href="/trading.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          Trading
+        </a>
+        <a href="/schedule.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Lịch trình
+        </a>
+      </div>
+      <div class="nav-right">
+        <button class="nav-btn" id="btn-theme" title="Đổi giao diện">
+          <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <span class="nav-date" id="nav-date"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== MAIN ===== -->
+  <main class="st-main">
+    <div class="st-container">
+      <div class="st-header">
+        <h1>⚙️ Cài đặt</h1>
+        <p class="st-subtitle">Tùy chỉnh TaskFlow theo sở thích của bạn</p>
+      </div>
+
+      <!-- ─── Appearance ─── -->
+      <section class="st-section">
+        <h2 class="st-section-title">🎨 Giao diện</h2>
+        <div class="st-card">
+          <div class="st-row">
+            <div class="st-row-info">
+              <div class="st-row-label">Chế độ tối</div>
+              <div class="st-row-desc">Bật chế độ tối để bảo vệ mắt</div>
+            </div>
+            <label class="st-toggle">
+              <input type="checkbox" id="setting-dark-mode">
+              <span class="st-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="st-divider"></div>
+          <div class="st-row">
+            <div class="st-row-info">
+              <div class="st-row-label">Font chữ</div>
+              <div class="st-row-desc">Chọn font hiển thị</div>
+            </div>
+            <select class="st-select" id="setting-font">
+              <option value="Inter">Inter (Mặc định)</option>
+              <option value="system-ui">System UI</option>
+              <option value="Georgia">Georgia (Serif)</option>
+              <option value="monospace">Monospace</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── Pomodoro ─── -->
+      <section class="st-section">
+        <h2 class="st-section-title">🍅 Pomodoro Timer</h2>
+        <div class="st-card">
+          <div class="st-row">
+            <div class="st-row-info">
+              <div class="st-row-label">Thời gian làm việc</div>
+              <div class="st-row-desc">Mặc định 25 phút</div>
+            </div>
+            <div class="st-input-group">
+              <input type="number" class="st-input-num" id="setting-pomo-work" min="1" max="120" value="25">
+              <span class="st-input-suffix">phút</span>
+            </div>
+          </div>
+          <div class="st-divider"></div>
+          <div class="st-row">
+            <div class="st-row-info">
+              <div class="st-row-label">Nghỉ ngắn</div>
+              <div class="st-row-desc">Giữa các phiên làm việc</div>
+            </div>
+            <div class="st-input-group">
+              <input type="number" class="st-input-num" id="setting-pomo-short" min="1" max="30" value="5">
+              <span class="st-input-suffix">phút</span>
+            </div>
+          </div>
+          <div class="st-divider"></div>
+          <div class="st-row">
+            <div class="st-row-info">
+              <div class="st-row-label">Nghỉ dài</div>
+              <div class="st-row-desc">Sau 4 phiên làm việc</div>
+            </div>
+            <div class="st-input-group">
+              <input type="number" class="st-input-num" id="setting-pomo-long" min="1" max="60" value="15">
+              <span class="st-input-suffix">phút</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── Notifications ─── -->
+      <section class="st-section">
+        <h2 class="st-section-title">🔔 Thông báo</h2>
+        <div class="st-card">
+          <div class="st-row">
+            <div class="st-row-info">
+              <div class="st-row-label">Thông báo trình duyệt</div>
+              <div class="st-row-desc">Cho phép gửi thông báo nhắc nhở</div>
+            </div>
+            <button class="st-btn st-btn-sm" id="setting-notif-perm">Cấp quyền</button>
+          </div>
+          <div class="st-divider"></div>
+          <div class="st-row">
+            <div class="st-row-info">
+              <div class="st-row-label">Nhắc nhở deadline</div>
+              <div class="st-row-desc">Nhận thông báo khi todo sắp hết hạn</div>
+            </div>
+            <label class="st-toggle">
+              <input type="checkbox" id="setting-notif-deadline" checked>
+              <span class="st-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="st-divider"></div>
+          <div class="st-row">
+            <div class="st-row-info">
+              <div class="st-row-label">Nhắc ôn từ vựng</div>
+              <div class="st-row-desc">Nhắc khi có từ vựng cần ôn tập (SM-2)</div>
+            </div>
+            <label class="st-toggle">
+              <input type="checkbox" id="setting-notif-vocab" checked>
+              <span class="st-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="st-divider"></div>
+          <div class="st-row">
+            <div class="st-row-info">
+              <div class="st-row-label">Nhắc thói quen hàng ngày</div>
+              <div class="st-row-desc">Nhắc hoàn thành thói quen chưa làm hôm nay</div>
+            </div>
+            <label class="st-toggle">
+              <input type="checkbox" id="setting-notif-habit" checked>
+              <span class="st-toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── Data Management ─── -->
+      <section class="st-section">
+        <h2 class="st-section-title">💾 Dữ liệu</h2>
+        <div class="st-card">
+          <div class="st-row">
+            <div class="st-row-info">
+              <div class="st-row-label">Sao lưu dữ liệu</div>
+              <div class="st-row-desc">Tải xuống toàn bộ dữ liệu dạng JSON</div>
+            </div>
+            <button class="st-btn st-btn-primary" id="setting-backup">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Xuất Backup
+            </button>
+          </div>
+          <div class="st-divider"></div>
+          <div class="st-row">
+            <div class="st-row-info">
+              <div class="st-row-label">Khôi phục dữ liệu</div>
+              <div class="st-row-desc">Nhập dữ liệu từ file backup JSON</div>
+            </div>
+            <button class="st-btn st-btn-warning" id="setting-restore">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Nhập Backup
+            </button>
+            <input type="file" id="restore-file" accept=".json" style="display:none">
+          </div>
+          <div class="st-divider"></div>
+          <div class="st-row">
+            <div class="st-row-info">
+              <div class="st-row-label">Xóa toàn bộ dữ liệu</div>
+              <div class="st-row-desc st-text-danger">Hành động này không thể hoàn tác!</div>
+            </div>
+            <button class="st-btn st-btn-danger" id="setting-reset">🗑️ Xóa tất cả</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── Keyboard Shortcuts ─── -->
+      <section class="st-section">
+        <h2 class="st-section-title">⌨️ Phím tắt</h2>
+        <div class="st-card st-shortcuts">
+          <div class="st-shortcut"><span>Tìm kiếm toàn cục</span><div class="st-keys"><kbd>Ctrl</kbd>+<kbd>K</kbd></div></div>
+          <div class="st-shortcut"><span>Đổi giao diện</span><div class="st-keys"><kbd>Ctrl</kbd>+<kbd>D</kbd></div></div>
+          <div class="st-shortcut"><span>Pomodoro Timer</span><div class="st-keys"><kbd>Ctrl</kbd>+<kbd>P</kbd></div></div>
+          <div class="st-shortcut"><span>Export Backup</span><div class="st-keys"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></div></div>
+          <div class="st-shortcut"><span>Dashboard</span><div class="st-keys"><kbd>Alt</kbd>+<kbd>1</kbd></div></div>
+          <div class="st-shortcut"><span>Công việc</span><div class="st-keys"><kbd>Alt</kbd>+<kbd>2</kbd></div></div>
+          <div class="st-shortcut"><span>Habit Tracker</span><div class="st-keys"><kbd>Alt</kbd>+<kbd>3</kbd></div></div>
+          <div class="st-shortcut"><span>Second Brain</span><div class="st-keys"><kbd>Alt</kbd>+<kbd>4</kbd></div></div>
+          <div class="st-shortcut"><span>English</span><div class="st-keys"><kbd>Alt</kbd>+<kbd>5</kbd></div></div>
+          <div class="st-shortcut"><span>Trading</span><div class="st-keys"><kbd>Alt</kbd>+<kbd>6</kbd></div></div>
+          <div class="st-shortcut"><span>Hiện phím tắt</span><div class="st-keys"><kbd>?</kbd></div></div>
+        </div>
+      </section>
+
+      <!-- ─── About ─── -->
+      <section class="st-section">
+        <h2 class="st-section-title">ℹ️ Thông tin</h2>
+        <div class="st-card">
+          <div class="st-info-grid">
+            <div class="st-info-item"><span class="st-info-label">Phiên bản</span><span class="st-info-val">2.0.0</span></div>
+            <div class="st-info-item"><span class="st-info-label">Framework</span><span class="st-info-val">Express 5 + MongoDB</span></div>
+            <div class="st-info-item"><span class="st-info-label">AI Model</span><span class="st-info-val">Llama 3.3 70B (Groq)</span></div>
+            <div class="st-info-item"><span class="st-info-label">Spaced Rep</span><span class="st-info-val">SM-2 Algorithm</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="global-utils.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>

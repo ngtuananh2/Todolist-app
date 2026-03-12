@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Hôm nay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="today.css">
+  <link rel="stylesheet" href="global-utils.css">
+</head>
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/" class="logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>TaskFlow</span>
+      </a>
+      <div class="nav-center">
+        <a href="/dashboard.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Dashboard
+        </a>
+        <a href="/today.html" class="nav-link active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Hôm nay
+        </a>
+        <a href="/" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Công việc
+        </a>
+        <a href="/habit.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Habit Tracker
+        </a>
+        <a href="/brain.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Second Brain
+        </a>
+        <a href="/english.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          English
+        </a>
+        <a href="/trading.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          Trading
+        </a>
+        <a href="/schedule.html" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Lịch trình
+        </a>
+      </div>
+      <div class="nav-right">
+        <button class="nav-btn" id="btn-theme" title="Đổi giao diện">
+          <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <a class="nav-btn" href="/settings.html" title="Cài đặt">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </a>
+        <span class="nav-date" id="nav-date"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== MAIN ===== -->
+  <main class="today-main">
+    <div class="today-container">
+      <div class="today-header">
+        <div>
+          <h1>🎯 Hôm nay</h1>
+          <p class="today-subtitle" id="today-subtitle">Tổng quan những việc cần làm hôm nay</p>
+        </div>
+        <div class="today-header-actions">
+          <button class="today-btn today-btn-outline" id="btn-refresh">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Làm mới
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="today-summary" id="today-summary">
+        <div class="today-sum-card overdue">
+          <span class="today-sum-icon">🔴</span>
+          <span class="today-sum-num" id="sum-overdue">0</span>
+          <span class="today-sum-label">Quá hạn</span>
+        </div>
+        <div class="today-sum-card due">
+          <span class="today-sum-icon">🟡</span>
+          <span class="today-sum-num" id="sum-due">0</span>
+          <span class="today-sum-label">Hết hạn hôm nay</span>
+        </div>
+        <div class="today-sum-card habits">
+          <span class="today-sum-icon">💪</span>
+          <span class="today-sum-num" id="sum-habits">0/0</span>
+          <span class="today-sum-label">Thói quen</span>
+        </div>
+        <div class="today-sum-card vocab">
+          <span class="today-sum-icon">📖</span>
+          <span class="today-sum-num" id="sum-vocab">0</span>
+          <span class="today-sum-label">Từ cần ôn</span>
+        </div>
+        <div class="today-sum-card trades">
+          <span class="today-sum-icon">📊</span>
+          <span class="today-sum-num" id="sum-trades">0</span>
+          <span class="today-sum-label">Lệnh đang mở</span>
+        </div>
+      </div>
+
+      <!-- Sections Grid -->
+      <div class="today-grid">
+        <!-- Overdue Todos -->
+        <section class="today-section" id="section-overdue">
+          <h3 class="today-section-title">
+            <span class="today-section-icon">🔴</span> Công việc quá hạn
+            <span class="today-section-count" id="count-overdue">0</span>
+          </h3>
+          <div class="today-section-body" id="list-overdue">
+            <div class="today-empty">Không có công việc quá hạn 🎉</div>
+          </div>
+        </section>
+
+        <!-- Due Today -->
+        <section class="today-section" id="section-due">
+          <h3 class="today-section-title">
+            <span class="today-section-icon">🟡</span> Hết hạn hôm nay
+            <span class="today-section-count" id="count-due">0</span>
+          </h3>
+          <div class="today-section-body" id="list-due">
+            <div class="today-empty">Không có deadline hôm nay</div>
+          </div>
+        </section>
+
+        <!-- High Priority -->
+        <section class="today-section" id="section-high">
+          <h3 class="today-section-title">
+            <span class="today-section-icon">⚡</span> Ưu tiên cao
+            <span class="today-section-count" id="count-high">0</span>
+          </h3>
+          <div class="today-section-body" id="list-high">
+            <div class="today-empty">Không có công việc ưu tiên cao</div>
+          </div>
+        </section>
+
+        <!-- Habits -->
+        <section class="today-section" id="section-habits">
+          <h3 class="today-section-title">
+            <span class="today-section-icon">💪</span> Thói quen hôm nay
+            <span class="today-section-count" id="count-habits">0</span>
+          </h3>
+          <div class="today-section-body" id="list-habits">
+            <div class="today-empty">Chưa có thói quen nào</div>
+          </div>
+        </section>
+
+        <!-- Vocab Review -->
+        <section class="today-section" id="section-vocab">
+          <h3 class="today-section-title">
+            <span class="today-section-icon">📖</span> Từ vựng cần ôn tập
+            <span class="today-section-count" id="count-vocab">0</span>
+          </h3>
+          <div class="today-section-body" id="list-vocab">
+            <div class="today-empty">Không có từ cần ôn tập</div>
+          </div>
+        </section>
+
+        <!-- Open Trades -->
+        <section class="today-section" id="section-trades">
+          <h3 class="today-section-title">
+            <span class="today-section-icon">📊</span> Lệnh đang mở
+            <span class="today-section-count" id="count-trades">0</span>
+          </h3>
+          <div class="today-section-body" id="list-trades">
+            <div class="today-empty">Không có lệnh nào đang mở</div>
+          </div>
+        </section>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="global-utils.js"></script>
+  <script src="today.js"></script>
+</body>
+</html>
