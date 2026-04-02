@@ -59,3 +59,43 @@ $bp-mobile: 480px;
   --nav-h: #{$nav-h};
   --sidebar-w: #{$sidebar-w};
 }
+
+[data-theme='dark'] {
+  // Stone palette (dark)
+  --stone-50:  #292524;
+  --stone-100: #2f2a27;
+  --stone-200: #3a342f;
+  --stone-300: #4a433d;
+  --stone-400: #6b6259;
+  --stone-500: #8e8378;
+  --stone-600: #b8aa9b;
+  --stone-700: #d6d0c9;
+  --stone-800: #ebe7e2;
+  --stone-900: #f7f5f2;
+
+  // Semantic colors
+  --bg:        #1c1917;
+  --surface:   #2a2623;
+  --border:    #44403c;
+  --border-lt: #3a342f;
+  --text:      #f5f5f4;
+  --text-2:    #d6d3d1;
+  --text-3:    #a8a29e;
+  --text-4:    #7f7871;
+
+  // Accent
+  --accent:      #b8aa9b;
+  --accent-dark: #e7e5e4;
+  --accent-soft: #3a342f;
+
+  // Status
+  --done:        #7fa374;
+  --done-soft:   #2f3b2c;
+  --danger:      #c98989;
+  --danger-soft: #432c2c;
+
+  // Priority
+  --priority-high:   #d78686;
+  --priority-medium: #c3a56f;
+  --priority-low:    #8aa8c0;
+}

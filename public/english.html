@@ -3,6 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('theme') === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
   <title>TaskFlow — Học Tiếng Anh</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,17 +25,13 @@
   <!-- ===== NAVBAR ===== -->
   <nav class="navbar">
     <div class="nav-inner">
-      <a href="/" class="logo">
+      <a href="/dashboard.html" class="logo">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         <span>TaskFlow</span>
       </a>
       <div class="nav-center">
-        <a href="/dashboard.html" class="nav-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
-          Dashboard
-        </a>
         <a href="/" class="nav-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
           Công việc
         </a>
         <a href="/habit.html" class="nav-link">
@@ -63,8 +68,8 @@
     </div>
   </nav>
 
-  <main class="en-main">
-    <div class="en-container">
+  <main class="en-main app-main-shell">
+    <div class="en-container app-content-shell">
 
       <!-- Header -->
       <div class="en-header">
@@ -83,6 +88,9 @@
           <div class="en-stat"><span class="en-stat-num" id="stat-lessons">0</span><span class="en-stat-label">Bài học</span></div>
           <div class="en-stat"><span class="en-stat-num" id="stat-vocab">0</span><span class="en-stat-label">Từ vựng</span></div>
           <div class="en-stat"><span class="en-stat-num" id="stat-score">0%</span><span class="en-stat-label">Điểm TB</span></div>
+          <div class="en-stat en-stat-proj" title="Dự đoán theo hiệu suất hiện tại">
+            <span class="en-stat-num" id="stat-projection">-</span><span class="en-stat-label">Forecast</span>
+          </div>
           <div class="en-stat en-stat-xp" title="Hệ thống Level & XP">
             <span class="en-stat-num" id="stat-xp">0</span><span class="en-stat-label">XP</span>
           </div>
@@ -91,6 +99,41 @@
           </div>
         </div>
       </div>
+
+      <section class="en-exam-plan" id="exam-plan-panel">
+        <div class="en-exam-plan-head">
+          <div>
+            <h3>🎯 Kế hoạch thi IELTS / TOEIC</h3>
+            <p class="en-fc-sub">Đặt mục tiêu và theo dõi dự đoán điểm theo tiến độ học hiện tại</p>
+          </div>
+          <div class="en-exam-plan-head-actions">
+            <button class="en-btn en-btn-secondary" id="btn-ai-weekly-drills">AI gợi ý luyện tuần</button>
+            <button class="en-btn en-btn-primary" id="btn-generate-new-week">Generate tuần mới</button>
+          </div>
+        </div>
+        <div class="en-exam-plan-grid">
+          <div class="en-exam-plan-item">
+            <label for="exam-goal">Chứng chỉ</label>
+            <select id="exam-goal" class="en-select">
+              <option value="ielts">IELTS</option>
+              <option value="toeic">TOEIC</option>
+            </select>
+          </div>
+          <div class="en-exam-plan-item">
+            <label for="exam-target">Mục tiêu</label>
+            <select id="exam-target" class="en-select"></select>
+          </div>
+          <div class="en-exam-plan-item">
+            <label for="exam-date">Ngày thi</label>
+            <input id="exam-date" type="date" class="en-input">
+          </div>
+          <div class="en-exam-plan-item en-exam-plan-actions">
+            <button class="en-btn en-btn-primary" id="btn-save-exam-plan">Lưu mục tiêu</button>
+          </div>
+        </div>
+        <div class="en-exam-plan-meta" id="exam-plan-meta"></div>
+        <div class="en-roadmap" id="exam-roadmap"></div>
+      </section>
 
       <!-- Tabs -->
       <div class="en-tabs">
@@ -101,6 +144,10 @@
         <button class="en-tab" data-tab="exercises">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           Bài tập
+        </button>
+        <button class="en-tab" data-tab="exam-mock">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6l1 2h4a1 1 0 0 1 1 1v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a1 1 0 0 1 1-1h4z"/><path d="M9 13l2 2 4-4"/></svg>
+          Mock Test
         </button>
         <button class="en-tab" data-tab="vocab">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -157,6 +204,43 @@
               <!-- Rendered by JS -->
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="en-tab-content" id="tab-exam-mock">
+        <div class="em-header">
+          <div>
+            <h3>🧪 Mini Mock Test</h3>
+            <p class="en-fc-sub">Mô phỏng nhanh theo format IELTS/TOEIC để đo tiến bộ thực tế</p>
+          </div>
+          <div class="em-actions">
+            <button class="en-btn en-btn-primary" id="btn-start-error-review">Review lỗi gần đây</button>
+            <button class="en-btn en-btn-secondary" id="btn-reset-error-notebook">Reset Error Notebook</button>
+          </div>
+        </div>
+
+        <div class="em-grid">
+          <div class="em-card">
+            <h4>TOEIC Reading Part 5</h4>
+            <p>Ngữ pháp + từ vựng trong câu đơn (10 câu).</p>
+            <button class="en-btn en-btn-primary" id="btn-start-toeic-p5">Bắt đầu Part 5</button>
+          </div>
+          <div class="em-card">
+            <h4>IELTS Reading Mini</h4>
+            <p>Đọc nhanh đoạn văn + câu hỏi ý chính (8 câu).</p>
+            <button class="en-btn en-btn-primary" id="btn-start-ielts-reading">Bắt đầu Reading Mini</button>
+          </div>
+        </div>
+
+        <div class="em-test-area" id="exam-test-area" style="display:none"></div>
+        <div class="em-result" id="exam-test-result" style="display:none"></div>
+
+        <div class="em-notebook">
+          <div class="em-notebook-head">
+            <h4>📘 Error Notebook</h4>
+            <span id="error-notebook-count">0 lỗi</span>
+          </div>
+          <div id="error-notebook-list" class="em-notebook-list"></div>
         </div>
       </div>
 
@@ -508,9 +592,22 @@
               <button class="en-btn en-btn-primary lst-play-btn" id="lst-play-btn" onclick="playListening()">
                 ▶️ Nghe bài
               </button>
-              <button class="en-btn en-btn-secondary" onclick="playListening()" title="Nghe lại">🔁 Nghe lại</button>
+              <button class="en-btn en-btn-secondary" onclick="replayListening()" title="Nghe lại">🔁 Nghe lại</button>
+              <button class="en-btn en-btn-secondary" id="lst-pause-btn" onclick="toggleListeningPause()" title="Tạm dừng/tiếp tục">⏸️ Tạm dừng</button>
+              <button class="en-btn en-btn-secondary" onclick="rewindListening()" title="Tua ngược 5 giây">⏪ -5s</button>
+              <button class="en-btn en-btn-secondary" onclick="skipListening()" title="Tua tới 5 giây">⏩ +5s</button>
+              <button class="en-btn en-btn-secondary" id="lst-slow-btn" onclick="toggleListeningSlow()" title="Bật/tắt tua chậm">🐢 Tua chậm</button>
               <span class="lst-plays" id="lst-plays">Đã nghe: 0 lần</span>
             </div>
+            <div class="lst-seek-wrap">
+              <input type="range" id="lst-seek" min="0" max="100" value="0" step="1" oninput="setListeningSeek(this.value)">
+              <div class="lst-seek-info">
+                <span>0%</span>
+                <span id="lst-seek-label">0%</span>
+                <span>100%</span>
+              </div>
+            </div>
+            <div class="lst-play-status" id="lst-play-status">Sẵn sàng phát</div>
           </div>
           <div class="lst-questions" id="lst-questions"></div>
           <div class="lst-actions" id="lst-actions" style="display:none">

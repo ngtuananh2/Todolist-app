@@ -485,6 +485,94 @@ let progressData = {};
 let vocabList = [];
 let quizState = null; // { lessonId, questions, currentQ, answers, submitted }
 let editingVocabId = null;
+let examPlan = { goal: 'ielts', target: '6.5', date: '' };
+let examMockState = null;
+let errorNotebook = [];
+
+const EXAM_PLAN_KEY = 'en_exam_plan';
+const EXAM_HISTORY_KEY = 'en_exam_history';
+const ERROR_NOTEBOOK_KEY = 'en_error_notebook';
+const ROADMAP_WEEK_KEY = 'en_roadmap_week';
+
+const ROADMAP_LIBRARY = {
+  ielts: {
+    knowledge: [
+      'Task Achievement & Coherence (Writing Task 1/2).',
+      'Paraphrase câu hỏi + topic sentence rõ ràng.',
+      'Reading skills: skimming, scanning, keyword matching.',
+      'Band descriptors: LR, GRA, CC, TR để tự chấm.'
+    ],
+    exercises: [
+      '1 mini IELTS Reading (8 câu) + review đáp án sai.',
+      '1 đoạn Writing Task 2 (120-180 từ) với timer 20-25 phút.',
+      '5 phút speaking Part 2 theo cue card + self-record.',
+      '15 từ Academic Word List + 5 collocations.'
+    ],
+    review: [
+      'Ôn lại lỗi grammar xuất hiện >=2 lần trong tuần.',
+      'Flashcard các từ academic vừa sai trong mock.',
+      'Viết lại 3 câu sai thành câu band cao hơn.'
+    ]
+  },
+  toeic: {
+    knowledge: [
+      'Part 5 grammar patterns: S-V agreement, tense, clause.',
+      'Part 6/7 reading tốc độ + câu hỏi chi tiết/suy luận.',
+      'Business vocabulary: office, email, meeting, logistics.',
+      'Chiến thuật phân bổ thời gian 75 phút Reading.'
+    ],
+    exercises: [
+      '1 mini TOEIC Part 5 (10 câu) theo timer chuẩn.',
+      '2 đoạn đọc ngắn kiểu Part 7 + note keyword.',
+      '20 từ vựng theo chủ đề công việc + quiz nhanh.',
+      '1 bài nghe ngắn (Part 3/4 style) và check transcript.'
+    ],
+    review: [
+      'Review lại câu sai dạng giới từ/cụm động từ.',
+      'Lập bảng từ đồng nghĩa thường gặp trong đề TOEIC.',
+      'Làm lại 5 câu sai gần nhất sau 24h.'
+    ]
+  }
+};
+
+const DAILY_SKILL_LIBRARY = {
+  ielts: {
+    listening: {
+      knowledge: 'Note-taking theo Section 1-4, nhận diện distractor trong audio.',
+      exercise: '1 listening set 12-15 câu + check transcript + shadowing 5 câu.'
+    },
+    reading: {
+      knowledge: 'Skim-scan, mapping heading, inference và paraphrase keyword.',
+      exercise: '1 passage mini (8-12 câu) + review từ khóa và lý do sai.'
+    },
+    writing: {
+      knowledge: 'Task response, coherence, lexical resource, grammar range.',
+      exercise: 'Viết 1 đoạn Task 2 (120-180 từ) theo timer + tự chấm rubric.'
+    },
+    speaking: {
+      knowledge: 'Part 1/2/3: idea expansion, linking, intonation.',
+      exercise: '1 cue card + record 2 phút + tự sửa 3 lỗi phát âm/ngữ pháp.'
+    }
+  },
+  toeic: {
+    listening: {
+      knowledge: 'Part 2/3/4: nghe ý chính, trap option, signal words.',
+      exercise: '1 set nghe ngắn 10-15 câu + chép chính tả 5 câu khó.'
+    },
+    reading: {
+      knowledge: 'Part 6/7: định vị thông tin và suy luận theo ngữ cảnh.',
+      exercise: '2 đoạn đọc Part 7 + trả lời 8-10 câu theo timer.'
+    },
+    writing: {
+      knowledge: 'Email/report clarity: purpose, structure, polite tone.',
+      exercise: 'Viết 1 email phản hồi 80-120 từ trong 15 phút.'
+    },
+    speaking: {
+      knowledge: 'Read aloud, describe picture, response fluency.',
+      exercise: 'Đọc to 8 câu + trả lời 4 câu ngắn theo prompt.'
+    }
+  }
+};
 
 // ===== DOM =====
 const $ = id => document.getElementById(id);
@@ -494,6 +582,8 @@ async function initApp() {
   setupTheme();
   setupDate();
   setupTabs();
+  setupExamPlanner();
+  setupExamMock();
   await loadProgress();
   renderLessons();
   renderExerciseList();
@@ -543,14 +633,816 @@ function updateStats() {
   const lessons = Object.keys(progressData).length;
   $('stat-lessons').textContent = lessons;
   $('stat-vocab').textContent = vocabList.length;
+  let avgScore = 0;
+
   if (lessons > 0) {
-    const avg = Math.round(
+    avgScore = Math.round(
       Object.values(progressData).reduce((s, p) => s + (p.bestScore / p.totalQ) * 100, 0) / lessons
     );
-    $('stat-score').textContent = avg + '%';
+    $('stat-score').textContent = avgScore + '%';
   } else {
     $('stat-score').textContent = '0%';
   }
+
+  const projectionEl = $('stat-projection');
+  if (projectionEl) {
+    projectionEl.textContent = estimateExamProjection(avgScore);
+  }
+}
+
+function getExamHistory() {
+  try {
+    const list = JSON.parse(localStorage.getItem(EXAM_HISTORY_KEY) || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveExamHistory(list) {
+  localStorage.setItem(EXAM_HISTORY_KEY, JSON.stringify(list.slice(-100)));
+}
+
+function estimateExamProjection(avgScore) {
+  const history = getExamHistory().filter(item => item.goal === examPlan.goal);
+  const practiceBonus = Math.min(history.length * 0.08, 0.8);
+
+  if (examPlan.goal === 'ielts') {
+    const band = Math.max(3.5, Math.min(8.5, 4 + (avgScore / 100) * 3 + practiceBonus));
+    return `~${band.toFixed(1)}`;
+  }
+
+  const toeic = Math.max(300, Math.min(990, Math.round(320 + avgScore * 5.2 + history.length * 8)));
+  return `~${toeic}`;
+}
+
+function setupExamPlanner() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(EXAM_PLAN_KEY) || '{}');
+    examPlan = {
+      goal: saved.goal === 'toeic' ? 'toeic' : 'ielts',
+      target: String(saved.target || '6.5'),
+      date: saved.date || ''
+    };
+  } catch {
+    examPlan = { goal: 'ielts', target: '6.5', date: '' };
+  }
+
+  const goalEl = $('exam-goal');
+  const targetEl = $('exam-target');
+  const dateEl = $('exam-date');
+
+  if (!goalEl || !targetEl || !dateEl) return;
+
+  $('btn-generate-new-week')?.addEventListener('click', () => {
+    const generated = generateWeeklyRoadmap({ force: true });
+    renderDetailedRoadmap(generated);
+    if (window.globalUtils?.guToast) window.globalUtils.guToast('Đã tạo tuần học mới', 'success');
+  });
+
+  $('btn-ai-weekly-drills')?.addEventListener('click', async () => {
+    await injectAIWeeklyDrills();
+  });
+
+  goalEl.value = examPlan.goal;
+  dateEl.value = examPlan.date;
+
+  renderExamTargetOptions();
+  updateExamPlanMeta();
+  renderDetailedRoadmap(generateWeeklyRoadmap());
+
+  goalEl.addEventListener('change', () => {
+    examPlan.goal = goalEl.value;
+    renderExamTargetOptions();
+    updateStats();
+    updateExamPlanMeta();
+    renderDetailedRoadmap(generateWeeklyRoadmap({ force: true }));
+  });
+
+  $('btn-save-exam-plan')?.addEventListener('click', () => {
+    examPlan.target = targetEl.value;
+    examPlan.date = dateEl.value;
+    localStorage.setItem(EXAM_PLAN_KEY, JSON.stringify(examPlan));
+    updateStats();
+    updateExamPlanMeta();
+    renderDetailedRoadmap(generateWeeklyRoadmap({ force: true }));
+    if (window.globalUtils?.guToast) window.globalUtils.guToast('Đã lưu mục tiêu thi', 'success');
+  });
+}
+
+function renderExamTargetOptions() {
+  const targetEl = $('exam-target');
+  if (!targetEl) return;
+
+  const options = examPlan.goal === 'ielts'
+    ? ['5.5', '6.0', '6.5', '7.0', '7.5', '8.0']
+    : ['550', '650', '750', '850', '900'];
+
+  if (!options.includes(examPlan.target)) {
+    examPlan.target = options[0];
+  }
+
+  targetEl.innerHTML = options.map(val => `<option value="${val}">${val}</option>`).join('');
+  targetEl.value = examPlan.target;
+}
+
+function updateExamPlanMeta() {
+  const metaEl = $('exam-plan-meta');
+  if (!metaEl) return;
+
+  const history = getExamHistory().filter(item => item.goal === examPlan.goal);
+  const latest = history[history.length - 1];
+  const latestText = latest
+    ? `Lần mock gần nhất: ${latest.mockType} ${latest.scorePct}% (${new Date(latest.ts).toLocaleDateString('vi-VN')})`
+    : 'Chưa có dữ liệu mock test.';
+
+  const deadline = examPlan.date
+    ? `Ngày thi: ${new Date(examPlan.date).toLocaleDateString('vi-VN')}`
+    : 'Chưa đặt ngày thi.';
+
+  metaEl.textContent = `${examPlan.goal.toUpperCase()} target ${examPlan.target} • ${deadline} • ${latestText}`;
+}
+
+function getDaysLeftToExam() {
+  if (!examPlan.date) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const examDate = new Date(examPlan.date);
+  examDate.setHours(0, 0, 0, 0);
+  return Math.ceil((examDate - today) / 86400000);
+}
+
+function getCurrentWeakFocus() {
+  const focusCount = {
+    grammar: 0,
+    vocab: 0,
+    reading: 0,
+    inference: 0,
+    listening: 0,
+    writing: 0,
+    speaking: 0
+  };
+
+  errorNotebook.filter(item => !item.mastered).forEach(item => {
+    if ((item.type || '').includes('grammar')) focusCount.grammar += (item.count || 1);
+    else if ((item.type || '').includes('vocab')) focusCount.vocab += (item.count || 1);
+    else if ((item.type || '').includes('reading') || (item.type || '').includes('detail')) focusCount.reading += (item.count || 1);
+    else if ((item.type || '').includes('inference')) focusCount.inference += (item.count || 1);
+  });
+
+  const sorted = Object.entries(focusCount)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k]) => k)
+    .filter((k, idx) => focusCount[k] > 0 && idx < 2);
+
+  return sorted.length ? sorted : ['reading', 'grammar'];
+}
+
+function getIntensityLabel(daysLeft) {
+  if (daysLeft === null) return 'normal';
+  if (daysLeft <= 14) return 'high';
+  if (daysLeft <= 45) return 'medium';
+  return 'normal';
+}
+
+function mapWeaknessToSkills(weakFocus) {
+  const map = {
+    grammar: 'writing',
+    vocab: 'reading',
+    reading: 'reading',
+    inference: 'reading',
+    listening: 'listening',
+    writing: 'writing',
+    speaking: 'speaking'
+  };
+  const skills = weakFocus.map(w => map[w] || 'reading').slice(0, 2);
+  return skills.length ? skills : ['reading', 'writing'];
+}
+
+function buildDailyMinutes(intensity, weakSkills, dayIndex) {
+  const base = intensity === 'high'
+    ? { listening: 40, reading: 50, writing: 45, speaking: 35 }
+    : intensity === 'medium'
+      ? { listening: 30, reading: 40, writing: 35, speaking: 25 }
+      : { listening: 25, reading: 30, writing: 25, speaking: 20 };
+
+  const boostSkill = weakSkills[dayIndex % weakSkills.length] || 'reading';
+  base[boostSkill] += intensity === 'high' ? 15 : 10;
+  return base;
+}
+
+function buildWeeklyPlan(goal, intensity, weakFocus, aiDayPlans = []) {
+  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const lib = DAILY_SKILL_LIBRARY[goal] || DAILY_SKILL_LIBRARY.ielts;
+  const weakSkills = mapWeaknessToSkills(weakFocus);
+  const skillOrder = ['listening', 'reading', 'writing', 'speaking'];
+
+  return labels.map((day, i) => {
+    const minutes = buildDailyMinutes(intensity, weakSkills, i);
+    const primarySkill = weakSkills[i % weakSkills.length] || skillOrder[i % skillOrder.length];
+    const aiDay = aiDayPlans[i] || {};
+
+    const skillPlans = skillOrder.reduce((acc, skill) => {
+      const aiSkill = aiDay.skillPlans?.[skill] || {};
+      acc[skill] = {
+        minutes: minutes[skill],
+        knowledge: aiSkill.knowledge || lib[skill]?.knowledge || lib.reading.knowledge,
+        exercise: aiSkill.exercise || lib[skill]?.exercise || lib.reading.exercise
+      };
+      return acc;
+    }, {});
+
+    const review = `Review 15 phút từ Error Notebook (${weakFocus.join(', ') || 'general'}).`;
+    const aiDrill = aiDay.aiDrill || `AI drill: tạo 3 câu ${primarySkill} độ khó ${intensity === 'high' ? 'hard' : 'medium'}.`;
+    const aiReview = aiDay.review || review;
+    const totalMinutes = Object.values(minutes).reduce((s, v) => s + v, 0);
+
+    return {
+      day,
+      primarySkill,
+      skillPlans,
+      totalMinutes,
+      review: aiReview,
+      aiDrill
+    };
+  });
+}
+
+function getRoadmapStorageKey() {
+  const datePart = examPlan.date || 'no-date';
+  return `${ROADMAP_WEEK_KEY}:${examPlan.goal}:${examPlan.target}:${datePart}`;
+}
+
+function generateWeeklyRoadmap({ force = false, aiDayPlans = null } = {}) {
+  const key = getRoadmapStorageKey();
+  if (!force) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(key) || 'null');
+      if (cached?.weekly) return cached;
+    } catch {}
+  }
+
+  const goal = examPlan.goal === 'toeic' ? 'toeic' : 'ielts';
+  const daysLeft = getDaysLeftToExam();
+  const intensity = getIntensityLabel(daysLeft);
+  const weakFocus = getCurrentWeakFocus();
+  const weekly = buildWeeklyPlan(goal, intensity, weakFocus, aiDayPlans || []);
+
+  const payload = { goal, intensity, weakFocus, weekly, createdAt: new Date().toISOString() };
+  localStorage.setItem(key, JSON.stringify(payload));
+  return payload;
+}
+
+function renderDetailedRoadmap(roadmapData = null) {
+  const wrap = $('exam-roadmap');
+  if (!wrap) return;
+
+  const data = roadmapData || generateWeeklyRoadmap();
+  const goal = data.goal;
+  const lib = ROADMAP_LIBRARY[goal] || ROADMAP_LIBRARY.ielts;
+  const daysLeft = getDaysLeftToExam();
+  const intensity = data.intensity;
+  const weakFocus = data.weakFocus || [];
+  const weekly = data.weekly || [];
+
+  const intensityText = intensity === 'high'
+    ? 'Nước rút: tăng cường 2 block/ngày.'
+    : intensity === 'medium'
+      ? 'Tăng tốc: giữ nhịp đều + review lỗi mỗi ngày.'
+      : 'Ổn định nền tảng, nâng dần độ khó theo tuần.';
+
+  const reviewList = [
+    ...lib.review,
+    `Focus lỗi yếu hiện tại: ${weakFocus.join(', ')}.`,
+    daysLeft === null ? 'Chưa đặt ngày thi: nên đặt mốc để tối ưu cường độ.' : `Còn ${Math.max(daysLeft, 0)} ngày tới kỳ thi.`
+  ];
+
+  wrap.innerHTML = `
+    <div class="en-roadmap-card">
+      <div class="en-roadmap-title">📌 Kiến thức trọng tâm (${goal.toUpperCase()})</div>
+      <ul class="en-roadmap-list">
+        ${lib.knowledge.map(item => `<li>${item}</li>`).join('')}
+      </ul>
+      <div class="en-test-help" style="margin-top:8px">Cường độ hiện tại: <strong>${intensityText}</strong></div>
+    </div>
+    <div class="en-roadmap-card">
+      <div class="en-roadmap-title">🗓️ Lộ trình 7 ngày tới</div>
+      <div class="en-roadmap-week">
+        ${weekly.map(item => `
+          <div class="en-week-item">
+            <div class="en-week-day">${item.day} • ${item.totalMinutes} phút</div>
+            <div class="en-week-skills">
+              <div class="en-week-skill">Listening: ${item.skillPlans.listening.minutes}m</div>
+              <div class="en-week-skill">Reading: ${item.skillPlans.reading.minutes}m</div>
+              <div class="en-week-skill">Writing: ${item.skillPlans.writing.minutes}m</div>
+              <div class="en-week-skill">Speaking: ${item.skillPlans.speaking.minutes}m</div>
+            </div>
+            <ul class="en-week-bullets">
+              <li><strong>Listening:</strong> ${item.skillPlans.listening.knowledge} | Bài tập: ${item.skillPlans.listening.exercise}</li>
+              <li><strong>Reading:</strong> ${item.skillPlans.reading.knowledge} | Bài tập: ${item.skillPlans.reading.exercise}</li>
+              <li><strong>Writing:</strong> ${item.skillPlans.writing.knowledge} | Bài tập: ${item.skillPlans.writing.exercise}</li>
+              <li><strong>Speaking:</strong> ${item.skillPlans.speaking.knowledge} | Bài tập: ${item.skillPlans.speaking.exercise}</li>
+              <li><strong>Ôn tập:</strong> ${item.review}</li>
+            </ul>
+            <div class="en-week-ai">🤖 ${item.aiDrill}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    <div class="en-roadmap-card">
+      <div class="en-roadmap-title">🔁 Checklist ôn tập cụ thể</div>
+      <ul class="en-roadmap-list">
+        ${reviewList.map(item => `<li>${item}</li>`).join('')}
+      </ul>
+    </div>
+  `;
+}
+
+function extractJSONFromText(text) {
+  if (!text || typeof text !== 'string') return null;
+
+  const codeBlock = text.match(/```json\s*([\s\S]*?)```/i);
+  if (codeBlock?.[1]) {
+    try { return JSON.parse(codeBlock[1]); } catch {}
+  }
+
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try { return JSON.parse(text.slice(start, end + 1)); } catch {}
+  }
+
+  return null;
+}
+
+function normalizeAIWeeklyPlan(raw) {
+  const empty = Array.from({ length: 7 }, () => ({}));
+  if (!raw || !Array.isArray(raw.days)) return empty;
+
+  return raw.days.slice(0, 7).map(day => {
+    const skillPlans = {};
+    ['listening', 'reading', 'writing', 'speaking'].forEach(skill => {
+      if (day?.[skill] && typeof day[skill] === 'object') {
+        skillPlans[skill] = {
+          knowledge: String(day[skill].knowledge || '').trim(),
+          exercise: String(day[skill].exercise || '').trim()
+        };
+      }
+    });
+
+    return {
+      skillPlans,
+      aiDrill: String(day?.aiDrill || '').trim(),
+      review: String(day?.review || '').trim()
+    };
+  }).concat(empty).slice(0, 7);
+}
+
+async function injectAIWeeklyDrills() {
+  const data = generateWeeklyRoadmap({ force: true });
+  const primaryWeak = data.weakFocus?.[0] || 'reading';
+
+  const topicMap = {
+    grammar: 'grammar',
+    vocab: 'vocabulary',
+    reading: 'reading comprehension',
+    inference: 'reading inference',
+    listening: 'listening',
+    writing: 'writing',
+    speaking: 'speaking'
+  };
+
+  const topic = topicMap[primaryWeak] || 'english practice';
+  let aiDayPlans = [];
+
+  try {
+    const prompt = `Ban la giao vien IELTS/TOEIC. Tao ke hoach hoc 7 ngay bang JSON cho muc tieu ${examPlan.goal.toUpperCase()} ${examPlan.target}. Ky nang yeu: ${data.weakFocus.join(', ')}. Do kho: ${data.intensity}.\nTra ve dung JSON theo schema: {"days":[{"listening":{"knowledge":"...","exercise":"..."},"reading":{"knowledge":"...","exercise":"..."},"writing":{"knowledge":"...","exercise":"..."},"speaking":{"knowledge":"...","exercise":"..."},"review":"...","aiDrill":"..."}]}\nKhong giai thich them.`;
+
+    const res = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: prompt,
+        sessionId: `weekly-plan-${Date.now()}`,
+        page: 'english'
+      })
+    });
+    const payload = await res.json();
+    if (res.ok && payload?.reply) {
+      const parsed = extractJSONFromText(payload.reply);
+      aiDayPlans = normalizeAIWeeklyPlan(parsed);
+    }
+  } catch (e) {
+    console.error('AI weekly drill error:', e);
+  }
+
+  if (!aiDayPlans.length || !aiDayPlans.some(p => p.aiDrill || p.review || Object.keys(p.skillPlans || {}).length)) {
+    aiDayPlans = Array.from({ length: 7 }, (_, idx) => ({
+      aiDrill: `AI: tạo 3 câu ${topic} (day ${idx + 1}) và giải thích lỗi sai.`,
+      review: `AI review: sửa 2 lỗi ${primaryWeak} và viết lại 2 ví dụ đúng.`
+    }));
+  }
+
+  const refreshed = generateWeeklyRoadmap({ force: true, aiDayPlans });
+  renderDetailedRoadmap(refreshed);
+  if (window.globalUtils?.guToast) window.globalUtils.guToast('Đã cập nhật kiến thức + bài tập từ AI cho cả tuần', 'success');
+}
+
+const TOEIC_PART5_BANK = [
+  { type: 'grammar', q: 'The manager asked all employees ___ the report before noon.', options: ['submit', 'to submit', 'submitting', 'submitted'], correct: 1, explain: 'Ask + object + to-infinitive.' },
+  { type: 'vocab', q: 'Our sales team achieved an ___ increase in revenue this quarter.', options: ['impress', 'impressive', 'impressively', 'impression'], correct: 1, explain: 'Need adjective before noun "increase".' },
+  { type: 'grammar', q: 'Neither the director nor the assistants ___ available now.', options: ['is', 'are', 'was', 'be'], correct: 1, explain: 'Verb agrees with nearest subject: assistants.' },
+  { type: 'grammar', q: 'By the time we arrived, the conference ___ .', options: ['begins', 'had begun', 'has begun', 'was beginning'], correct: 1, explain: 'Past perfect for earlier past action.' },
+  { type: 'vocab', q: 'Please ___ your seat number before entering the exam hall.', options: ['confirm', 'estimate', 'reserve', 'announce'], correct: 0, explain: 'Confirm seat number is the natural collocation.' },
+  { type: 'grammar', q: 'The new policy will be implemented ___ January 1st.', options: ['for', 'at', 'on', 'by'], correct: 2, explain: 'Use on for specific dates.' },
+  { type: 'vocab', q: 'Customer feedback indicates a high level of ___ with our service.', options: ['satisfy', 'satisfied', 'satisfaction', 'satisfactory'], correct: 2, explain: 'Need noun after "level of".' },
+  { type: 'grammar', q: 'If you need further assistance, please do not hesitate ___ us.', options: ['contact', 'to contact', 'contacting', 'contacted'], correct: 1, explain: 'Hesitate + to-infinitive.' },
+  { type: 'vocab', q: 'The company plans to ___ its operations into Southeast Asia.', options: ['expand', 'reduce', 'delay', 'relocate'], correct: 0, explain: 'Expand operations into a region.' },
+  { type: 'grammar', q: 'All applicants must submit the required documents, ___?', options: ['must they', 'don\'t they', 'aren\'t they', 'do they'], correct: 1, explain: 'Positive statement with must -> negative tag often with do-support in TOEIC style.' }
+];
+
+const IELTS_READING_MINI_BANK = [
+  { type: 'reading-main-idea', passage: 'Many city councils launched bike-sharing lanes in crowded districts. Initial reports show shorter commute times and lower carbon emissions where usage is high.', q: 'What is the main idea of the passage?', options: ['Bike-sharing is expensive', 'Bike-sharing has urban benefits', 'Pollution cannot be reduced', 'Cars are faster than bikes'], correct: 1, explain: 'The passage emphasizes commute and environmental benefits.' },
+  { type: 'reading-detail', passage: 'A university memory lab observed that students who slept at least seven hours after study sessions recalled key terms more accurately in follow-up tests.', q: 'Which statement matches the passage?', options: ['Sleep weakens memory', 'Sleep has no role in learning', 'Sleep helps retain information', 'Sleep only affects mood'], correct: 2, explain: 'The detail says recall improved after enough sleep.' },
+  { type: 'reading-vocab', passage: 'The city report recommends sustainable energy projects such as solar rooftops and wind clusters that can operate over decades with stable maintenance costs.', q: 'The word "sustainable" is closest to:', options: ['temporary', 'long-term viable', 'expensive', 'experimental'], correct: 1, explain: 'Sustainable refers to long-term viability.' },
+  { type: 'reading-inference', passage: 'Remote employees reported greater autonomy in choosing their work schedule. However, many participants also described reduced social interaction with colleagues.', q: 'What can be inferred from the passage?', options: ['Remote work has only advantages', 'Autonomy and social connection can conflict', 'Isolation is unrelated to work style', 'All remote workers are isolated'], correct: 1, explain: 'The passage presents a trade-off between flexibility and connection.' },
+  { type: 'reading-detail', passage: 'In one semester study, learners who completed weekly review quizzes scored approximately 15% higher than peers who only reviewed before final exams.', q: 'Which statement is true based on the passage?', options: ['Daily review was forbidden', 'Weekly review correlated with better scores', 'Review had no impact', 'Scores increased by 50%'], correct: 1, explain: 'The passage explicitly mentions 15% improvement with weekly review.' },
+  { type: 'reading-main-idea', passage: 'Energy planners noted that solar output peaks around midday, while wind production often rises in the late evening. Combining both improved supply stability.', q: 'What is the main focus?', options: ['Energy storage costs', 'How sources can balance each other', 'Why wind is always better', 'Why solar is outdated'], correct: 1, explain: 'The passage explains complementary peak times for balancing supply.' },
+  { type: 'reading-inference', passage: 'Although several new transit stations opened this year, ridership increased only slightly. Surveys suggest many commuters still prefer personal vehicles out of habit.', q: 'What is the most likely reason for low ridership growth?', options: ['No one needs transportation', 'Behavior change lags behind infrastructure', 'Stations are illegal', 'Population is decreasing rapidly'], correct: 1, explain: 'The survey suggests habits changed slowly despite new stations.' },
+  { type: 'reading-vocab', passage: 'Scientists proposed a coastal plan to mitigate storm damage by restoring mangrove forests and reinforcing drainage channels before the rainy season.', q: 'The word "mitigate" means:', options: ['ignore', 'worsen', 'reduce', 'measure'], correct: 2, explain: 'Mitigate means to reduce severity.' }
+];
+
+function setupExamMock() {
+  loadErrorNotebook();
+  renderErrorNotebook();
+
+  $('btn-start-toeic-p5')?.addEventListener('click', () => startExamMock('toeic-p5'));
+  $('btn-start-ielts-reading')?.addEventListener('click', () => startExamMock('ielts-reading-mini'));
+  $('btn-start-error-review')?.addEventListener('click', startErrorReviewMode);
+  $('btn-reset-error-notebook')?.addEventListener('click', () => {
+    if (!confirm('Xóa toàn bộ Error Notebook?')) return;
+    errorNotebook = [];
+    saveErrorNotebook();
+    renderErrorNotebook();
+  });
+}
+
+function loadErrorNotebook() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ERROR_NOTEBOOK_KEY) || '[]');
+    errorNotebook = Array.isArray(raw) ? raw : [];
+  } catch {
+    errorNotebook = [];
+  }
+}
+
+function saveErrorNotebook() {
+  localStorage.setItem(ERROR_NOTEBOOK_KEY, JSON.stringify(errorNotebook.slice(0, 200)));
+}
+
+function renderErrorNotebook() {
+  const listEl = $('error-notebook-list');
+  const countEl = $('error-notebook-count');
+  if (!listEl || !countEl) return;
+
+  const activeErrors = errorNotebook.filter(item => !item.mastered).length;
+  countEl.textContent = `${activeErrors} lỗi cần ôn`;
+
+  if (!activeErrors) {
+    listEl.innerHTML = '<div class="em-note-item">Chưa có lỗi nào. Làm mock test để hệ thống tự lưu lỗi sai thường gặp.</div>';
+    return;
+  }
+
+  listEl.innerHTML = errorNotebook.filter(item => !item.mastered).slice(0, 12).map(item => `
+    <div class="em-note-item">
+      <div class="em-note-type">${item.type}</div>
+      <div class="em-note-q">${escapeHtml(item.question)}</div>
+      <div class="em-note-q"><strong>Đáp án đúng:</strong> ${escapeHtml(item.correctAnswer)}</div>
+      <div class="em-note-q"><strong>Gợi ý:</strong> ${escapeHtml(item.explain || 'Ôn lại dạng câu này.')}</div>
+      <div class="em-note-q">Sai ${item.count || 1} lần • Ôn đúng liên tiếp: ${item.correctStreak || 0} • ${new Date(item.updatedAt).toLocaleDateString('vi-VN')}</div>
+    </div>
+  `).join('');
+
+  renderDetailedRoadmap(generateWeeklyRoadmap({ force: true }));
+}
+
+function startExamMock(mode) {
+  const isToeic = mode === 'toeic-p5';
+  const questionSet = shuffleArray((isToeic ? TOEIC_PART5_BANK : IELTS_READING_MINI_BANK).map(q => ({ ...q })));
+  const durationSec = getMockDurationSec(mode, questionSet.length);
+
+  examMockState = {
+    mode,
+    source: 'mock',
+    goal: isToeic ? 'toeic' : 'ielts',
+    title: isToeic ? 'TOEIC Part 5 Mini Mock' : 'IELTS Reading Mini Mock',
+    questions: questionSet,
+    answers: new Array(questionSet.length).fill(-1),
+    currentIndex: 0,
+    startedAt: Date.now(),
+    durationSec,
+    timeLeftSec: durationSec,
+    timerId: null
+  };
+
+  startExamTimer();
+  renderExamMock();
+}
+
+function startErrorReviewMode() {
+  const questions = buildReviewQuestionsFromNotebook(8);
+  if (!questions.length) {
+    alert('Chưa đủ lỗi để tạo Review Quiz. Hãy làm mock test trước.');
+    return;
+  }
+
+  const durationSec = Math.max(180, questions.length * 45);
+  examMockState = {
+    mode: 'error-review',
+    source: 'review',
+    goal: examPlan.goal === 'toeic' ? 'toeic' : 'ielts',
+    title: 'Review lỗi gần đây',
+    questions,
+    answers: new Array(questions.length).fill(-1),
+    currentIndex: 0,
+    startedAt: Date.now(),
+    durationSec,
+    timeLeftSec: durationSec,
+    timerId: null
+  };
+
+  startExamTimer();
+  renderExamMock();
+}
+
+function buildReviewQuestionsFromNotebook(limit = 8) {
+  const pool = errorNotebook
+    .filter(item => !item.mastered)
+    .sort((a, b) => (new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()) || ((b.count || 0) - (a.count || 0)))
+    .slice(0, limit);
+
+  if (!pool.length) return [];
+
+  return pool.map((item, index) => {
+    const distractorPool = errorNotebook
+      .filter(other => other.correctAnswer && other.correctAnswer !== item.correctAnswer)
+      .map(other => other.correctAnswer);
+
+    const distractors = [...new Set(shuffleArray(distractorPool))].slice(0, 3);
+    while (distractors.length < 3) {
+      distractors.push(`Phương án ${String.fromCharCode(66 + distractors.length)}`);
+    }
+
+    const options = shuffleArray([item.correctAnswer, ...distractors]);
+    return {
+      type: item.type,
+      q: item.question,
+      options,
+      correct: options.indexOf(item.correctAnswer),
+      explain: item.explain || 'Ôn lại quy tắc của câu này.',
+      noteKey: item.noteKey || makeErrorKey(item)
+    };
+  });
+}
+
+function getMockDurationSec(mode, count) {
+  if (mode === 'toeic-p5') return Math.max(180, Math.round((20 * 60 / 30) * count));
+  if (mode === 'ielts-reading-mini') return Math.max(240, Math.round((60 * 60 / 40) * count));
+  return Math.max(180, count * 45);
+}
+
+function formatDuration(totalSec) {
+  const sec = Math.max(0, Math.floor(totalSec));
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function startExamTimer() {
+  if (!examMockState) return;
+  stopExamTimer();
+
+  examMockState.timerId = setInterval(() => {
+    if (!examMockState) return;
+    examMockState.timeLeftSec -= 1;
+    updateExamTimerUI();
+    if (examMockState.timeLeftSec <= 0) {
+      submitExamMock(true);
+    }
+  }, 1000);
+}
+
+function stopExamTimer() {
+  if (examMockState?.timerId) {
+    clearInterval(examMockState.timerId);
+    examMockState.timerId = null;
+  }
+}
+
+function updateExamTimerUI() {
+  const timerEl = $('em-test-timer');
+  if (!timerEl || !examMockState) return;
+  timerEl.textContent = formatDuration(examMockState.timeLeftSec);
+  timerEl.classList.remove('warn', 'danger');
+  if (examMockState.timeLeftSec <= 60) timerEl.classList.add('danger');
+  else if (examMockState.timeLeftSec <= 180) timerEl.classList.add('warn');
+}
+
+function renderExamMock() {
+  const areaEl = $('exam-test-area');
+  const resultEl = $('exam-test-result');
+  if (!areaEl || !resultEl || !examMockState) return;
+
+  resultEl.style.display = 'none';
+  areaEl.style.display = '';
+
+  const idx = examMockState.currentIndex;
+  const total = examMockState.questions.length;
+  const q = examMockState.questions[idx];
+  const selected = examMockState.answers[idx];
+
+  areaEl.innerHTML = `
+    <div class="em-test-header">
+      <div class="em-test-title">${examMockState.title}</div>
+      <div class="em-test-progress">Câu ${idx + 1}/${total}</div>
+      <div class="em-test-timer" id="em-test-timer">${formatDuration(examMockState.timeLeftSec)}</div>
+    </div>
+    <div class="em-question">${q.q}</div>
+    ${q.passage ? `<div class="em-passage"><div class="em-passage-title">Reading Passage</div><div class="em-passage-text">${escapeHtml(q.passage)}</div></div>` : ''}
+    <div class="em-options">
+      ${q.options.map((opt, oi) => `
+        <label class="em-option">
+          <input type="radio" name="em-q" value="${oi}" ${selected === oi ? 'checked' : ''}>
+          ${escapeHtml(opt)}
+        </label>
+      `).join('')}
+    </div>
+    <div class="em-test-help">Mục tiêu thời gian theo format thi thật: ${examMockState.mode === 'toeic-p5' ? 'TOEIC Part 5 ~40 giây/câu' : examMockState.mode === 'ielts-reading-mini' ? 'IELTS Reading ~90 giây/câu' : 'Review lỗi ~45 giây/câu'}.</div>
+    <div class="em-test-actions">
+      <button class="en-btn en-btn-secondary" id="btn-prev-exam-test" ${idx === 0 ? 'disabled' : ''}>← Trước</button>
+      <button class="en-btn en-btn-secondary" id="btn-next-exam-test" ${idx === total - 1 ? 'disabled' : ''}>Tiếp →</button>
+      <button class="en-btn en-btn-secondary" id="btn-cancel-exam-test">Hủy</button>
+      <button class="en-btn en-btn-primary" id="btn-submit-exam-test">Nộp bài</button>
+    </div>
+  `;
+
+  updateExamTimerUI();
+
+  document.querySelectorAll('input[name="em-q"]').forEach(input => {
+    input.addEventListener('change', () => {
+      examMockState.answers[idx] = parseInt(input.value, 10);
+    });
+  });
+
+  $('btn-prev-exam-test')?.addEventListener('click', () => {
+    if (!examMockState || examMockState.currentIndex <= 0) return;
+    examMockState.currentIndex -= 1;
+    renderExamMock();
+  });
+
+  $('btn-next-exam-test')?.addEventListener('click', () => {
+    if (!examMockState || examMockState.currentIndex >= examMockState.questions.length - 1) return;
+    examMockState.currentIndex += 1;
+    renderExamMock();
+  });
+
+  $('btn-cancel-exam-test')?.addEventListener('click', () => {
+    stopExamTimer();
+    examMockState = null;
+    areaEl.style.display = 'none';
+  });
+
+  $('btn-submit-exam-test')?.addEventListener('click', () => submitExamMock(false));
+}
+
+function submitExamMock(timeUp = false) {
+  if (!examMockState) return;
+  stopExamTimer();
+
+  let correct = 0;
+  const wrongItems = [];
+
+  examMockState.questions.forEach((q, idx) => {
+    if (examMockState.answers[idx] === q.correct) {
+      correct++;
+    } else {
+      wrongItems.push({
+        type: q.type,
+        question: q.q,
+        correctAnswer: q.options[q.correct],
+        explain: q.explain,
+        noteKey: q.noteKey || makeErrorKey(q)
+      });
+    }
+  });
+
+  const total = examMockState.questions.length;
+  const scorePct = Math.round((correct / total) * 100);
+
+  if (examMockState.source === 'review') {
+    applyReviewResult(wrongItems);
+  } else {
+    upsertErrorNotebook(wrongItems);
+  }
+
+  saveErrorNotebook();
+  renderErrorNotebook();
+
+  const history = getExamHistory();
+  history.push({
+    goal: examMockState.goal,
+    mockType: examMockState.mode,
+    scorePct,
+    ts: new Date().toISOString()
+  });
+  saveExamHistory(history);
+
+  if (examPlan.goal !== examMockState.goal) {
+    examPlan.goal = examMockState.goal;
+    renderExamTargetOptions();
+  }
+
+  updateExamPlanMeta();
+  updateStats();
+  renderDetailedRoadmap(generateWeeklyRoadmap({ force: true }));
+
+  const resultEl = $('exam-test-result');
+  if (!resultEl) return;
+
+  const forecast = estimateExamProjection(scorePct);
+  resultEl.style.display = '';
+  resultEl.innerHTML = `
+    <div class="em-result-score" style="color:${scorePct >= 75 ? '#10b981' : scorePct >= 50 ? '#f59e0b' : '#ef4444'}">
+      ${correct}/${total} (${scorePct}%)
+    </div>
+    <div>Dự đoán hiện tại: <strong>${examMockState.goal.toUpperCase()} ${forecast}</strong></div>
+    <div style="margin-top:6px;color:var(--text-2)">${timeUp ? 'Hết giờ nên hệ thống tự nộp bài. ' : ''}${examMockState.source === 'review' ? `Review hoàn tất: ${total - wrongItems.length}/${total} lỗi đã ôn đúng.` : `Đã lưu ${wrongItems.length} lỗi vào Error Notebook để ôn lại.`}</div>
+  `;
+
+  addXP(correct * 12, 'exam-mock');
+}
+
+function applyReviewResult(wrongItems) {
+  const wrongKeySet = new Set(wrongItems.map(item => item.noteKey).filter(Boolean));
+  const reviewedKeys = new Set(
+    examMockState.questions.map(q => q.noteKey).filter(Boolean)
+  );
+
+  errorNotebook.forEach(item => {
+    if (!reviewedKeys.has(item.noteKey || makeErrorKey(item))) return;
+
+    item.reviewAttempts = (item.reviewAttempts || 0) + 1;
+    item.updatedAt = new Date().toISOString();
+
+    const key = item.noteKey || makeErrorKey(item);
+    if (wrongKeySet.has(key)) {
+      item.count = (item.count || 0) + 1;
+      item.correctStreak = 0;
+      item.mastered = false;
+      return;
+    }
+
+    item.reviewCorrect = (item.reviewCorrect || 0) + 1;
+    item.correctStreak = (item.correctStreak || 0) + 1;
+    item.count = Math.max(0, (item.count || 1) - 1);
+    if ((item.correctStreak || 0) >= 2 && item.count <= 0) {
+      item.mastered = true;
+    }
+  });
+}
+
+function upsertErrorNotebook(items) {
+  items.forEach(item => {
+    const key = item.noteKey || makeErrorKey(item);
+    const existing = errorNotebook.find(entry => (entry.noteKey || makeErrorKey(entry)) === key);
+    if (existing) {
+      existing.count = (existing.count || 1) + 1;
+      existing.updatedAt = new Date().toISOString();
+      existing.correctAnswer = item.correctAnswer;
+      existing.explain = item.explain;
+      existing.mastered = false;
+      existing.correctStreak = 0;
+    } else {
+      errorNotebook.unshift({
+        ...item,
+        noteKey: key,
+        count: 1,
+        correctStreak: 0,
+        reviewAttempts: 0,
+        reviewCorrect: 0,
+        mastered: false,
+        updatedAt: new Date().toISOString()
+      });
+    }
+  });
+}
+
+function makeErrorKey(item) {
+  return `${item.type || 'unknown'}::${item.question || ''}`;
+}
+
+function shuffleArray(list) {
+  return [...list].sort(() => Math.random() - 0.5);
 }
 
 // ===== RENDER LESSONS =====
@@ -1996,8 +2888,181 @@ function renderAIGrading(grading, targetEl) {
 // ==================== LISTENING PRACTICE ====================
 let lstState = null;
 let lstPlayCount = 0;
+let lstSpeech = {
+  utterance: null,
+  isSpeaking: false,
+  isPaused: false,
+  position: 0,
+  basePosition: 0,
+  startedAt: 0,
+  startPosition: 0,
+  slowMode: false,
+  manualStop: false
+};
+
+function getListeningPassage() {
+  return lstState?.data?.passage || '';
+}
+
+function getListeningRate() {
+  const selected = parseFloat(document.getElementById('lst-speed')?.value || '0.9');
+  if (!lstSpeech.slowMode) return selected;
+  return Math.min(selected, 0.7);
+}
+
+function updateListeningStatus(text) {
+  const el = document.getElementById('lst-play-status');
+  if (el) el.textContent = text;
+}
+
+function updateListeningSeekUI() {
+  const passage = getListeningPassage();
+  const len = Math.max(passage.length, 1);
+  const pct = Math.max(0, Math.min(100, Math.round((lstSpeech.position / len) * 100)));
+  const seek = document.getElementById('lst-seek');
+  const label = document.getElementById('lst-seek-label');
+  if (seek) seek.value = String(pct);
+  if (label) label.textContent = `${pct}%`;
+}
+
+function syncEstimatedListeningPosition() {
+  const passage = getListeningPassage();
+  if (!passage || !lstSpeech.isSpeaking || lstSpeech.isPaused || !lstSpeech.startedAt) return;
+  const elapsedSec = (Date.now() - lstSpeech.startedAt) / 1000;
+  const estimatedAdvance = estimateSeekChars(elapsedSec);
+  lstSpeech.position = Math.min(passage.length, Math.max(lstSpeech.position, lstSpeech.startPosition + estimatedAdvance));
+}
+
+function updateListeningButtons() {
+  const playBtn = document.getElementById('lst-play-btn');
+  const pauseBtn = document.getElementById('lst-pause-btn');
+  const slowBtn = document.getElementById('lst-slow-btn');
+
+  if (playBtn) {
+    if (lstSpeech.isSpeaking && !lstSpeech.isPaused) playBtn.textContent = '🔊 Đang phát';
+    else if (lstSpeech.isPaused) playBtn.textContent = '▶️ Tiếp tục';
+    else playBtn.textContent = '▶️ Nghe bài';
+  }
+
+  if (pauseBtn) {
+    pauseBtn.textContent = lstSpeech.isPaused ? '▶️ Tiếp tục' : '⏸️ Tạm dừng';
+  }
+
+  if (slowBtn) {
+    slowBtn.classList.toggle('en-btn-primary', lstSpeech.slowMode);
+    slowBtn.classList.toggle('en-btn-secondary', !lstSpeech.slowMode);
+    slowBtn.textContent = lstSpeech.slowMode ? '🐢 Chậm: Bật' : '🐢 Tua chậm';
+  }
+}
+
+function estimateSeekChars(seconds) {
+  const rate = getListeningRate();
+  return Math.max(45, Math.round(seconds * 18 * Math.max(rate, 0.6)));
+}
+
+function stopListeningSpeech(resetPosition = false) {
+  lstSpeech.manualStop = true;
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  lstSpeech.utterance = null;
+  lstSpeech.isSpeaking = false;
+  lstSpeech.isPaused = false;
+  lstSpeech.startedAt = 0;
+  lstSpeech.startPosition = lstSpeech.position;
+  lstSpeech.basePosition = lstSpeech.position;
+  if (resetPosition) {
+    lstSpeech.position = 0;
+    lstSpeech.basePosition = 0;
+    lstSpeech.startPosition = 0;
+  }
+  updateListeningSeekUI();
+  updateListeningButtons();
+}
+
+function speakListeningFromPosition(options = {}) {
+  if (!('speechSynthesis' in window)) {
+    alert('Trình duyệt không hỗ trợ Text-to-Speech');
+    return;
+  }
+
+  const passage = getListeningPassage();
+  if (!passage) return;
+
+  const { countPlay = false } = options;
+  const start = Math.max(0, Math.min(lstSpeech.position, passage.length - 1));
+  const chunk = passage.slice(start);
+  if (!chunk.trim()) {
+    lstSpeech.position = 0;
+    updateListeningStatus('Đã tới cuối bài. Bấm nghe lại để phát từ đầu.');
+    updateListeningButtons();
+    return;
+  }
+
+  stopListeningSpeech();
+  lstSpeech.manualStop = false;
+  lstSpeech.basePosition = start;
+
+  const utterance = new SpeechSynthesisUtterance(chunk);
+  utterance.lang = 'en-US';
+  utterance.rate = getListeningRate();
+
+  utterance.onstart = () => {
+    lstSpeech.isSpeaking = true;
+    lstSpeech.isPaused = false;
+    lstSpeech.startedAt = Date.now();
+    lstSpeech.startPosition = lstSpeech.basePosition;
+    updateListeningStatus(`Đang phát từ vị trí ${Math.round((lstSpeech.basePosition / Math.max(passage.length, 1)) * 100)}%`);
+    updateListeningButtons();
+    updateListeningSeekUI();
+  };
+
+  utterance.onboundary = (event) => {
+    if (typeof event.charIndex === 'number') {
+      lstSpeech.position = Math.min(passage.length, lstSpeech.basePosition + event.charIndex);
+      updateListeningSeekUI();
+    }
+  };
+
+  utterance.onend = () => {
+    if (lstSpeech.manualStop) return;
+    lstSpeech.isSpeaking = false;
+    lstSpeech.isPaused = false;
+    lstSpeech.position = passage.length;
+    updateListeningSeekUI();
+    updateListeningStatus('Đã phát xong bài nghe.');
+    updateListeningButtons();
+  };
+
+  utterance.onerror = () => {
+    lstSpeech.isSpeaking = false;
+    lstSpeech.isPaused = false;
+    updateListeningStatus('Không thể phát audio. Vui lòng thử lại.');
+    updateListeningButtons();
+  };
+
+  lstSpeech.utterance = utterance;
+  speechSynthesis.speak(utterance);
+
+  if (countPlay) {
+    lstPlayCount++;
+    document.getElementById('lst-plays').textContent = `Đã nghe: ${lstPlayCount} lần`;
+  }
+}
+
+function setListeningSeek(percent) {
+  const passage = getListeningPassage();
+  if (!passage) return;
+  const pct = Math.max(0, Math.min(100, Number(percent) || 0));
+  lstSpeech.position = Math.round((pct / 100) * passage.length);
+  updateListeningSeekUI();
+  updateListeningStatus(`Đã tua tới ${pct}%`);
+
+  if (lstSpeech.isSpeaking || lstSpeech.isPaused) {
+    speakListeningFromPosition({ countPlay: false });
+  }
+}
 
 async function generateListening() {
+  stopListeningSpeech(true);
   const level = document.getElementById('lst-level')?.value || 'intermediate';
   const topic = document.getElementById('lst-topic')?.value || '';
   const btn = document.getElementById('btn-gen-listening');
@@ -2029,6 +3094,15 @@ function renderListening() {
   document.getElementById('lst-area').style.display = '';
   document.getElementById('lst-title').textContent = data.title || 'Bài luyện nghe';
   document.getElementById('lst-plays').textContent = `Đã nghe: ${lstPlayCount} lần`;
+  updateListeningStatus('Sẵn sàng phát');
+  lstSpeech.position = 0;
+  lstSpeech.basePosition = 0;
+  lstSpeech.startedAt = 0;
+  lstSpeech.startPosition = 0;
+  lstSpeech.isSpeaking = false;
+  lstSpeech.isPaused = false;
+  updateListeningSeekUI();
+  updateListeningButtons();
   document.getElementById('lst-result').style.display = 'none';
   document.getElementById('lst-transcript').style.display = submitted ? '' : 'none';
 
@@ -2074,17 +3148,84 @@ function renderListening() {
 
 function playListening() {
   if (!lstState || !lstState.data.passage) return;
-  const speed = parseFloat(document.getElementById('lst-speed')?.value || '0.9');
-  if ('speechSynthesis' in window) {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(lstState.data.passage);
-    u.lang = 'en-US';
-    u.rate = speed;
-    speechSynthesis.speak(u);
-    lstPlayCount++;
-    document.getElementById('lst-plays').textContent = `Đã nghe: ${lstPlayCount} lần`;
-  } else {
+
+  if (!('speechSynthesis' in window)) {
     alert('Trình duyệt không hỗ trợ Text-to-Speech');
+    return;
+  }
+
+  if (lstSpeech.isPaused && speechSynthesis.paused) {
+    speechSynthesis.resume();
+    lstSpeech.isPaused = false;
+    lstSpeech.isSpeaking = true;
+    updateListeningStatus('Tiếp tục phát...');
+    updateListeningButtons();
+    return;
+  }
+
+  if (lstSpeech.position >= getListeningPassage().length) {
+    lstSpeech.position = 0;
+  }
+  speakListeningFromPosition({ countPlay: true });
+}
+
+function replayListening() {
+  if (!lstState || !lstState.data.passage) return;
+  lstSpeech.position = 0;
+  speakListeningFromPosition({ countPlay: true });
+}
+
+function toggleListeningPause() {
+  if (!('speechSynthesis' in window)) return;
+
+  if (lstSpeech.isSpeaking && !lstSpeech.isPaused) {
+    syncEstimatedListeningPosition();
+    stopListeningSpeech(false);
+    lstSpeech.isPaused = true;
+    updateListeningStatus('Đã tạm dừng');
+    updateListeningButtons();
+    return;
+  }
+
+  if (lstSpeech.isPaused) {
+    lstSpeech.isPaused = false;
+    speakListeningFromPosition({ countPlay: false });
+    updateListeningStatus('Tiếp tục phát...');
+    return;
+  }
+
+  playListening();
+}
+
+function rewindListening() {
+  const passage = getListeningPassage();
+  if (!passage) return;
+  lstSpeech.position = Math.max(0, lstSpeech.position - estimateSeekChars(5));
+  updateListeningStatus('Tua ngược 5 giây');
+
+  if (lstSpeech.isSpeaking || lstSpeech.isPaused) {
+    speakListeningFromPosition({ countPlay: false });
+  }
+}
+
+function skipListening() {
+  const passage = getListeningPassage();
+  if (!passage) return;
+  lstSpeech.position = Math.min(passage.length, lstSpeech.position + estimateSeekChars(5));
+  updateListeningStatus('Tua tới 5 giây');
+
+  if (lstSpeech.isSpeaking || lstSpeech.isPaused) {
+    speakListeningFromPosition({ countPlay: false });
+  }
+}
+
+function toggleListeningSlow() {
+  lstSpeech.slowMode = !lstSpeech.slowMode;
+  updateListeningStatus(lstSpeech.slowMode ? 'Chế độ tua chậm: bật' : 'Chế độ tua chậm: tắt');
+  updateListeningButtons();
+
+  if (lstSpeech.isSpeaking || lstSpeech.isPaused) {
+    speakListeningFromPosition({ countPlay: false });
   }
 }
 

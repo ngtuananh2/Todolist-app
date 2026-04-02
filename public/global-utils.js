@@ -54,6 +54,33 @@
     return (document.documentElement.getAttribute('data-theme') || 'light') === 'dark';
   }
 
+  // ==================== NAV DATE-TIME (shared) ====================
+  function formatNavDateTime(date = new Date()) {
+    const weekday = date.toLocaleDateString('vi-VN', { weekday: 'short' }).replace('.', '');
+    const dayMonth = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+    const time = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    return `${weekday}, ${dayMonth} ${time}`;
+  }
+
+  function updateNavDateTime() {
+    const el = document.getElementById('nav-date');
+    if (!el) return;
+
+    const now = new Date();
+    el.textContent = formatNavDateTime(now);
+    el.title = now.toLocaleDateString('vi-VN', {
+      weekday: 'long',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
+
+  function startNavDateTimeClock() {
+    updateNavDateTime();
+    setInterval(updateNavDateTime, 1000);
+  }
+
   // ==================== LOADING SPINNER ====================
   let loadingCount = 0;
 
@@ -570,6 +597,7 @@
   // ===== Init =====
   function initGlobalUtils() {
     initTheme();
+    startNavDateTimeClock();
     injectUI();
     bindGlobalEvents();
   }
@@ -585,6 +613,7 @@
   window.globalUtils = {
     openSearch, closeSearch, openShortcuts, closeShortcuts, exportBackup, exportModule,
     toggleTheme, isDarkTheme, initTheme, updateThemeIcons,
+    updateNavDateTime,
     showLoading, hideLoading, guToast,
     togglePomodoro, loadNotifications, updatePomoSettings
   };

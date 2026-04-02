@@ -1,4 +1,12 @@
-const { groq, GROQ_MODEL, isGroqConfigured, createAIConfigError } = require('../config/gemini');
+const {
+  groq,
+  GROQ_MODEL,
+  isGroqConfigured,
+  isGeminiConfigured,
+  isOpenRouterConfigured,
+  isOpenAIConfigured,
+  createAIConfigError
+} = require('../config/gemini');
 const todoService = require('./todo.service');
 const habitService = require('./habit.service');
 const noteService = require('./note.service');
@@ -18,9 +26,14 @@ class AIService {
    * @param {string} page - 'todo' | 'habit' | 'brain'
    */
   async chat(message, sessionId = 'default', page = 'todo', context = null) {
-    if (!isGroqConfigured) throw createAIConfigError();
+    const hasAnyAIProvider = isGroqConfigured || isGeminiConfigured || isOpenRouterConfigured || isOpenAIConfigured;
+    if (!hasAnyAIProvider) throw createAIConfigError();
+
     let systemPrompt = await this._buildSystemPrompt(page);
-    if (context) systemPrompt += '\n\nDỮ LIỆU HIỆN TẠI TỪ TRÌNH DUYỆT:\n' + context;
+    if (context) {
+      const safeContext = String(context).slice(0, 6000);
+      systemPrompt += '\n\nDỮ LIỆU HIỆN TẠI TỪ TRÌNH DUYỆT:\n' + safeContext;
+    }
 
     // Get or create chat history
     if (!this.chatSessions.has(sessionId)) {
@@ -28,20 +41,40 @@ class AIService {
     }
     const history = this.chatSessions.get(sessionId);
 
+    const recentHistory = history.slice(-10);
     const messages = [
       { role: 'system', content: systemPrompt },
-      ...history,
+      ...recentHistory,
       { role: 'user', content: message.trim() }
     ];
 
-    const response = await groq.chat.completions.create({
-      model: GROQ_MODEL,
-      messages,
-      temperature: 0.7,
-      max_tokens: 2048
-    });
+    let aiText = '';
+    try {
+      const response = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages,
+        temperature: 0.7,
+        max_tokens: 1536
+      });
+      aiText = response?.choices?.[0]?.message?.content || '';
+    } catch (err) {
+      // Retry with a compact payload for providers that reject large context/history
+      const retryMessages = [
+        { role: 'system', content: String(systemPrompt).slice(0, 2000) },
+        { role: 'user', content: message.trim().slice(0, 1200) }
+      ];
+      const retryResponse = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: retryMessages,
+        temperature: 0.6,
+        max_tokens: 768
+      });
+      aiText = retryResponse?.choices?.[0]?.message?.content || '';
+    }
 
-    const aiText = response.choices[0].message.content;
+    if (!aiText) {
+      aiText = 'Mình đã nhận yêu cầu của bạn. Bạn có thể nói rõ hơn 1 ý cụ thể để mình xử lý ngay.';
+    }
 
     history.push({ role: 'user', content: message.trim() });
     history.push({ role: 'assistant', content: aiText });
@@ -238,8 +271,10 @@ Khi người dùng yêu cầu thay đổi lịch trình, trả về action block
 
 1. Thêm công việc vào danh sách input:
 \`\`\`action
-{"type":"schedule_add_task","title":"Tên công việc","duration":30,"priority":"high|medium|low","deadline":"17:00","day":"Thứ 2","recurring":"daily|weekday|weekend"}
+{"type":"schedule_add_task","title":"Tên công việc","duration":30,"priority":"high|medium|low","deadline":"17:00","fixedStart":"14:00","fixedEnd":"17:00","timeNote":"Lớp học cố định","days":["Thứ 2","Thứ 4","Thứ 6"],"day":"Thứ 2","recurring":"daily|weekday|weekend"}
 \`\`\`
+
+Ghi chú: Với công việc lặp theo nhiều ngày, ưu tiên dùng trường "days" (mảng ngày trong tuần). Trường "day" chỉ dùng khi có đúng 1 ngày.
 
 2. Xóa công việc khỏi danh sách input (theo title hoặc index):
 \`\`\`action
@@ -1164,19 +1199,26 @@ Hãy chấm điểm và phân tích CHI TIẾT từng câu. Trả về JSON:
 
   // ==================== AI SCHEDULE GENERATOR ====================
   async generateSchedule(tasks, preferences = {}, options = {}) {
-    const { wakeUp, sleep, breakDuration, focusHours, style } = preferences;
+    const { wakeUp, sleep, breakDuration, focusHours, style, aiNote } = preferences;
     const { mode = 'single', days = 1, startDate = '' } = options;
 
-    const taskList = tasks.map((t, i) =>
-      `${i + 1}. ${t.title}${t.duration ? ` (${t.duration} phút)` : ''}${t.priority ? ` [Ưu tiên: ${t.priority}]` : ''}${t.deadline ? ` [Hạn: ${t.deadline}]` : ''}${t.day ? ` [Ngày: ${t.day}]` : ''}${t.recurring ? ` [Lặp lại: ${t.recurring}]` : ''}`
-    ).join('\n');
+    const taskList = tasks.map((t, i) => {
+      const fixedRange = (t.fixedStart && t.fixedEnd)
+        ? `${t.fixedStart}-${t.fixedEnd}`
+        : (t.fixedTime || '');
+      const dayList = Array.isArray(t.days) && t.days.length > 0
+        ? t.days.join(', ')
+        : (t.day || '');
+      return `${i + 1}. ${t.title}${t.duration ? ` (${t.duration} phút)` : ''}${t.priority ? ` [Ưu tiên: ${t.priority}]` : ''}${t.deadline ? ` [Hạn: ${t.deadline}]` : ''}${fixedRange ? ` [Khung giờ cố định: ${fixedRange}]` : ''}${t.timeNote ? ` [Ghi chú giờ: ${t.timeNote}]` : ''}${dayList ? ` [Ngày trong tuần: ${dayList}]` : ''}${t.recurring ? ` [Lặp lại: ${t.recurring}]` : ''}`;
+    }).join('\n');
 
     const baseConditions = `
 - Thức dậy: ${wakeUp || '7:00'}
 - Đi ngủ: ${sleep || '23:00'}
 - Thời gian nghỉ giữa các việc: ${breakDuration || 15} phút
 - Giờ tập trung cao: ${focusHours || '8:00-12:00'}
-- Phong cách: ${style || 'balanced'}`;
+- Phong cách: ${style || 'balanced'}
+- Ghi chú bổ sung từ người dùng: ${aiNote ? aiNote : '(không có)'}`;
 
     let prompt, maxTokens;
 
@@ -1199,6 +1241,9 @@ Quy tắc:
 5. Đảm bảo nghỉ trưa, ăn uống, giải trí mỗi ngày
 6. Mỗi ngày nên có ít nhất 1 hoạt động thể dục/giải trí
 7. "type" chỉ được là MỘT trong 5 giá trị: task, break, meal, exercise, free (KHÔNG dùng dạng kết hợp như "task|free")
+8. Nếu công việc có [Khung giờ cố định: HH:mm-HH:mm], BẮT BUỘC xếp đúng khung giờ đó
+9. Nếu công việc có [Ngày trong tuần: ...], chỉ được xếp vào đúng các ngày đó
+10. BẮT BUỘC tuân thủ "Ghi chú bổ sung từ người dùng"; nếu ghi chú yêu cầu giờ đêm cho môn/việc nào thì phải xếp các việc đó vào khung 19:00-23:00
 
 Trả về JSON:
 {
@@ -1236,6 +1281,9 @@ Quy tắc:
 5. Công việc nặng xen kẽ việc nhẹ
 6. Nếu công việc chỉ định ngày cụ thể, hãy xếp đúng ngày đó
 7. "type" chỉ được là MỘT trong 5 giá trị: task, break, meal, exercise, free
+8. Nếu công việc có [Khung giờ cố định: HH:mm-HH:mm], BẮT BUỘC xếp đúng khung giờ đó ở ngày phù hợp
+9. Nếu công việc có [Ngày trong tuần: ...], chỉ được xếp vào đúng các ngày đã chỉ định
+10. BẮT BUỘC tuân thủ "Ghi chú bổ sung từ người dùng"; nếu ghi chú yêu cầu giờ đêm cho môn/việc nào thì phải xếp các việc đó vào khung 19:00-23:00
 
 Trả về JSON:
 {
@@ -1268,6 +1316,8 @@ Quy tắc:
 3. Đảm bảo có thời gian nghỉ hợp lý
 4. Gợi ý thêm hoạt động giải trí/tập thể dục nếu có khoảng trống
 5. "type" chỉ được là MỘT trong 5 giá trị: task, break, meal, exercise, free
+6. Nếu công việc có [Khung giờ cố định: HH:mm-HH:mm], BẮT BUỘC xếp đúng khung giờ đó
+7. BẮT BUỘC tuân thủ "Ghi chú bổ sung từ người dùng"; nếu ghi chú yêu cầu giờ đêm cho môn/việc nào thì phải xếp các việc đó vào khung 19:00-23:00
 
 Trả về JSON:
 {
@@ -1282,23 +1332,565 @@ CHỈ trả về JSON, không thêm text.`;
       maxTokens = 3000;
     }
 
-    const response = await groq.chat.completions.create({
-      model: GROQ_MODEL,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.6,
-      max_tokens: maxTokens
-    });
-
     try {
+      const response = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.6,
+        max_tokens: maxTokens
+      });
+
       const raw = response.choices[0].message.content.trim();
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         parsed._mode = mode;
+        this._applySchedulePreferences(parsed, tasks, preferences, options);
+        this._applyAiNoteConstraints(parsed, tasks, preferences, mode);
+        this._applySchedulePreferences(parsed, tasks, preferences, options);
         return parsed;
       }
-    } catch (e) {}
-    return { schedule: [], tips: [], summary: 'Không thể tạo lịch trình', _mode: mode };
+    } catch (e) {
+      return this._buildFallbackSchedule(tasks, preferences, options, e);
+    }
+
+    return this._buildFallbackSchedule(tasks, preferences, options);
+  }
+
+  _buildFallbackSchedule(tasks, preferences = {}, options = {}, error = null) {
+    const mode = options?.mode || 'single';
+    const dayWindow = this._normalizeDayWindow(preferences?.wakeUp || '07:00', preferences?.sleep || '23:00');
+    const wake = dayWindow.wake;
+    const sleep = dayWindow.sleep;
+    const overnight = !!dayWindow.overnight;
+    const toWindowMinute = (m) => {
+      if (m == null) return null;
+      return overnight && m < wake ? (m + 1440) : m;
+    };
+    const breakDuration = Number(preferences?.breakDuration) || 15;
+
+    const normalizedTasks = (Array.isArray(tasks) ? tasks : []).map(t => ({
+      title: t?.title || 'Công việc',
+      duration: Math.max(15, Number(t?.duration) || 30),
+      priority: t?.priority || '',
+      note: t?.timeNote || '',
+      fixedStart: t?.fixedStart || '',
+      fixedEnd: t?.fixedEnd || '',
+      days: this._normalizeTaskDaysForSchedule(Array.isArray(t?.days) ? t.days : (t?.day ? [t.day] : []))
+    }));
+
+    normalizedTasks.sort((a, b) => {
+      const score = p => (p === 'high' ? 3 : p === 'medium' ? 2 : p === 'low' ? 1 : 0);
+      return score(b.priority) - score(a.priority);
+    });
+
+    const tips = ['AI đang bận hoặc chạm giới hạn lượt gọi, hệ thống đã tạo lịch tự động dự phòng.'];
+    if (error?.message) tips.push('Bạn có thể thử lại sau ít phút để nhận lịch AI chi tiết hơn.');
+
+    if (mode === 'weekly') {
+      const weekDays = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+      const weekly = Object.fromEntries(weekDays.map(d => [d, []]));
+      const cursor = Object.fromEntries(weekDays.map(d => [d, wake]));
+      const focusRange = this._parseTimeRange(preferences?.focusHours || '');
+      const focusCursor = Object.fromEntries(weekDays.map(d => [d, focusRange ? focusRange.start : wake]));
+      const styleMode = String(preferences?.style || 'balanced').toLowerCase();
+      const gap = styleMode === 'productive' ? Math.max(5, breakDuration - 5) : (styleMode === 'relaxed' ? breakDuration + 10 : breakDuration);
+
+      normalizedTasks.forEach((task, i) => {
+        const assignedDays = task.days.length > 0 ? task.days : [weekDays[i % 7]];
+        assignedDays.forEach(day => {
+          const dayKey = weekly[day] ? day : weekDays[i % 7];
+          let start = cursor[dayKey];
+          if (task.fixedStart && task.fixedEnd) {
+            start = toWindowMinute(this._toMinutes(task.fixedStart)) || start;
+          } else if (task.priority === 'high' && focusRange) {
+            start = Math.max(start, focusCursor[dayKey]);
+            if (start < focusRange.start) start = focusRange.start;
+          }
+          let fixedEnd = toWindowMinute(this._toMinutes(task.fixedEnd));
+          if (fixedEnd != null && fixedEnd <= start) fixedEnd += 1440;
+          const end = task.fixedStart && task.fixedEnd
+            ? Math.min(sleep, fixedEnd || (start + task.duration))
+            : Math.min(sleep, start + task.duration);
+          if (end <= start) return;
+          weekly[dayKey].push({ time: this._toHHMM(start), endTime: this._toHHMM(end), title: task.title, type: 'task', note: task.note || 'Lịch dự phòng' });
+          cursor[dayKey] = Math.min(sleep, end + gap);
+          if (task.priority === 'high' && focusRange) {
+            focusCursor[dayKey] = Math.min(focusRange.end, end + gap);
+          }
+        });
+      });
+
+      const fallback = {
+        weekly,
+        tips,
+        summary: 'Đã tạo thời khóa biểu dự phòng do AI tạm thời quá tải.',
+        _mode: 'weekly'
+      };
+
+      this._applySchedulePreferences(fallback, tasks, preferences, options);
+      this._applyAiNoteConstraints(fallback, tasks, preferences, 'weekly');
+      this._applySchedulePreferences(fallback, tasks, preferences, options);
+      return fallback;
+    }
+
+    if (mode === 'multi' && (Number(options?.days) || 1) > 1) {
+      const totalDays = Math.min(7, Math.max(2, Number(options?.days) || 3));
+      const start = options?.startDate ? new Date(options.startDate) : new Date();
+      const days = [];
+      const styleMode = String(preferences?.style || 'balanced').toLowerCase();
+      const gap = styleMode === 'productive' ? Math.max(5, breakDuration - 5) : (styleMode === 'relaxed' ? breakDuration + 10 : breakDuration);
+      const focusRange = this._parseTimeRange(preferences?.focusHours || '');
+      for (let i = 0; i < totalDays; i++) {
+        const d = new Date(start);
+        d.setDate(d.getDate() + i);
+        days.push({ date: d.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' }), schedule: [], _cursor: wake, _focusCursor: focusRange ? focusRange.start : wake });
+      }
+
+      normalizedTasks.forEach((task, i) => {
+        const bucket = days[i % totalDays];
+        let startAt = bucket._cursor;
+        if (task.fixedStart && task.fixedEnd) {
+          startAt = toWindowMinute(this._toMinutes(task.fixedStart)) || startAt;
+        } else if (task.priority === 'high' && focusRange) {
+          startAt = Math.max(startAt, bucket._focusCursor);
+          if (startAt < focusRange.start) startAt = focusRange.start;
+        }
+        let fixedEnd = toWindowMinute(this._toMinutes(task.fixedEnd));
+        if (fixedEnd != null && fixedEnd <= startAt) fixedEnd += 1440;
+        const endAt = task.fixedStart && task.fixedEnd
+          ? Math.min(sleep, fixedEnd || (startAt + task.duration))
+          : Math.min(sleep, startAt + task.duration);
+        if (endAt <= startAt) return;
+        bucket.schedule.push({ time: this._toHHMM(startAt), endTime: this._toHHMM(endAt), title: task.title, type: 'task', note: task.note || 'Lịch dự phòng' });
+        bucket._cursor = Math.min(sleep, endAt + gap);
+        if (task.priority === 'high' && focusRange) {
+          bucket._focusCursor = Math.min(focusRange.end, endAt + gap);
+        }
+      });
+
+      days.forEach(d => { delete d._cursor; delete d._focusCursor; });
+      const fallback = {
+        days,
+        tips,
+        summary: 'Đã tạo lịch nhiều ngày dự phòng do AI tạm thời quá tải.',
+        _mode: 'multi'
+      };
+
+      this._applySchedulePreferences(fallback, tasks, preferences, options);
+      this._applyAiNoteConstraints(fallback, tasks, preferences, 'multi');
+      this._applySchedulePreferences(fallback, tasks, preferences, options);
+      return fallback;
+    }
+
+    const styleMode = String(preferences?.style || 'balanced').toLowerCase();
+    const gap = styleMode === 'productive' ? Math.max(5, breakDuration - 5) : (styleMode === 'relaxed' ? breakDuration + 10 : breakDuration);
+    const focusRange = this._parseTimeRange(preferences?.focusHours || '');
+    let focusCursor = focusRange ? focusRange.start : wake;
+    let cursor = wake;
+    const schedule = [];
+    normalizedTasks.forEach(task => {
+      let startAt = cursor;
+      if (task.fixedStart && task.fixedEnd) {
+        startAt = toWindowMinute(this._toMinutes(task.fixedStart)) || startAt;
+      } else if (task.priority === 'high' && focusRange) {
+        startAt = Math.max(startAt, focusCursor);
+        if (startAt < focusRange.start) startAt = focusRange.start;
+      }
+      let fixedEnd = toWindowMinute(this._toMinutes(task.fixedEnd));
+      if (fixedEnd != null && fixedEnd <= startAt) fixedEnd += 1440;
+      const endAt = task.fixedStart && task.fixedEnd
+        ? Math.min(sleep, fixedEnd || (startAt + task.duration))
+        : Math.min(sleep, startAt + task.duration);
+      if (endAt <= startAt) return;
+      schedule.push({ time: this._toHHMM(startAt), endTime: this._toHHMM(endAt), title: task.title, type: 'task', note: task.note || 'Lịch dự phòng' });
+      cursor = Math.min(sleep, endAt + gap);
+      if (task.priority === 'high' && focusRange) {
+        focusCursor = Math.min(focusRange.end, endAt + gap);
+      }
+    });
+
+    const fallback = {
+      schedule,
+      tips,
+      summary: 'Đã tạo lịch trong ngày dự phòng do AI tạm thời quá tải.',
+      _mode: 'single'
+    };
+    this._applySchedulePreferences(fallback, tasks, preferences, options);
+    this._applyAiNoteConstraints(fallback, tasks, preferences, 'single');
+    this._applySchedulePreferences(fallback, tasks, preferences, options);
+    return fallback;
+  }
+
+  _parseTimeRange(range = '') {
+    const text = String(range || '').trim();
+    const m = text.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+    if (!m) return null;
+    const start = this._toMinutes(m[1]);
+    const end = this._toMinutes(m[2]);
+    if (start == null || end == null || end <= start) return null;
+    return { start, end };
+  }
+
+  _normalizeDayWindow(wakeInput, sleepInput) {
+    let wake = this._toMinutes(wakeInput) ?? (7 * 60);
+    let sleep = this._toMinutes(sleepInput) ?? (23 * 60);
+    let overnight = false;
+
+    if (sleep <= wake) {
+      overnight = true;
+      sleep += 1440;
+    }
+
+    if (sleep - wake < 120) {
+      sleep = wake + 8 * 60;
+    }
+
+    return { wake, sleep, overnight };
+  }
+
+  _applySchedulePreferences(result, tasks, preferences = {}, options = {}) {
+    if (!result || !Array.isArray(tasks) || tasks.length === 0) return;
+
+    const dayWindow = this._normalizeDayWindow(preferences?.wakeUp || '07:00', preferences?.sleep || '23:00');
+    const wake = dayWindow.wake;
+    const sleep = dayWindow.sleep;
+    const overnight = !!dayWindow.overnight;
+    const toWindowMinute = (m) => {
+      if (m == null) return null;
+      return overnight && m < wake ? (m + 1440) : m;
+    };
+    const breakDuration = Number(preferences?.breakDuration) || 15;
+
+    const taskMeta = tasks.map(t => ({
+      normTitle: this._normalizeVNText(t?.title || ''),
+      fixedStart: t?.fixedStart || '',
+      fixedEnd: t?.fixedEnd || '',
+      days: this._normalizeTaskDaysForSchedule(Array.isArray(t?.days) ? t.days : (t?.day ? [t.day] : []))
+    }));
+
+    const enforceItems = (items, dayLabel = '') => {
+      if (!Array.isArray(items)) return;
+
+      // Drop items that violate fixed day constraints
+      if (dayLabel) {
+        const normalizedDay = this._normalizeWeekDayLabel(dayLabel) || this._normalizeWeekDayLabel(this._normalizeVNText(dayLabel));
+        if (normalizedDay) {
+          for (let i = items.length - 1; i >= 0; i--) {
+            const title = this._normalizeVNText(items[i]?.title || '');
+            const meta = taskMeta.find(m => title && title.includes(m.normTitle));
+            if (meta && meta.days.length > 0 && !meta.days.includes(normalizedDay)) {
+              items.splice(i, 1);
+            }
+          }
+        }
+      }
+
+      // Enforce fixed ranges by title match
+      items.forEach(item => {
+        const title = this._normalizeVNText(item?.title || '');
+        const meta = taskMeta.find(m => title && title.includes(m.normTitle));
+        if (meta && meta.fixedStart && meta.fixedEnd) {
+          item.time = meta.fixedStart;
+          item.endTime = meta.fixedEnd;
+        }
+      });
+
+      items.sort((a, b) => {
+        const sa = toWindowMinute(this._toMinutes(a.time)) ?? 0;
+        const sb = toWindowMinute(this._toMinutes(b.time)) ?? 0;
+        return sa - sb;
+      });
+
+      // Clamp to wake/sleep and reflow overlaps with break duration
+      let cursor = wake;
+      items.forEach(item => {
+        const s0 = toWindowMinute(this._toMinutes(item.time)) ?? cursor;
+        let e0 = toWindowMinute(this._toMinutes(item.endTime));
+        if (e0 != null && e0 <= s0) e0 += 1440;
+        let duration = e0 && e0 > s0 ? (e0 - s0) : 60;
+        duration = Math.max(15, Math.min(240, duration));
+
+        let start = Math.max(s0, cursor, wake);
+        let end = Math.min(sleep, start + duration);
+        if (end <= start) {
+          start = Math.max(wake, sleep - duration);
+          end = Math.min(sleep, start + duration);
+        }
+
+        item.time = this._toHHMM(start);
+        item.endTime = this._toHHMM(end);
+        cursor = Math.min(sleep, end + breakDuration);
+      });
+
+      // Re-apply fixed ranges one last time to guarantee exact configured slots
+      items.forEach(item => {
+        const title = this._normalizeVNText(item?.title || '');
+        const meta = taskMeta.find(m => title && title.includes(m.normTitle));
+        if (meta && meta.fixedStart && meta.fixedEnd) {
+          item.time = meta.fixedStart;
+          item.endTime = meta.fixedEnd;
+        }
+      });
+
+      // Remove duplicate entries
+      const seen = new Set();
+      const deduped = [];
+      items.forEach(item => {
+        const key = `${item.time}|${item.endTime}|${this._normalizeVNText(item.title || '')}|${item.type || 'task'}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        deduped.push(item);
+      });
+
+      const isFixedItem = (item) => {
+        const title = this._normalizeVNText(item?.title || '');
+        const meta = taskMeta.find(m => title && title.includes(m.normTitle));
+        return !!(meta && meta.fixedStart && meta.fixedEnd);
+      };
+
+      const shiftItemStart = (item, newStart) => {
+        const s = this._toMinutes(item.time) || wake;
+        const e = this._toMinutes(item.endTime);
+        const dur = Math.max(15, Math.min(240, e && e > s ? (e - s) : 60));
+        let start = Math.max(wake, newStart);
+        if (start > sleep - 15) start = Math.max(wake, sleep - dur);
+        let end = Math.min(sleep, start + dur);
+        if (end <= start) {
+          start = Math.max(wake, sleep - 15);
+          end = Math.min(sleep, start + 15);
+        }
+        item.time = this._toHHMM(start);
+        item.endTime = this._toHHMM(end);
+      };
+
+      deduped.sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')));
+      for (let i = 1; i < deduped.length; i++) {
+        const prev = deduped[i - 1];
+        const curr = deduped[i];
+        const pStart = toWindowMinute(this._toMinutes(prev.time));
+        let pEnd = toWindowMinute(this._toMinutes(prev.endTime));
+        const cStart = toWindowMinute(this._toMinutes(curr.time));
+        let cEnd = toWindowMinute(this._toMinutes(curr.endTime));
+        if (pStart != null && pEnd != null && pEnd <= pStart) pEnd += 1440;
+        if (cStart != null && cEnd != null && cEnd <= cStart) cEnd += 1440;
+        if (pStart == null || pEnd == null || cStart == null || cEnd == null) continue;
+        if (cStart >= pEnd) continue;
+
+        const prevFixed = isFixedItem(prev);
+        const currFixed = isFixedItem(curr);
+
+        if (prevFixed && !currFixed) {
+          shiftItemStart(curr, pEnd + breakDuration);
+        } else if (!prevFixed && currFixed) {
+          const prevDur = Math.max(15, pEnd - pStart);
+          const prevLatestEnd = cStart - breakDuration;
+          const prevNewStart = Math.max(wake, prevLatestEnd - prevDur);
+          if (prevLatestEnd > prevNewStart) {
+            prev.time = this._toHHMM(prevNewStart);
+            prev.endTime = this._toHHMM(prevLatestEnd);
+          } else {
+            shiftItemStart(curr, pEnd + breakDuration);
+          }
+        } else if (!prevFixed && !currFixed) {
+          shiftItemStart(curr, pEnd + breakDuration);
+        }
+      }
+
+      // Remove free blocks that overlap with non-free activities
+      const nonFree = deduped
+        .filter(i => String(i.type || '').toLowerCase() !== 'free')
+        .map(i => {
+          const s = toWindowMinute(this._toMinutes(i.time));
+          let e = toWindowMinute(this._toMinutes(i.endTime));
+          if (s != null && e != null && e <= s) e += 1440;
+          return { s, e };
+        })
+        .filter(i => i.s != null && i.e != null && i.e > i.s);
+
+      const cleaned = deduped.filter(i => {
+        const s = toWindowMinute(this._toMinutes(i.time));
+        let e = toWindowMinute(this._toMinutes(i.endTime));
+        if (s != null && e != null && e <= s) e += 1440;
+        if (s == null || e == null || e <= s) return false;
+        if (String(i.type || '').toLowerCase() !== 'free') return true;
+        const overlaps = nonFree.some(nf => Math.max(s, nf.s) < Math.min(e, nf.e));
+        return !overlaps;
+      });
+
+      // Keep at most one entry per user task title per day to avoid duplicates.
+      const userTaskTitles = taskMeta.map(m => m.normTitle).filter(Boolean);
+      const titleSeen = new Set();
+      const uniqueByUserTask = cleaned.filter(item => {
+        const normTitle = this._normalizeVNText(item?.title || '');
+        const matched = userTaskTitles.find(t => normTitle && normTitle.includes(t));
+        if (!matched) return true;
+        if (titleSeen.has(matched)) return false;
+        titleSeen.add(matched);
+        return true;
+      });
+
+      items.splice(0, items.length, ...uniqueByUserTask.sort((a, b) => {
+        const sa = toWindowMinute(this._toMinutes(a.time)) ?? 0;
+        const sb = toWindowMinute(this._toMinutes(b.time)) ?? 0;
+        return sa - sb;
+      }));
+    };
+
+    if (result._mode === 'weekly' && result.weekly) {
+      Object.keys(result.weekly).forEach(day => enforceItems(result.weekly[day], day));
+    } else if (result._mode === 'multi' && Array.isArray(result.days)) {
+      result.days.forEach(day => enforceItems(day?.schedule, day?.date || ''));
+    } else {
+      enforceItems(result.schedule || []);
+    }
+  }
+
+  _normalizeTaskDaysForSchedule(days = []) {
+    const list = Array.isArray(days) ? days : [days];
+    const normalized = [];
+    const seen = new Set();
+    list.forEach(day => {
+      const val = this._normalizeWeekDayLabel(day);
+      if (val && !seen.has(val)) {
+        seen.add(val);
+        normalized.push(val);
+      }
+    });
+    return normalized;
+  }
+
+  _normalizeWeekDayLabel(day) {
+    const raw = String(day || '').trim();
+    if (!raw) return '';
+
+    const directMap = {
+      '2': 'Thứ 2',
+      '3': 'Thứ 3',
+      '4': 'Thứ 4',
+      '5': 'Thứ 5',
+      '6': 'Thứ 6',
+      '7': 'Thứ 7',
+      '8': 'Chủ nhật'
+    };
+    if (directMap[raw]) return directMap[raw];
+
+    const norm = this._normalizeVNText(raw).replace(/\s+/g, '');
+    const map = {
+      t2: 'Thứ 2', thu2: 'Thứ 2',
+      t3: 'Thứ 3', thu3: 'Thứ 3',
+      t4: 'Thứ 4', thu4: 'Thứ 4',
+      t5: 'Thứ 5', thu5: 'Thứ 5',
+      t6: 'Thứ 6', thu6: 'Thứ 6',
+      t7: 'Thứ 7', thu7: 'Thứ 7',
+      cn: 'Chủ nhật', chunhat: 'Chủ nhật', chủnhật: 'Chủ nhật'
+    };
+
+    if (map[norm]) return map[norm];
+    if (/^thu[2-7]$/.test(norm)) return `Thứ ${norm.slice(3)}`;
+    return '';
+  }
+
+  _normalizeVNText(text = '') {
+    return String(text)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  _toMinutes(timeStr) {
+    if (!timeStr || !/^\d{1,2}:\d{2}$/.test(String(timeStr))) return null;
+    const [h, m] = String(timeStr).split(':').map(Number);
+    return h * 60 + m;
+  }
+
+  _toHHMM(minutes) {
+    const safe = ((Math.round(minutes) % 1440) + 1440) % 1440;
+    const h = Math.floor(safe / 60);
+    const m = safe % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  _applyNightFocusToItems(items, targetTitles, sleepMinutes) {
+    if (!Array.isArray(items) || items.length === 0 || targetTitles.length === 0) return 0;
+
+    const defaultNightStart = 19 * 60;
+    const nightEnd = Math.min(23 * 60, sleepMinutes || 23 * 60);
+    let cursor = defaultNightStart;
+    let changed = 0;
+
+    items.forEach(item => {
+      const titleNorm = this._normalizeVNText(item?.title || '');
+      const matched = targetTitles.some(t => titleNorm.includes(t));
+      if (!matched) return;
+
+      const current = this._toMinutes(item.time);
+      const inNightRange = current != null && current >= defaultNightStart && current <= nightEnd;
+      if (inNightRange) return;
+
+      const start = Math.min(cursor, Math.max(defaultNightStart, nightEnd - 45));
+      let duration = 60;
+      const startNow = this._toMinutes(item.time);
+      const endNow = this._toMinutes(item.endTime);
+      if (startNow != null && endNow != null && endNow > startNow) {
+        duration = Math.max(30, Math.min(180, endNow - startNow));
+      }
+
+      item.time = this._toHHMM(start);
+      item.endTime = this._toHHMM(Math.min(nightEnd, start + duration));
+      cursor = Math.min(nightEnd - 30, start + duration + 15);
+      changed += 1;
+    });
+
+    items.sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')));
+    return changed;
+  }
+
+  _applyAiNoteConstraints(scheduleResult, tasks, preferences, mode) {
+    const note = this._normalizeVNText(preferences?.aiNote || '');
+    if (!note) return;
+
+    const wantsNight = /buoi\s*dem|gio\s*dem|ban\s*dem|dem|toi/.test(note);
+    if (!wantsNight) return;
+
+    const shouldTargetEnglish = /tieng\s*anh|english/.test(note);
+    const shouldTargetCode = /code|lap\s*trinh|programming/.test(note);
+    if (!shouldTargetEnglish && !shouldTargetCode) return;
+
+    const targetTokens = [];
+    if (shouldTargetEnglish) targetTokens.push('tieng anh', 'english');
+    if (shouldTargetCode) targetTokens.push('code', 'lap trinh', 'programming');
+
+    const taskTitleTokens = (Array.isArray(tasks) ? tasks : [])
+      .map(t => this._normalizeVNText(t?.title || ''))
+      .filter(Boolean)
+      .filter(title => targetTokens.some(token => title.includes(token)));
+
+    const targetTitles = [...new Set([...taskTitleTokens, ...targetTokens])];
+    if (targetTitles.length === 0) return;
+
+    const sleepMinutes = this._toMinutes(preferences?.sleep || '23:00') || 23 * 60;
+    let changedCount = 0;
+
+    if (mode === 'weekly' && scheduleResult?.weekly) {
+      Object.keys(scheduleResult.weekly).forEach(day => {
+        changedCount += this._applyNightFocusToItems(scheduleResult.weekly[day], targetTitles, sleepMinutes);
+      });
+    } else if (mode === 'multi' && Array.isArray(scheduleResult?.days)) {
+      scheduleResult.days.forEach(day => {
+        changedCount += this._applyNightFocusToItems(day?.schedule, targetTitles, sleepMinutes);
+      });
+    } else if (Array.isArray(scheduleResult?.schedule)) {
+      changedCount += this._applyNightFocusToItems(scheduleResult.schedule, targetTitles, sleepMinutes);
+    }
+
+    if (changedCount > 0) {
+      if (!Array.isArray(scheduleResult.tips)) scheduleResult.tips = [];
+      scheduleResult.tips.unshift('Đã ưu tiên xếp các việc tiếng Anh/code vào khung giờ buổi đêm theo ghi chú của bạn.');
+      if (scheduleResult.summary) {
+        scheduleResult.summary += ' Đã áp dụng ghi chú giờ đêm cho các môn/việc liên quan.';
+      }
+    }
   }
 
   // ==================== LISTENING PRACTICE ====================

@@ -101,6 +101,20 @@
   }
 }
 
+.recurrence-select,
+.project-input {
+  @include input-base;
+  padding: 6px 10px;
+}
+
+.recurrence-select {
+  cursor: pointer;
+}
+
+.project-input {
+  min-width: 150px;
+}
+
 .deadline-input {
   &::-webkit-calendar-picker-indicator {
     opacity: .5;
@@ -199,6 +213,7 @@
 // ---- Description Textarea ----
 .form-desc-row {
   display: flex;
+  gap: 8px;
 }
 
 .desc-input {
@@ -222,4 +237,79 @@
   &::placeholder {
     color: var(--text-4);
   }
+}
+
+.btn-templates {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: .76rem;
+  font-family: inherit;
+  padding: 0 12px;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: var(--stone-400);
+    background: var(--stone-100);
+  }
+}
+
+.templates-dropdown {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 6px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.template-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--stone-50);
+  }
+}
+
+.template-name {
+  font-size: .78rem;
+  color: var(--text-2);
+}
+
+.template-meta {
+  font-size: .68rem;
+  color: var(--text-4);
+}
+
+.template-del {
+  border: none;
+  background: transparent;
+  color: var(--text-4);
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+}
+
+.template-add {
+  grid-template-columns: 1fr;
+  font-size: .76rem;
+  color: var(--accent-dark);
+  border-top: 1px solid var(--border-lt);
+  margin-top: 4px;
+  padding-top: 10px;
 }

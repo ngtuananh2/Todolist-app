@@ -2,33 +2,38 @@
 
 /* --- CSS Variables (match main app) --- */
 :root {
-  --bg: #f8f7f6;
+  --bg: #f4f3f1;
   --card-bg: #ffffff;
-  --text: #1a1a1a;
-  --text-2: #6b7280;
-  --text-3: #9ca3af;
-  --border: #e5e5e5;
-  --hover: #f3f4f6;
+  --surface: #ffffff;
+  --text: #2c2825;
+  --text-2: #5c5650;
+  --text-3: #918a84;
+  --border: #e5e3e0;
+  --hover: #edeae7;
   --accent: #7c7268;
-  --accent-soft: rgba(124,114,104,0.10);
+  --accent-dark: #5e554d;
+  --accent-soft: #edeae7;
+  --nav-h: 56px;
   --shadow: 0 1px 3px rgba(0,0,0,0.06);
   --shadow-lg: 0 8px 30px rgba(0,0,0,0.10);
   --radius: 10px;
   --radius-sm: 6px;
-  --danger: #ef4444;
-  --success: #22c55e;
+  --danger: #b86565;
+  --success: #6d8f63;
 }
 
 [data-theme="dark"] {
-  --bg: #181818;
-  --card-bg: #232323;
-  --text: #e5e5e5;
-  --text-2: #a0a0a0;
-  --text-3: #6b6b6b;
-  --border: #333;
-  --hover: #2a2a2a;
-  --accent: #b8a99a;
-  --accent-soft: rgba(184,169,154,0.13);
+  --bg: #1a1918;
+  --card-bg: #252321;
+  --surface: #252321;
+  --text: #e5e2de;
+  --text-2: #b5b0a9;
+  --text-3: #8a847d;
+  --border: #3a3632;
+  --hover: #2e2a26;
+  --accent: #a09486;
+  --accent-dark: #e7e5e4;
+  --accent-soft: #2e2a26;
   --shadow: 0 1px 3px rgba(0,0,0,0.2);
   --shadow-lg: 0 8px 30px rgba(0,0,0,0.3);
 }
@@ -134,13 +139,15 @@ body {
 
 /* --- Main Layout --- */
 .sb-main {
-  padding: 24px 0 60px;
+  padding-top: var(--nav-h, 56px);
+  padding-bottom: 60px;
+  min-height: 100vh;
 }
 
 .sb-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 28px;
+  padding: 32px 28px;
 }
 
 /* --- Header --- */

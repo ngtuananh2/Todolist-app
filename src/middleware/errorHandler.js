@@ -1,6 +1,12 @@
 // ==================== GLOBAL ERROR HANDLER ====================
 
 function errorHandler(err, req, res, _next) {
+  // Check if headers already sent
+  if (res.headersSent) {
+    console.error(`[ERROR] Headers already sent for ${req.method} ${req.url}:`, err.message);
+    return;
+  }
+
   console.error(`[ERROR] ${req.method} ${req.url}:`, err.message);
 
   // MongoDB duplicate key error

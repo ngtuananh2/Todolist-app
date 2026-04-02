@@ -3,6 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('theme') === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
   <title>TaskFlow — Hôm nay</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,15 +24,11 @@
   <!-- ===== NAVBAR ===== -->
   <nav class="navbar">
     <div class="nav-inner">
-      <a href="/" class="logo">
+      <a href="/dashboard.html" class="logo">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         <span>TaskFlow</span>
       </a>
       <div class="nav-center">
-        <a href="/dashboard.html" class="nav-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
-          Dashboard
-        </a>
         <a href="/today.html" class="nav-link active">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           Hôm nay
@@ -67,8 +72,8 @@
   </nav>
 
   <!-- ===== MAIN ===== -->
-  <main class="today-main">
-    <div class="today-container">
+  <main class="today-main app-main-shell">
+    <div class="today-container app-content-shell">
       <div class="today-header">
         <div>
           <h1>🎯 Hôm nay</h1>

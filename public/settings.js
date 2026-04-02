@@ -3,6 +3,7 @@
   'use strict';
 
   const SETTINGS_KEY = 'taskflow_settings';
+  const REMINDER_KEY = 'taskflow_smart_reminders';
 
   // Default settings
   const DEFAULTS = {
@@ -12,8 +13,11 @@
     pomoLong: 15,
     notifDeadline: true,
     notifVocab: true,
-    notifHabit: true
+    notifHabit: true,
+    notifSchedule: true
   };
+
+  let fallbackToastTimer = null;
 
   // ── Load / Save ──
   function loadSettings() {
@@ -25,6 +29,62 @@
 
   function saveSettings(settings) {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  }
+
+  function updateSettings(patch) {
+    const current = loadSettings();
+    const next = { ...current, ...patch };
+    saveSettings(next);
+    return next;
+  }
+
+  function loadReminderState() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(REMINDER_KEY) || '{}');
+      return {
+        enabled: Boolean(raw.enabled),
+        snoozed: raw.snoozed && typeof raw.snoozed === 'object' ? raw.snoozed : {},
+        fired: raw.fired && typeof raw.fired === 'object' ? raw.fired : {}
+      };
+    } catch {
+      return { enabled: false, snoozed: {}, fired: {} };
+    }
+  }
+
+  function saveReminderState(state) {
+    localStorage.setItem(REMINDER_KEY, JSON.stringify(state));
+  }
+
+  function getNotifPermission() {
+    try {
+      if (!('Notification' in window)) return 'unsupported';
+      return Notification.permission;
+    } catch {
+      return 'unsupported';
+    }
+  }
+
+  function setThemeByToggle(checked) {
+    const next = checked ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    document.body?.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    if (window.globalUtils?.updateThemeIcons) {
+      window.globalUtils.updateThemeIcons(next);
+    }
+  }
+
+  async function exportBackupFallback() {
+    const res = await fetch('/api/dashboard/backup');
+    if (!res.ok) throw new Error('Không thể sao lưu dữ liệu');
+    const data = await res.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `taskflow-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   // ── Apply settings to the page ──
@@ -66,9 +126,11 @@
     const notifDeadline = document.getElementById('setting-notif-deadline');
     const notifVocab = document.getElementById('setting-notif-vocab');
     const notifHabit = document.getElementById('setting-notif-habit');
+    const notifSchedule = document.getElementById('setting-notif-schedule');
     if (notifDeadline) notifDeadline.checked = settings.notifDeadline !== false;
     if (notifVocab) notifVocab.checked = settings.notifVocab !== false;
     if (notifHabit) notifHabit.checked = settings.notifHabit !== false;
+    if (notifSchedule) notifSchedule.checked = settings.notifSchedule === true;
 
     // Notification permission button
     updateNotifPermBtn();
@@ -77,38 +139,38 @@
   function updateNotifPermBtn() {
     const btn = document.getElementById('setting-notif-perm');
     if (!btn) return;
-    if (!('Notification' in window)) {
+    const permission = getNotifPermission();
+    if (permission === 'unsupported') {
       btn.textContent = 'Không hỗ trợ';
       btn.disabled = true;
       btn.style.opacity = '.5';
-    } else if (Notification.permission === 'granted') {
+    } else if (permission === 'granted') {
       btn.textContent = '✅ Đã cấp quyền';
-      btn.disabled = true;
-      btn.style.opacity = '.7';
-    } else if (Notification.permission === 'denied') {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    } else if (permission === 'denied') {
       btn.textContent = '❌ Đã từ chối';
-      btn.disabled = true;
-      btn.style.opacity = '.5';
+      btn.disabled = false;
+      btn.style.opacity = '1';
     } else {
       btn.textContent = 'Cấp quyền';
       btn.disabled = false;
+      btn.style.opacity = '1';
     }
   }
 
   // ── Bind events ──
   function bindEvents() {
-    const settings = loadSettings();
-
     // Dark mode
-    document.getElementById('setting-dark-mode')?.addEventListener('change', (e) => {
-      if (window.globalUtils?.toggleTheme) window.globalUtils.toggleTheme();
+    document.getElementById('setting-dark-mode')?.addEventListener('change', () => {
+      const darkToggle = document.getElementById('setting-dark-mode');
+      setThemeByToggle(Boolean(darkToggle?.checked));
     });
 
     // Font
     document.getElementById('setting-font')?.addEventListener('change', function () {
-      settings.font = this.value;
-      saveSettings(settings);
-      applySettings(settings);
+      const next = updateSettings({ font: this.value });
+      applySettings(next);
       showToast('Đã đổi font chữ');
     });
 
@@ -117,54 +179,111 @@
       document.getElementById(id)?.addEventListener('change', function () {
         const val = Math.max(1, parseInt(this.value) || 1);
         this.value = val;
-        const s = loadSettings();
-        if (id === 'setting-pomo-work') s.pomoWork = val;
-        if (id === 'setting-pomo-short') s.pomoShort = val;
-        if (id === 'setting-pomo-long') s.pomoLong = val;
-        saveSettings(s);
-        applySettings(s);
+        const patch = {};
+        if (id === 'setting-pomo-work') patch.pomoWork = val;
+        if (id === 'setting-pomo-short') patch.pomoShort = val;
+        if (id === 'setting-pomo-long') patch.pomoLong = val;
+        const next = updateSettings(patch);
+        applySettings(next);
         showToast('Đã cập nhật thời gian Pomodoro');
       });
     });
 
     // Notification toggles
     document.getElementById('setting-notif-deadline')?.addEventListener('change', function () {
-      const s = loadSettings();
-      s.notifDeadline = this.checked;
-      saveSettings(s);
+      updateSettings({ notifDeadline: this.checked });
       showToast(this.checked ? 'Bật nhắc deadline' : 'Tắt nhắc deadline');
     });
 
     document.getElementById('setting-notif-vocab')?.addEventListener('change', function () {
-      const s = loadSettings();
-      s.notifVocab = this.checked;
-      saveSettings(s);
+      updateSettings({ notifVocab: this.checked });
       showToast(this.checked ? 'Bật nhắc từ vựng' : 'Tắt nhắc từ vựng');
     });
 
     document.getElementById('setting-notif-habit')?.addEventListener('change', function () {
-      const s = loadSettings();
-      s.notifHabit = this.checked;
-      saveSettings(s);
+      updateSettings({ notifHabit: this.checked });
       showToast(this.checked ? 'Bật nhắc thói quen' : 'Tắt nhắc thói quen');
+    });
+
+    document.getElementById('setting-notif-schedule')?.addEventListener('change', function () {
+      updateSettings({ notifSchedule: this.checked });
+
+      const reminder = loadReminderState();
+      reminder.enabled = this.checked;
+      saveReminderState(reminder);
+
+      showToast(this.checked ? 'Bật nhắc lịch trình thông minh' : 'Tắt nhắc lịch trình thông minh');
     });
 
     // Notification permission
     document.getElementById('setting-notif-perm')?.addEventListener('click', async () => {
-      if ('Notification' in window && Notification.permission === 'default') {
-        const perm = await Notification.requestPermission();
-        updateNotifPermBtn();
-        if (perm === 'granted') {
-          showToast('Đã cấp quyền thông báo!', 'success');
-        }
+      const permission = getNotifPermission();
+      if (permission === 'unsupported') {
+        showToast('Trình duyệt không hỗ trợ Notification API', 'error');
+        return;
       }
+
+      if (permission === 'granted') {
+        showToast('Quyền thông báo đã được cấp trước đó.', 'info');
+        updateNotifPermBtn();
+        return;
+      }
+
+      if (permission === 'denied') {
+        showToast('Bạn đã chặn thông báo cho trang này. Hãy mở Site settings của trình duyệt để cho phép lại.', 'warning');
+        updateNotifPermBtn();
+        return;
+      }
+
+      const perm = await Notification.requestPermission();
+      updateNotifPermBtn();
+      if (perm === 'granted') {
+        showToast('Đã cấp quyền thông báo!', 'success');
+      } else if (perm === 'denied') {
+        showToast('Bạn vừa từ chối quyền thông báo.', 'warning');
+      } else {
+        showToast('Chưa chọn quyền thông báo.', 'info');
+      }
+    });
+
+    document.getElementById('setting-notif-test')?.addEventListener('click', async () => {
+      const permission = getNotifPermission();
+      if (permission === 'unsupported') {
+        showToast('Trình duyệt không hỗ trợ Notification API', 'error');
+        return;
+      }
+
+      if (location.hostname !== 'localhost' && location.protocol !== 'https:') {
+        showToast('Thông báo chỉ hoạt động trên HTTPS hoặc localhost', 'warning');
+        return;
+      }
+
+      if (permission === 'default') {
+        await Notification.requestPermission();
+      }
+
+      if (Notification.permission !== 'granted') {
+        showToast('Chưa có quyền thông báo. Hãy bấm "Cấp quyền" trước.', 'warning');
+        updateNotifPermBtn();
+        return;
+      }
+
+      new Notification('TaskFlow', {
+        body: 'Thông báo thử đã hoạt động trên localhost ✅'
+      });
+      showToast('Đã gửi thông báo thử!', 'success');
     });
 
     // Backup
     document.getElementById('setting-backup')?.addEventListener('click', () => {
       if (window.globalUtils?.exportBackup) {
         window.globalUtils.exportBackup();
+        return;
       }
+
+      exportBackupFallback()
+        .then(() => showToast('Đã tải bản sao lưu!', 'success'))
+        .catch((e) => showToast(e.message || 'Lỗi tạo backup', 'error'));
     });
 
     // Restore
@@ -235,7 +354,41 @@
   function showToast(msg, type = 'success') {
     if (window.globalUtils?.guToast) {
       window.globalUtils.guToast(msg, type);
+      return;
     }
+
+    let fallback = document.getElementById('st-fallback-toast');
+    if (!fallback) {
+      fallback = document.createElement('div');
+      fallback.id = 'st-fallback-toast';
+      fallback.style.position = 'fixed';
+      fallback.style.right = '16px';
+      fallback.style.bottom = '16px';
+      fallback.style.zIndex = '9999';
+      fallback.style.padding = '10px 14px';
+      fallback.style.borderRadius = '10px';
+      fallback.style.fontSize = '13px';
+      fallback.style.color = '#fff';
+      fallback.style.maxWidth = '320px';
+      fallback.style.boxShadow = '0 10px 24px rgba(0,0,0,.2)';
+      document.body.appendChild(fallback);
+    }
+
+    const colorByType = {
+      success: '#16a34a',
+      error: '#dc2626',
+      warning: '#d97706',
+      info: '#2563eb'
+    };
+
+    fallback.style.background = colorByType[type] || colorByType.info;
+    fallback.textContent = msg;
+    fallback.style.display = 'block';
+
+    clearTimeout(fallbackToastTimer);
+    fallbackToastTimer = setTimeout(() => {
+      fallback.style.display = 'none';
+    }, 2600);
   }
 
   // ── Nav date ──
@@ -251,9 +404,25 @@
   function init() {
     setNavDate();
     const settings = loadSettings();
-    populateForm(settings);
-    applySettings(settings);
-    bindEvents();
+
+    try {
+      populateForm(settings);
+    } catch (e) {
+      console.error('[settings] populateForm failed:', e);
+    }
+
+    try {
+      applySettings(settings);
+    } catch (e) {
+      console.error('[settings] applySettings failed:', e);
+    }
+
+    try {
+      bindEvents();
+    } catch (e) {
+      console.error('[settings] bindEvents failed:', e);
+      showToast('Lỗi khởi tạo trang cài đặt', 'error');
+    }
   }
 
   if (document.readyState === 'loading') {

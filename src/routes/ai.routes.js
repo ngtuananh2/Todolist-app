@@ -11,6 +11,18 @@ function sendAIError(res, err, fallbackMessage) {
   });
 }
 
+function isRecoverableAIError(err) {
+  const text = String(err?.message || '');
+  return err?.status === 429 || /rate\s*limit|rate_limit_exceeded|too many requests|timeout|network|fetch failed|socket|econnreset|etimedout/i.test(text);
+}
+
+function buildUnavailableReply(page = 'todo') {
+  const pageHint = page === 'schedule'
+    ? 'Bạn vẫn có thể bấm "AI Lên lịch" để dùng chế độ dự phòng.'
+    : 'Bạn có thể thử lại sau ít phút.';
+  return `⚠️ AI đang bận hoặc tạm thời mất kết nối. ${pageHint}`;
+}
+
 // ==================== AI CHAT ROUTES ====================
 
 // POST /api/ai/chat
@@ -26,6 +38,13 @@ router.post('/chat', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('AI Error:', err);
+    const { page } = req.body || {};
+    if (isRecoverableAIError(err)) {
+      return res.status(200).json({
+        reply: buildUnavailableReply(page || 'todo'),
+        actions: []
+      });
+    }
     sendAIError(res, err, 'Lỗi kết nối AI');
   }
 });
@@ -170,6 +189,15 @@ router.post('/schedule', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('AI Schedule Error:', err);
+
+    const body = req.body || {};
+    const tasks = Array.isArray(body.tasks) ? body.tasks : [];
+
+    if (tasks.length > 0 && typeof aiService._buildFallbackSchedule === 'function') {
+      const fallback = aiService._buildFallbackSchedule(tasks, body.preferences || {}, body.options || {}, err);
+      return res.status(200).json(fallback);
+    }
+
     sendAIError(res, err, 'Lỗi tạo lịch trình');
   }
 });
@@ -183,6 +211,13 @@ router.post('/conversation', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('AI Conversation Error:', err);
+    if (isRecoverableAIError(err)) {
+      return res.status(200).json({
+        reply: '⚠️ AI luyện hội thoại đang bận. Bạn thử lại sau ít phút nhé.',
+        corrections: [],
+        suggestions: []
+      });
+    }
     sendAIError(res, err, 'Lỗi luyện hội thoại');
   }
 });

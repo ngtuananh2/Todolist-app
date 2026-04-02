@@ -61,6 +61,18 @@
     font-size: .78rem;
   }
 
+  .tabs-bar {
+    align-items: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tabs-right {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
   .todo-actions {
     opacity: 1;
   }
@@ -68,6 +80,18 @@
   .form-options-row {
     flex-direction: column;
     gap: 6px;
+  }
+
+  .form-option {
+    width: 100%;
+  }
+
+  .deadline-input,
+  .priority-select,
+  .recurrence-select,
+  .project-input,
+  .form-tags-select {
+    width: 100%;
   }
 }
 

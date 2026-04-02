@@ -103,6 +103,8 @@
       `).join('')}
     `;
 
+  }
+
   // Theme is handled by global-utils.js
   function setupTheme() { /* handled by global-utils.js */ }
 

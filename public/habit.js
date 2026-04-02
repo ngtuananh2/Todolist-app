@@ -551,15 +551,28 @@ async function renderHeatmap(habitFilter) {
   try {
     const ds = dates[0]; const de = dates[dates.length - 1];
     const res = await fetch(`/api/habits/logs?start=${ds}&end=${de}`);
-    const allLogs = await res.json();
+    const rawLogs = await res.json();
 
     // Count per date
     const countMap = {};
-    allLogs.forEach(l => {
-      if (l.done && (habitFilter === 'all' || l.habitId === habitFilter)) {
-        countMap[l.date] = (countMap[l.date] || 0) + 1;
-      }
-    });
+
+    // Current API returns: { [habitId]: ['YYYY-MM-DD', ...] }
+    // Backward compatibility: support array logs [{ habitId, date, done }, ...]
+    if (Array.isArray(rawLogs)) {
+      rawLogs.forEach(l => {
+        if (l.done && (habitFilter === 'all' || String(l.habitId) === String(habitFilter))) {
+          countMap[l.date] = (countMap[l.date] || 0) + 1;
+        }
+      });
+    } else {
+      const logsByHabit = rawLogs && typeof rawLogs === 'object' ? rawLogs : {};
+      Object.entries(logsByHabit).forEach(([hid, dateList]) => {
+        if (habitFilter !== 'all' && String(hid) !== String(habitFilter)) return;
+        (Array.isArray(dateList) ? dateList : []).forEach(date => {
+          countMap[date] = (countMap[date] || 0) + 1;
+        });
+      });
+    }
 
     const maxCount = Math.max(1, ...Object.values(countMap));
     const getLevel = c => { if (!c) return 0; const r = c / maxCount; if (r <= 0.25) return 1; if (r <= 0.5) return 2; if (r <= 0.75) return 3; return 4; };
