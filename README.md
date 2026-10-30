@@ -24,6 +24,10 @@ Repository có sẵn [render.yaml](./render.yaml) cho Render Free. Cách triển
 5. Sau khi deploy, Render cấp địa chỉ dạng `https://taskflow-personal.onrender.com`.
 6. Mở địa chỉ đó trên điện thoại bằng Chrome rồi chọn **Thêm vào màn hình chính**.
 
+### Đăng nhập cá nhân
+
+Đặt `AUTH_SESSION_SECRET` thành một giá trị bí mật dài trên môi trường production. Giao diện đăng nhập nằm ở `/auth.html`; email và mật khẩu được lưu dưới dạng băm bằng `scrypt`, không lưu mật khẩu rõ. Google OAuth chưa bật cho đến khi cấu hình thông tin OAuth của riêng ứng dụng.
+
 Gói Free có thể tạm dừng khi không có truy cập, nên lần mở đầu có thể chậm. Không đưa ứng dụng lên Internet trước khi bật đăng nhập/phân quyền; bản hiện tại vẫn là bản cá nhân chưa có lớp bảo vệ tài khoản đầy đủ.
 
 ## Email nhắc lịch

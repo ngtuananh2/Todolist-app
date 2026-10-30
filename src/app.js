@@ -19,6 +19,7 @@ const tradingRoutes = require('./routes/trading.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const scheduleRoutes = require('./routes/schedule.routes');
+const authRoutes = require('./routes/auth.routes');
 
 // ==================== EXPRESS APP SETUP ====================
 
@@ -51,6 +52,7 @@ function createApp({ databaseReady } = {}) {
     app.use('/api', databaseReadyMiddleware(databaseReady));
   }
   app.use(cacheMiddleware);
+  app.use('/api/auth', authRoutes);
 
   // ---- Rate Limiting for AI routes ----
   app.use('/api/ai', rateLimiter(30, 60000));   // 30 requests/min for AI

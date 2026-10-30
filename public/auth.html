@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#6366f1">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/pwa-icon.svg">
+  <title>TaskFlow - Đăng nhập</title>
+  <link rel="stylesheet" href="/global-utils.css">
+  <style>
+    body { align-items: center; background: var(--bg, #0a0e1a); color: var(--text, #f1f5f9); display: flex; justify-content: center; margin: 0; min-height: 100vh; padding: 20px; }
+    main { background: var(--surface, #111827); border: 1px solid var(--border, #334155); border-radius: 18px; max-width: 420px; padding: 32px; width: 100%; }
+    h1 { margin: 0 0 8px; } p { color: var(--text-3, #94a3b8); line-height: 1.5; }
+    label { display: block; font-size: 13px; font-weight: 700; margin: 18px 0 6px; }
+    input { background: transparent; border: 1px solid var(--border, #334155); border-radius: 9px; color: inherit; padding: 12px; width: 100%; }
+    button { background: var(--accent, #818cf8); border: 0; border-radius: 9px; cursor: pointer; font-weight: 700; margin-top: 20px; padding: 12px; width: 100%; }
+    #auth-error { color: #f87171; min-height: 20px; }
+    .switch { background: transparent; color: var(--accent, #818cf8); margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>TaskFlow</h1>
+    <p id="auth-description">Đăng nhập để đồng bộ dữ liệu giữa máy tính và điện thoại.</p>
+    <form id="auth-form">
+      <label for="auth-email">Email</label>
+      <input id="auth-email" type="email" autocomplete="email" required>
+      <label for="auth-password">Mật khẩu</label>
+      <input id="auth-password" type="password" minlength="10" autocomplete="current-password" required>
+      <div id="auth-error" role="alert"></div>
+      <button id="auth-submit" type="submit">Đăng nhập</button>
+    </form>
+    <button class="switch" id="auth-switch" type="button">Tạo tài khoản mới</button>
+  </main>
+  <script src="/auth.js"></script>
+</body>
+</html>

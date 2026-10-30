@@ -3,6 +3,14 @@ const mongoose = require('mongoose');
 // ==================== MONGODB CONFIG ====================
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/TaskFlowDB';
 
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  passwordHash: { type: String, required: true },
+  passwordSalt: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
 function getSafeMongoTarget(uri) {
   try {
     const parsed = new URL(uri);
@@ -349,5 +357,6 @@ const Vocab = mongoose.model('Vocab', vocabSchema);
 const EnglishMindmap = mongoose.model('EnglishMindmap', englishMindmapSchema);
 const Trade = mongoose.model('Trade', tradeSchema);
 const TradingAccount = mongoose.model('TradingAccount', tradingAccountSchema);
+const User = mongoose.model('User', userSchema);
 
-module.exports = { connectDB, Todo, Schedule, Tag, Habit, HabitLog, Note, NoteVersion, EnglishProgress, Vocab, EnglishMindmap, Trade, TradingAccount, mongoose };
+module.exports = { connectDB, Todo, Schedule, Tag, Habit, HabitLog, Note, NoteVersion, EnglishProgress, Vocab, EnglishMindmap, Trade, TradingAccount, User, mongoose };

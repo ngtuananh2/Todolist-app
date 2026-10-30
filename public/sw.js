@@ -8,6 +8,8 @@ const APP_SHELL = [
   '/english.html',
   '/schedule.html',
   '/settings.html',
+  '/auth.html',
+  '/auth.js',
   '/style.css',
   '/global-utils.css',
   '/global-utils.js',
