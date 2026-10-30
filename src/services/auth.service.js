@@ -60,23 +60,26 @@ async function register(email, password) {
   if (existing) throw new Error('Email này đã được đăng ký');
   const { passwordHash, passwordSalt } = hashPassword(password);
   const user = await User.create({ email: normalizedEmail, passwordHash, passwordSalt });
-  if (await User.countDocuments() === 1) {
-    await Promise.all([
-      Todo.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-      Schedule.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-      Tag.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-      Habit.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-      HabitLog.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-      Note.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-      NoteVersion.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-      EnglishProgress.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-      Vocab.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-      EnglishMindmap.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-      Trade.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-      TradingAccount.updateMany({ ownerId: null }, { $set: { ownerId: user._id } })
-    ]);
-  }
+  await claimLegacyData(user);
   return { id: user.id, email: user.email };
+}
+
+async function claimLegacyData(user) {
+  if (await User.countDocuments() !== 1) return;
+  await Promise.all([
+    Todo.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+    Schedule.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+    Tag.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+    Habit.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+    HabitLog.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+    Note.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+    NoteVersion.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+    EnglishProgress.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+    Vocab.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+    EnglishMindmap.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+    Trade.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+    TradingAccount.updateMany({ ownerId: null }, { $set: { ownerId: user._id } })
+  ]);
 }
 
 async function login(email, password) {
@@ -84,6 +87,7 @@ async function login(email, password) {
   if (!user || !verifyPassword(password, user.passwordSalt, user.passwordHash)) {
     throw new Error('Email hoặc mật khẩu không đúng');
   }
+  await claimLegacyData(user);
   return { token: signSession(user.id), user: { id: user.id, email: user.email } };
 }
 
