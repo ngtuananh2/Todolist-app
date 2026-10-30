@@ -67,20 +67,13 @@ async function register(email, password) {
 
 async function claimLegacyData(user) {
   if (await User.countDocuments() !== 1) return;
-  await Promise.all([
-    Todo.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-    Schedule.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-    Tag.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-    Habit.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-    HabitLog.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-    Note.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-    NoteVersion.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-    EnglishProgress.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-    Vocab.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-    EnglishMindmap.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-    Trade.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
-    TradingAccount.updateMany({ ownerId: null }, { $set: { ownerId: user._id } })
-  ]);
+  const legacyFilter = { $or: [{ ownerId: null }, { ownerId: { $exists: false } }] };
+  const ownerUpdate = { $set: { ownerId: user._id } };
+  const models = [
+    Todo, Schedule, Tag, Habit, HabitLog, Note, NoteVersion,
+    EnglishProgress, Vocab, EnglishMindmap, Trade, TradingAccount
+  ];
+  await Promise.all(models.map(model => model.collection.updateMany(legacyFilter, ownerUpdate)));
 }
 
 async function login(email, password) {
