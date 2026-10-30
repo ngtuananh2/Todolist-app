@@ -41,6 +41,16 @@ function invalidateForUrl(url) {
  * Granularly invalidates cache on successful POST/PUT/DELETE/PATCH
  */
 function cacheMiddleware(req, res, next) {
+  // Authenticated API responses are account-scoped and must not reuse a
+  // response cached before the current session was established.
+  if (
+    req.originalUrl &&
+    req.originalUrl.startsWith('/api/') &&
+    req.headers?.cookie?.includes('taskflow_session=')
+  ) {
+    return next();
+  }
+
   // Only cache GET requests
   if (req.method !== 'GET') {
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {

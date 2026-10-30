@@ -44,6 +44,7 @@ self.addEventListener('fetch', event => {
 
   const request = event.request;
   const isNavigation = request.mode === 'navigate';
+  if (new URL(request.url).pathname.startsWith('/api/')) return;
   event.respondWith(
     fetch(request).then(response => {
       if (response.ok && request.destination !== 'document') {
