@@ -3,6 +3,13 @@ const { User } = require('../config/database');
 
 const SESSION_COOKIE = 'taskflow_session';
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
+const LOCAL_SESSION_SECRET = 'taskflow-local-development-session-secret';
+
+function getSessionSecret() {
+  if (process.env.AUTH_SESSION_SECRET) return process.env.AUTH_SESSION_SECRET;
+  if (process.env.NODE_ENV !== 'production') return LOCAL_SESSION_SECRET;
+  return null;
+}
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -24,17 +31,18 @@ function signSession(userId) {
     userId: String(userId),
     expiresAt: Date.now() + SESSION_TTL_SECONDS * 1000
   })).toString('base64url');
-  const secret = process.env.AUTH_SESSION_SECRET;
+  const secret = getSessionSecret();
   if (!secret) throw new Error('AUTH_SESSION_SECRET chưa được cấu hình');
   const signature = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
   return `${payload}.${signature}`;
 }
 
 function verifySession(token) {
-  if (!token || !process.env.AUTH_SESSION_SECRET) return null;
+  const secret = getSessionSecret();
+  if (!token || !secret) return null;
   const [payload, signature] = token.split('.');
   if (!payload || !signature) return null;
-  const expected = crypto.createHmac('sha256', process.env.AUTH_SESSION_SECRET).update(payload).digest('base64url');
+  const expected = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
   if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
   try {
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
