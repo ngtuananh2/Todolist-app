@@ -6,18 +6,25 @@
   <script>
     (function () {
       try {
-        if (localStorage.getItem('theme') === 'dark') {
-          document.documentElement.setAttribute('data-theme', 'dark');
-        }
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.documentElement.style.colorScheme = savedTheme;
+        document.body?.setAttribute('data-theme', savedTheme);
+        const iconLight = document.getElementById('theme-icon-light');
+        const iconDark = document.getElementById('theme-icon-dark');
+        if (iconLight) iconLight.style.display = savedTheme === 'dark' ? 'none' : 'block';
+        if (iconDark) iconDark.style.display = savedTheme === 'dark' ? 'block' : 'none';
       } catch (_) {}
     })();
   </script>
   <title>TaskFlow — Cài đặt</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"></noscript>
   <link rel="stylesheet" href="settings.css">
   <link rel="stylesheet" href="global-utils.css">
+  <link rel="stylesheet" href="backup-restore.css">
 </head>
 <body>
 
@@ -78,6 +85,32 @@
         <div class="st-card">
           <div class="st-row">
             <div class="st-row-info">
+              <div class="st-row-label">Khởi động cùng Windows</div>
+            <div class="st-row-desc" id="setting-launch-startup-status">Tự mở TaskFlow mỗi khi bạn đăng nhập máy</div>
+            </div>
+            <label class="st-toggle">
+              <input type="checkbox" id="setting-launch-startup">
+              <span class="st-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="st-divider"></div>
+          <div class="st-row">
+            <div class="st-row-info">
+              <div class="st-row-label">Kích thước cửa sổ</div>
+              <div class="st-row-desc">Đổi kích thước cửa sổ TaskFlow trên ứng dụng desktop</div>
+            </div>
+            <select class="st-select" id="setting-window-size" aria-label="Kích thước cửa sổ TaskFlow">
+              <option value="800x600">800 × 600 — Nhỏ</option>
+              <option value="1024x700">1024 × 700 — Gọn</option>
+              <option value="1200x780">1200 × 780 — Mặc định</option>
+              <option value="1366x768">1366 × 768 — HD</option>
+              <option value="1600x900">1600 × 900 — HD+</option>
+              <option value="1920x1080">1920 × 1080 — Full HD</option>
+            </select>
+          </div>
+          <div class="st-divider"></div>
+          <div class="st-row">
+            <div class="st-row-info">
               <div class="st-row-label">Chế độ tối</div>
               <div class="st-row-desc">Bật chế độ tối để bảo vệ mắt</div>
             </div>
@@ -98,6 +131,23 @@
               <option value="Georgia">Georgia (Serif)</option>
               <option value="monospace">Monospace</option>
             </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── App updates ─── -->
+      <section class="st-section">
+        <h2 class="st-section-title">🔄 Cập nhật ứng dụng</h2>
+        <div class="st-card">
+          <div class="st-row">
+            <div class="st-row-info">
+              <div class="st-row-label">Phiên bản <span id="setting-app-version">—</span></div>
+              <div class="st-row-desc" id="setting-update-status">Tự động kiểm tra phiên bản mới khi mở ứng dụng desktop.</div>
+            </div>
+            <div class="st-update-actions">
+              <button type="button" class="st-btn" id="setting-update-check">Kiểm tra cập nhật</button>
+              <button type="button" class="st-btn st-btn-primary" id="setting-update-install" hidden>Khởi động lại để cài</button>
+            </div>
           </div>
         </div>
       </section>
@@ -273,6 +323,7 @@
   </main>
 
   <script src="global-utils.js"></script>
+  <script src="backup-restore.js"></script>
   <script src="settings.js"></script>
 </body>
 </html>

@@ -14,7 +14,9 @@
     { key: '3', label: 'Habit Tracker', url: '/habit.html' },
     { key: '4', label: 'Second Brain', url: '/brain.html' },
     { key: '5', label: 'English', url: '/english.html' },
-    { key: '6', label: 'Trading', url: '/trading.html' }
+    { key: '6', label: 'Trading', url: '/trading.html' },
+    { label: 'Lịch trình', url: '/schedule.html' },
+    { label: 'Cài đặt', url: '/settings.html' }
   ];
 
   const MODULE_ICONS = {
@@ -26,17 +28,19 @@
 
   // ==================== THEME (centralized) ====================
   function initTheme() {
-    const saved = localStorage.getItem('theme') || 'light';
+    const saved = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', saved);
+    document.documentElement.style.colorScheme = saved;
     // Also set on body for compatibility with brain.js selectors
     document.body?.setAttribute('data-theme', saved);
     updateThemeIcons(saved);
   }
 
   function toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
     const next = current === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
+    document.documentElement.style.colorScheme = next;
     document.body?.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
     updateThemeIcons(next);
@@ -51,7 +55,7 @@
   }
 
   function isDarkTheme() {
-    return (document.documentElement.getAttribute('data-theme') || 'light') === 'dark';
+    return (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark';
   }
 
   // ==================== NAV DATE-TIME (shared) ====================
@@ -133,20 +137,86 @@
     if (!toastContainer) toastContainer = document.getElementById('gu-toast-container');
     if (!toastContainer) return;
 
-    const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+    const notification = {
+      success: { icon: '✓', title: 'Thành công' },
+      error: { icon: '!', title: 'Có lỗi xảy ra' },
+      warning: { icon: '!', title: 'Lưu ý' },
+      info: { icon: 'i', title: 'Thông báo' }
+    }[type] || { icon: 'i', title: 'Thông báo' };
     const el = document.createElement('div');
     el.className = `gu-toast gu-toast-${type}`;
-    el.innerHTML = `<span class="gu-toast-icon">${icons[type] || icons.info}</span><span class="gu-toast-msg">${escHtml(msg)}</span>`;
+    el.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    el.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+    el.innerHTML = `
+      <span class="gu-toast-icon" aria-hidden="true">${notification.icon}</span>
+      <span class="gu-toast-content">
+        <strong class="gu-toast-title">${notification.title}</strong>
+        <span class="gu-toast-msg"></span>
+      </span>
+      <button class="gu-toast-close" type="button" aria-label="Đóng thông báo">×</button>
+      <span class="gu-toast-progress" aria-hidden="true"></span>
+    `;
+    el.querySelector('.gu-toast-msg').textContent = String(msg);
     toastContainer.appendChild(el);
+    el.querySelector('.gu-toast-progress').style.animationDuration = `${duration}ms`;
 
-    // Trigger enter animation
-    requestAnimationFrame(() => el.classList.add('show'));
+    while (toastContainer.children.length > 4) {
+      toastContainer.firstElementChild.remove();
+    }
 
-    setTimeout(() => {
+    let dismissTimer;
+    const dismiss = () => {
+      clearTimeout(dismissTimer);
+      if (el.classList.contains('hide')) return;
       el.classList.remove('show');
       el.classList.add('hide');
-      setTimeout(() => el.remove(), 300);
-    }, duration);
+      setTimeout(() => el.remove(), 260);
+    };
+    const scheduleDismiss = () => {
+      clearTimeout(dismissTimer);
+      dismissTimer = setTimeout(dismiss, duration);
+    };
+
+    requestAnimationFrame(() => el.classList.add('show'));
+    el.querySelector('.gu-toast-close').addEventListener('click', dismiss);
+    el.addEventListener('mouseenter', () => {
+      clearTimeout(dismissTimer);
+      el.classList.add('paused');
+    });
+    el.addEventListener('mouseleave', () => {
+      el.classList.remove('paused');
+      scheduleDismiss();
+    });
+    scheduleDismiss();
+  }
+
+  function installToastAlerts() {
+    window.alert = message => {
+      const text = String(message ?? '');
+      const type = /^(?:❌|lỗi\b|không thể\b|error\b)/i.test(text) || /thất bại|lỗi kết nối/i.test(text)
+        ? 'error'
+        : /^(?:✅|đã\b)/i.test(text)
+          ? 'success'
+          : /vui lòng|chưa có|không có|cần ít nhất|không tìm thấy/i.test(text)
+            ? 'warning'
+            : 'info';
+      guToast(text, type, type === 'error' ? 6000 : 4200);
+    };
+  }
+
+  function bindDesktopUpdateNotifications() {
+    if (!window.taskflowUpdates?.onStatus) return;
+    window.taskflowUpdates.onStatus(status => {
+      if (status.status === 'available') {
+        guToast(`Có phiên bản TaskFlow ${status.version}. Đang tải về...`, 'info', 6000);
+      } else if (status.status === 'downloaded') {
+        guToast(`Đã tải phiên bản ${status.version}. Mở Cài đặt để khởi động lại và cài đặt.`, 'success', 8000);
+      } else if (status.status === 'no-release') {
+        guToast('Chưa có bản cập nhật nào được phát hành trên GitHub. Bạn có thể tải và cài bản mới thủ công.', 'warning', 8000);
+      } else if (status.status === 'error') {
+        guToast('Không thể kiểm tra hoặc tải bản cập nhật. Vui lòng thử lại trong Cài đặt.', 'error', 7000);
+      }
+    });
   }
 
   // ==================== NOTIFICATIONS ====================
@@ -182,6 +252,53 @@
     // Auto-load notifications
     loadNotifications();
     setInterval(loadNotifications, 300000); // refresh every 5 min
+  }
+
+  function injectCompactNavigation() {
+    const navRight = document.querySelector('.nav-right');
+    if (!navRight || document.getElementById('gu-nav-menu')) return;
+
+    const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+    const links = PAGES.map(page => {
+      const path = page.url.replace(/\/+$/, '') || '/';
+      const active = path === currentPath ? ' aria-current="page"' : '';
+      return `<a class="gu-nav-menu-link"${active} href="${page.url}">${escHtml(page.label)}</a>`;
+    }).join('');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'gu-nav-menu-wrap';
+    wrapper.innerHTML = `
+      <button class="nav-btn gu-nav-menu-toggle" id="gu-nav-menu" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="gu-nav-menu-panel" title="Mở điều hướng">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        <span class="gu-nav-menu-label">Mục</span>
+      </button>
+      <div class="gu-nav-menu-panel" id="gu-nav-menu-panel" role="menu" hidden>${links}</div>
+    `;
+    navRight.prepend(wrapper);
+
+    const toggle = wrapper.querySelector('.gu-nav-menu-toggle');
+    const panel = wrapper.querySelector('.gu-nav-menu-panel');
+    const setOpen = open => {
+      panel.hidden = !open;
+      toggle.setAttribute('aria-expanded', String(open));
+    };
+
+    toggle.addEventListener('click', event => {
+      event.stopPropagation();
+      setOpen(panel.hidden);
+    });
+    panel.addEventListener('click', event => {
+      if (event.target.closest('a')) setOpen(false);
+    });
+    document.addEventListener('click', event => {
+      if (!wrapper.contains(event.target)) setOpen(false);
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !panel.hidden) {
+        setOpen(false);
+        toggle.focus();
+      }
+    });
   }
 
   async function loadNotifications() {
@@ -379,6 +496,32 @@
     }
   }
 
+  async function importModuleFile(moduleName, file) {
+    try {
+      if (file.size > 5 * 1024 * 1024) throw new Error('File vượt quá giới hạn 5 MB');
+      const payload = JSON.parse(await file.text());
+      if (payload.module !== moduleName) {
+        throw new Error('File không thuộc module này');
+      }
+      if (!window.confirm('Dữ liệu trong file sẽ được gộp vào dữ liệu hiện có. Các mục trùng sẽ được bỏ qua. Tiếp tục?')) return;
+
+      const response = await fetch(`/api/dashboard/import/${encodeURIComponent(moduleName)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Không thể nhập dữ liệu');
+
+      const importedCount = Object.values(result.imported || {}).reduce((sum, count) => sum + count, 0);
+      const skippedCount = Object.values(result.skipped || {}).reduce((sum, count) => sum + count, 0);
+      guToast(`Đã nhập ${importedCount} mục; bỏ qua ${skippedCount} mục trùng.`, 'success');
+      setTimeout(() => window.location.reload(), 500);
+    } catch (error) {
+      guToast(error.message || 'Không thể đọc file nhập', 'error');
+    }
+  }
+
   // ==================== POMODORO TIMER (global) ====================
   function getPomoSettings() {
     try {
@@ -488,8 +631,11 @@
   function resetPomoTimer() {
     clearInterval(pomoState.interval);
     pomoState = { running: false, remaining: POMO.work, total: POMO.work, session: 1, isBreak: false, interval: null };
-    document.getElementById('pomo-start').textContent = 'Bắt đầu';
-    document.getElementById('pomo-start').classList.remove('running');
+    const startButton = document.getElementById('pomo-start');
+    if (startButton) {
+      startButton.textContent = 'Bắt đầu';
+      startButton.classList.remove('running');
+    }
     updatePomoDisplay();
   }
 
@@ -515,8 +661,28 @@
 
   // ===== Event Binding =====
   function bindGlobalEvents() {
+    document.querySelectorAll('[data-import-module]').forEach(button => {
+      const moduleName = button.dataset.importModule;
+      const input = document.querySelector(`[data-import-module-file="${moduleName}"]`);
+      if (!input) return;
+
+      button.addEventListener('click', () => input.click());
+      input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (file) await importModuleFile(moduleName, file);
+        input.value = '';
+      });
+    });
+
     // Theme button
-    document.getElementById('btn-theme')?.addEventListener('click', () => toggleTheme());
+    const themeButton = document.getElementById('btn-theme');
+    if (themeButton && themeButton.getAttribute('data-theme-bound') !== 'true') {
+      themeButton.setAttribute('data-theme-bound', 'true');
+      themeButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        toggleTheme();
+      });
+    }
 
     // Search overlay click to close
     document.getElementById('gs-overlay')?.addEventListener('click', e => {
@@ -598,7 +764,10 @@
   function initGlobalUtils() {
     initTheme();
     startNavDateTimeClock();
+    injectCompactNavigation();
     injectUI();
+    installToastAlerts();
+    bindDesktopUpdateNotifications();
     bindGlobalEvents();
   }
 

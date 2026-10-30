@@ -4,6 +4,39 @@ const aiService = require('../services/ai.service');
 
 const router = Router();
 
+async function lookupWordFallback(word) {
+  try {
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return null;
+
+    const entry = data[0] || {};
+    const phonetic = entry.phonetic || (Array.isArray(entry.phonetics)
+      ? (entry.phonetics.find(p => p && p.text)?.text || '')
+      : '');
+
+    let meaning = '';
+    if (Array.isArray(entry.meanings) && entry.meanings.length > 0) {
+      const firstMeaning = entry.meanings[0];
+      const firstDef = Array.isArray(firstMeaning.definitions)
+        ? firstMeaning.definitions.find(d => d && d.definition)
+        : null;
+      meaning = firstDef?.definition || '';
+    }
+
+    return {
+      meaning,
+      phonetic,
+      example: Array.isArray(entry.meanings) && entry.meanings[0]?.definitions?.[0]?.example
+        ? entry.meanings[0].definitions[0].example
+        : ''
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
 // ==================== ENGLISH LEARNING ROUTES ====================
 
 // GET /api/english/progress
@@ -55,6 +88,122 @@ router.get('/vocab/review', async (req, res) => {
     res.json(words);
   } catch (err) {
     res.status(500).json({ error: 'Lỗi lấy từ cần ôn', detail: err.message });
+  }
+});
+
+// GET /api/english/oxford3000
+router.get('/oxford3000', async (req, res) => {
+  try {
+    const words = await englishService.getOxford3000Words({
+      level: req.query.level,
+      limit: req.query.limit,
+      refresh: req.query.refresh === 'true'
+    });
+    res.json(words);
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi lấy Oxford 3000', detail: err.message });
+  }
+});
+
+// GET /api/english/word-sources
+router.get('/word-sources', async (req, res) => {
+  try {
+    const sources = englishService.getExternalSourceList();
+    res.json(sources);
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi lấy danh sách nguồn từ vựng', detail: err.message });
+  }
+});
+
+// GET /api/english/vocab-source
+router.get('/vocab-source', async (req, res) => {
+  try {
+    const words = await englishService.getWordSourceWords({
+      source: req.query.source,
+      level: req.query.level,
+      limit: req.query.limit,
+      offset: req.query.offset,
+      refresh: req.query.refresh === 'true'
+    });
+    res.json(words);
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi lấy danh sách từ vựng theo nguồn', detail: err.message });
+  }
+});
+
+// POST /api/english/vocab/import-oxford
+router.post('/vocab/import-oxford', async (req, res) => {
+  try {
+    const { words } = req.body;
+    if (!Array.isArray(words) || words.length === 0) {
+      return res.status(400).json({ error: 'words array is required' });
+    }
+
+    const uniqueWords = [];
+    const seen = new Set();
+    for (const item of words) {
+      const w = String(item.word || '').trim();
+      if (!w) continue;
+      const key = w.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      uniqueWords.push(item);
+    }
+
+    async function enrichWord(item) {
+      const word = String(item.word || '').trim();
+      if (!word) return null;
+
+      const enriched = {
+        ...item,
+        word,
+        meaning: String(item.meaning || '').trim(),
+        phonetic: String(item.phonetic || '').trim(),
+        example: String(item.example || '').trim()
+      };
+
+      // Auto-fill meaning + IPA via AI when missing
+      if (!enriched.meaning || !enriched.phonetic) {
+        try {
+          const ai = await aiService.lookupWord(word);
+          if (ai) {
+            if (!enriched.meaning && ai.meaning) enriched.meaning = String(ai.meaning).trim();
+            if (!enriched.phonetic && ai.phonetic) enriched.phonetic = String(ai.phonetic).trim();
+            if (!enriched.example && ai.example) enriched.example = String(ai.example).trim();
+            if (!enriched.category && ai.category) enriched.category = String(ai.category).trim();
+            if (!enriched.level && ai.level) enriched.level = String(ai.level).trim();
+          }
+        } catch (_) {
+          // Keep fallback fields if AI lookup fails for a word
+        }
+      }
+
+      // Fallback dictionary when AI is unavailable
+      if (!enriched.meaning || !enriched.phonetic) {
+        const fb = await lookupWordFallback(word);
+        if (fb) {
+          if (!enriched.meaning && fb.meaning) enriched.meaning = String(fb.meaning).trim();
+          if (!enriched.phonetic && fb.phonetic) enriched.phonetic = String(fb.phonetic).trim();
+          if (!enriched.example && fb.example) enriched.example = String(fb.example).trim();
+        }
+      }
+
+      return enriched;
+    }
+
+    const enrichedWords = [];
+    const batchSize = 4;
+    for (let i = 0; i < uniqueWords.length; i += batchSize) {
+      const chunk = uniqueWords.slice(i, i + batchSize);
+      const chunkResults = await Promise.all(chunk.map(enrichWord));
+      enrichedWords.push(...chunkResults.filter(Boolean));
+    }
+
+    const result = await englishService.importOxfordWords(enrichedWords);
+    const autoFilled = enrichedWords.filter(w => w.meaning && w.phonetic).length;
+    res.json({ ...result, autoFilled });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi import Oxford 3000', detail: err.message });
   }
 });
 
@@ -124,6 +273,27 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// GET /api/english/mindmap
+router.get('/mindmap', async (req, res) => {
+  try {
+    const data = await englishService.getMindmap();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi lấy mindmap', detail: err.message });
+  }
+});
+
+// PUT /api/english/mindmap
+router.put('/mindmap', async (req, res) => {
+  try {
+    const { title, tree } = req.body || {};
+    const data = await englishService.saveMindmap({ title, tree });
+    res.json({ title: data.title, tree: data.tree });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi lưu mindmap', detail: err.message });
+  }
+});
+
 // POST /api/english/ai-exercises — Generate exercises with AI
 router.post('/ai-exercises', async (req, res) => {
   try {
@@ -152,6 +322,48 @@ router.post('/vocab/ai-lookup', async (req, res) => {
   } catch (err) {
     console.error('AI Vocab Lookup Error:', err);
     res.status(500).json({ error: 'Lỗi tra cứu AI', detail: err.message });
+  }
+});
+
+// POST /api/english/vocab/quick-lookup — quick lookup with fallback (no save)
+router.post('/vocab/quick-lookup', async (req, res) => {
+  try {
+    const { word } = req.body;
+    const normalized = String(word || '').trim();
+    if (!normalized) return res.status(400).json({ error: 'word is required' });
+
+    let result = null;
+    try {
+      result = await aiService.lookupWord(normalized);
+    } catch (_) {
+      result = null;
+    }
+
+    if (!result || (!result.meaning && !result.phonetic)) {
+      const fb = await lookupWordFallback(normalized);
+      if (fb) {
+        result = {
+          word: normalized,
+          meaning: result?.meaning || fb.meaning || '',
+          phonetic: result?.phonetic || fb.phonetic || '',
+          example: result?.example || fb.example || '',
+          category: result?.category || 'conversation',
+          level: result?.level || 'beginner'
+        };
+      }
+    }
+
+    if (!result) return res.status(404).json({ error: 'Không tra được nghĩa cho từ này' });
+    res.json({
+      word: normalized,
+      meaning: String(result.meaning || '').trim(),
+      phonetic: String(result.phonetic || '').trim(),
+      example: String(result.example || '').trim(),
+      category: String(result.category || '').trim(),
+      level: String(result.level || '').trim()
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi tra cứu từ nhanh', detail: err.message });
   }
 });
 

@@ -62,10 +62,25 @@ router.get('/export/:module', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.post('/import/:module', async (req, res, next) => {
+  try {
+    const result = await dashboardService.importModule(req.params.module, req.body);
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
 // POST /api/dashboard/restore — Import all data
+router.post('/restore/preview', (req, res, next) => {
+  try {
+    const payload = req.body.payload || req.body;
+    res.json(dashboardService.previewImport(payload));
+  } catch (err) { next(err); }
+});
+
 router.post('/restore', async (req, res, next) => {
   try {
-    const result = await dashboardService.importAll(req.body);
+    const payload = req.body.payload || req.body;
+    const result = await dashboardService.importAll(payload, req.body.mode || 'replace');
     res.json(result);
   } catch (err) { next(err); }
 });

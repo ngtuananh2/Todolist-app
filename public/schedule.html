@@ -6,16 +6,22 @@
   <script>
     (function () {
       try {
-        if (localStorage.getItem('theme') === 'dark') {
-          document.documentElement.setAttribute('data-theme', 'dark');
-        }
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.documentElement.style.colorScheme = savedTheme;
+        document.body?.setAttribute('data-theme', savedTheme);
+        const iconLight = document.getElementById('theme-icon-light');
+        const iconDark = document.getElementById('theme-icon-dark');
+        if (iconLight) iconLight.style.display = savedTheme === 'dark' ? 'none' : 'block';
+        if (iconDark) iconDark.style.display = savedTheme === 'dark' ? 'block' : 'none';
       } catch (_) {}
     })();
   </script>
   <title>TaskFlow — Thời Gian Biểu</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"></noscript>
   <link rel="stylesheet" href="schedule.css">
   <link rel="stylesheet" href="global-utils.css">
   <link rel="stylesheet" href="ai-chat.css">
@@ -76,10 +82,13 @@
         <div class="sch-header-left">
           <h1>📅 Thời Gian Biểu</h1>
           <p class="sch-subtitle">Lên lịch trình hàng ngày, nhiều ngày tới hoặc thời khóa biểu tuần với AI</p>
+          <p class="sch-subtitle" id="sch-email-status" role="status" aria-live="polite"></p>
         </div>
         <div class="sch-header-actions">
           <button class="sch-btn sch-btn-secondary" onclick="clearSchedule()">🗑️ Xóa lịch</button>
-          <button class="sch-btn sch-btn-primary" onclick="exportSchedule()">📤 Xuất</button>
+          <button class="sch-btn sch-btn-primary" onclick="exportSchedule()">📤 Xuất JSON</button>
+          <button class="sch-btn sch-btn-secondary" onclick="document.getElementById('schedule-import-file').click()">📥 Nhập file</button>
+          <input type="file" id="schedule-import-file" accept=".json,application/json" hidden>
         </div>
       </div>
 

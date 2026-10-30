@@ -55,6 +55,21 @@ const formTagsSelect = document.getElementById('form-tags-select');
 const formTagsDropdown = document.getElementById('form-tags-dropdown');
 const formTagsPlaceholder = document.getElementById('form-tags-placeholder');
 
+function reportTodoActionError(error, fallback) {
+  const message = error?.message || fallback;
+  console.error(fallback, error);
+  window.globalUtils?.guToast?.(message, 'error');
+}
+
+async function getTodoApiError(response, fallback) {
+  try {
+    const body = await response.json();
+    return body.error || body.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 // ==================== INIT ====================
 function setGreeting() {
   const h = new Date().getHours();
@@ -89,12 +104,24 @@ if (todoDesc) {
 async function fetchTodos() {
   const url = searchQuery ? `${API_URL}?search=${encodeURIComponent(searchQuery)}` : API_URL;
   const res = await fetch(url);
+  if (!res.ok) {
+    const message = res.status === 503
+      ? 'MongoDB chưa sẵn sàng. Kiểm tra MongoDB rồi khởi động lại TaskFlow.'
+      : `Không thể tải công việc (HTTP ${res.status})`;
+    throw new Error(message);
+  }
   todos = await res.json();
   render();
 }
 
 async function fetchTags() {
   const res = await fetch(TAG_URL);
+  if (!res.ok) {
+    const message = res.status === 503
+      ? 'MongoDB chưa sẵn sàng. Kiểm tra MongoDB rồi khởi động lại TaskFlow.'
+      : `Không thể tải nhãn (HTTP ${res.status})`;
+    throw new Error(message);
+  }
   tags = await res.json();
   renderSidebarTags();
   renderFormTagsDropdown();
@@ -107,45 +134,70 @@ async function addTodo(title, deadline, priority, description, tagIds, recurrenc
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title, deadline: deadline || null, priority, description, tagIds, recurrence, project: project || '' })
   });
-  if (res.ok) {
+  if (!res.ok) throw new Error(await getTodoApiError(res, `Không thể thêm công việc (HTTP ${res.status})`));
+  try {
     await fetchTodos();
-    loadProjects();
+  } catch (error) {
+    reportTodoActionError(new Error(`Đã thêm công việc nhưng không thể tải lại danh sách: ${error.message}`), 'Đã thêm công việc nhưng không thể làm mới danh sách');
   }
+  await loadProjects();
 }
 
 async function toggleTodo(id) {
   const todo = todos.find(t => t.id === id);
   if (!todo) return;
-  const res = await fetch(`${API_URL}/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ completed: !todo.completed })
-  });
-  if (res.ok) {
-    const updated = await res.json();
-    Object.assign(todo, updated);
-    render();
-    // If recurring, a new one was created — refresh
-    if (updated.recurrence && updated.recurrence !== 'none' && updated.completed) {
-      await fetchTodos();
+  const prevCompleted = todo.completed;
+  // Optimistic UI update for instant feedback
+  todo.completed = !prevCompleted;
+  todo.completedAt = todo.completed ? new Date().toISOString() : null;
+  render();
+
+  try {
+    const res = await fetch(`${API_URL}/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed: todo.completed })
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      Object.assign(todo, updated);
+      render();
+      // If recurring, a new one was created — refresh
+      if (updated.recurrence && updated.recurrence !== 'none' && updated.completed) {
+        await fetchTodos();
+      }
+    } else {
+      todo.completed = prevCompleted;
+      render();
+      reportTodoActionError(new Error(await getTodoApiError(res, `Không thể cập nhật công việc (HTTP ${res.status})`)), 'Không thể cập nhật công việc');
     }
+  } catch (err) {
+    todo.completed = prevCompleted;
+    render();
+    reportTodoActionError(err, 'Không thể cập nhật công việc');
   }
 }
 
 async function updateTodo(id, data) {
-  const res = await fetch(`${API_URL}/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  });
-  if (res.ok) {
+  try {
+    const res = await fetch(`${API_URL}/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(await getTodoApiError(res, `Không thể cập nhật công việc (HTTP ${res.status})`));
     await fetchTodos();
+    return true;
+  } catch (error) {
+    reportTodoActionError(error, 'Không thể cập nhật công việc');
+    return false;
   }
 }
 
 async function deleteTodo(id) {
-  const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-  if (res.ok) {
+  try {
+    const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await getTodoApiError(res, `Không thể xóa công việc (HTTP ${res.status})`));
     const result = await res.json();
     todos = todos.filter(t => t.id !== id);
     render();
@@ -153,55 +205,85 @@ async function deleteTodo(id) {
     if (result.todo) {
       showUndo(result.todo);
     }
+  } catch (error) {
+    reportTodoActionError(error, 'Không thể xóa công việc');
   }
 }
 
 async function clearCompleted() {
-  const res = await fetch(API_URL, { method: 'DELETE' });
-  if (res.ok) {
+  try {
+    const res = await fetch(API_URL, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await getTodoApiError(res, `Không thể xóa việc đã xong (HTTP ${res.status})`));
     todos = todos.filter(t => !t.completed);
     render();
+  } catch (error) {
+    reportTodoActionError(error, 'Không thể xóa việc đã xong');
   }
 }
 
 // ---- Subtask API ----
 async function addSubtask(todoId, title) {
-  const res = await fetch(`${API_URL}/${todoId}/subtasks`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title })
-  });
-  if (res.ok) await fetchTodos();
+  try {
+    const res = await fetch(`${API_URL}/${todoId}/subtasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title })
+    });
+    if (!res.ok) throw new Error(await getTodoApiError(res, `Không thể thêm việc con (HTTP ${res.status})`));
+    await fetchTodos();
+  } catch (error) {
+    reportTodoActionError(error, 'Không thể thêm việc con');
+  }
 }
 
 async function toggleSubtask(subtaskId, completed) {
-  await fetch(`/api/subtasks/${subtaskId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ completed })
-  });
-  await fetchTodos();
+  try {
+    const res = await fetch(`/api/subtasks/${subtaskId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed })
+    });
+    if (!res.ok) throw new Error(await getTodoApiError(res, `Không thể cập nhật việc con (HTTP ${res.status})`));
+    await fetchTodos();
+  } catch (error) {
+    reportTodoActionError(error, 'Không thể cập nhật việc con');
+  }
 }
 
 async function deleteSubtask(subtaskId) {
-  await fetch(`/api/subtasks/${subtaskId}`, { method: 'DELETE' });
-  await fetchTodos();
+  try {
+    const res = await fetch(`/api/subtasks/${subtaskId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await getTodoApiError(res, `Không thể xóa việc con (HTTP ${res.status})`));
+    await fetchTodos();
+  } catch (error) {
+    reportTodoActionError(error, 'Không thể xóa việc con');
+  }
 }
 
 // ---- Tag API ----
 async function createTag(name, color) {
-  const res = await fetch(TAG_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, color })
-  });
-  if (res.ok) await fetchTags();
+  try {
+    const res = await fetch(TAG_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, color })
+    });
+    if (!res.ok) throw new Error(await getTodoApiError(res, `Không thể thêm nhãn (HTTP ${res.status})`));
+    await fetchTags();
+  } catch (error) {
+    reportTodoActionError(error, 'Không thể thêm nhãn');
+  }
 }
 
 async function deleteTag(tagId) {
-  await fetch(`${TAG_URL}/${tagId}`, { method: 'DELETE' });
-  await fetchTags();
-  await fetchTodos();
+  try {
+    const res = await fetch(`${TAG_URL}/${tagId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await getTodoApiError(res, `Không thể xóa nhãn (HTTP ${res.status})`));
+    await fetchTags();
+    await fetchTodos();
+  } catch (error) {
+    reportTodoActionError(error, 'Không thể xóa nhãn');
+  }
 }
 
 // ==================== UNDO ====================
@@ -223,15 +305,21 @@ function showUndo(todoData) {
 document.getElementById('undo-btn')?.addEventListener('click', async () => {
   if (undoStack.length === 0) return;
   const todoData = undoStack.pop();
-  const res = await fetch(`${API_URL}/restore`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(todoData)
-  });
-  if (res.ok) await fetchTodos();
-  const toast = document.getElementById('undo-toast');
-  if (toast && undoStack.length === 0) toast.style.display = 'none';
-  clearTimeout(undoTimer);
+  try {
+    const res = await fetch(`${API_URL}/restore`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(todoData)
+    });
+    if (!res.ok) throw new Error(await getTodoApiError(res, `Không thể khôi phục công việc (HTTP ${res.status})`));
+    await fetchTodos();
+    const toast = document.getElementById('undo-toast');
+    if (toast && undoStack.length === 0) toast.style.display = 'none';
+    clearTimeout(undoTimer);
+  } catch (error) {
+    undoStack.push(todoData);
+    reportTodoActionError(error, 'Không thể khôi phục công việc');
+  }
 });
 
 // ==================== DRAG & DROP ====================
@@ -275,13 +363,17 @@ async function handleDrop(e) {
   orderedIds.splice(fromIdx, 1);
   orderedIds.splice(toIdx, 0, draggedId);
 
-  // Send to server
-  await fetch(`${API_URL}/reorder`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ orderedIds })
-  });
-  await fetchTodos();
+  try {
+    const res = await fetch(`${API_URL}/reorder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderedIds })
+    });
+    if (!res.ok) throw new Error(await getTodoApiError(res, `Không thể sắp xếp công việc (HTTP ${res.status})`));
+    await fetchTodos();
+  } catch (error) {
+    reportTodoActionError(error, 'Không thể sắp xếp công việc');
+  }
 }
 
 // ==================== RENDER ====================
@@ -303,21 +395,29 @@ function getFilteredTodos() {
   return applySorting(filtered);
 }
 
+const viCollator = new Intl.Collator('vi', { sensitivity: 'base' });
+
 function applySorting(list) {
   switch (currentSort) {
-    case 'date-asc': return [...list].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-    case 'name-asc': return [...list].sort((a, b) => a.title.localeCompare(b.title, 'vi'));
-    case 'name-desc': return [...list].sort((a, b) => b.title.localeCompare(a.title, 'vi'));
-    case 'deadline': return [...list].sort((a, b) => {
-      if (!a.deadline) return 1; if (!b.deadline) return -1;
-      return new Date(a.deadline) - new Date(b.deadline);
-    });
-    case 'priority': return [...list].sort((a, b) => {
+    case 'date-asc':
+      return [...list].sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+    case 'name-asc':
+      return [...list].sort((a, b) => viCollator.compare(a.title, b.title));
+    case 'name-desc':
+      return [...list].sort((a, b) => viCollator.compare(b.title, a.title));
+    case 'deadline':
+      return [...list].sort((a, b) => {
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return a.deadline.localeCompare(b.deadline);
+      });
+    case 'priority': {
       const po = { high: 0, medium: 1, low: 2, none: 3 };
-      return (po[a.priority] ?? 3) - (po[b.priority] ?? 3);
-    });
+      return [...list].sort((a, b) => (po[a.priority] ?? 3) - (po[b.priority] ?? 3));
+    }
     case 'date-desc':
-    default: return [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    default:
+      return [...list].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   }
 }
 
@@ -366,6 +466,10 @@ function render() {
 
   if (filtered.length === 0) {
     todoList.innerHTML = '';
+    const emptyTitle = emptyState.querySelector('.empty-title');
+    const emptySubtitle = emptyState.querySelector('.empty-sub');
+    if (emptyTitle) emptyTitle.textContent = total === 0 ? 'Chưa có công việc nào' : 'Không tìm thấy công việc phù hợp';
+    if (emptySubtitle) emptySubtitle.textContent = total === 0 ? 'Nhập công việc ở trên để bắt đầu' : 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm';
     emptyState.classList.add('show');
     return;
   }
@@ -408,6 +512,9 @@ function renderTodoItem(todo) {
   const projectHtml = todo.project
     ? `<span class="project-badge" title="Dự án: ${escapeHtml(todo.project)}">📁 ${escapeHtml(todo.project)}</span>`
     : '';
+  const priorityLabel = priorityClass
+    ? `<span class="priority-label priority-label-${todo.priority}">${escapeHtml(getPriorityLabel(todo.priority))}</span>`
+    : '';
 
   return `
     <li class="todo-item ${todo.completed ? 'completed' : ''} ${priorityClass}" data-id="${todo.id}"
@@ -419,6 +526,7 @@ function renderTodoItem(todo) {
         <div class="todo-title-row">
           ${priorityClass ? `<span class="priority-dot priority-dot-${todo.priority}" title="${getPriorityLabel(todo.priority)}"></span>` : ''}
           <span class="todo-title">${escapeHtml(todo.title)}</span>
+          ${priorityLabel}
           ${recurHtml}
           ${projectHtml}
         </div>
@@ -881,7 +989,7 @@ searchInput.addEventListener('input', () => {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
     searchQuery = val;
-    fetchTodos();
+    fetchTodos().catch(error => reportTodoActionError(error, 'Không thể tìm kiếm công việc'));
   }, 300);
 });
 
@@ -889,7 +997,7 @@ searchClear.addEventListener('click', () => {
   searchInput.value = '';
   searchClear.style.display = 'none';
   searchQuery = '';
-  fetchTodos();
+  fetchTodos().catch(error => reportTodoActionError(error, 'Không thể tải lại công việc'));
 });
 
 // ==================== SORT & FILTER ====================
@@ -936,26 +1044,33 @@ filterTagsDropdown?.addEventListener('click', e => e.stopPropagation());
 
 todoForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  const submitButton = todoForm.querySelector('[type="submit"]');
+  if (submitButton?.disabled) return;
   const title = todoInput.value.trim();
   if (title) {
-    const deadline = todoDeadline.value || null;
-    const priority = todoPriority.value || 'none';
-    const description = todoDesc.value.trim();
-    const tagIds = Array.from(selectedTagIds);
-    const recurrence = todoRecurrence?.value || 'none';
+    if (submitButton) submitButton.disabled = true;
+    const submitLabel = submitButton?.textContent;
+    if (submitButton) submitButton.textContent = 'Đang thêm…';
+    todoForm.setAttribute('aria-busy', 'true');
+    try {
+      const deadline = todoDeadline.value || null;
+      const priority = todoPriority.value || 'none';
+      const description = todoDesc.value.trim();
+      const tagIds = Array.from(selectedTagIds);
+      const recurrence = todoRecurrence?.value || 'none';
 
-    // AI auto-classify if priority is none
-    if (priority === 'none') {
-      try {
-        const classifyRes = await fetch('/api/ai/classify', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, description })
-        });
-        if (classifyRes.ok) {
+      if (priority === 'none') {
+        try {
+          const classifyRes = await fetch('/api/ai/classify', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, description })
+          });
+          if (!classifyRes.ok) {
+            throw new Error(await getTodoApiError(classifyRes, `AI không thể phân loại công việc (HTTP ${classifyRes.status})`));
+          }
           const suggestion = await classifyRes.json();
           if (suggestion.priority && suggestion.priority !== 'none') {
             todoPriority.value = suggestion.priority;
-            // Auto-select suggested tags
             if (suggestion.suggestedTags && suggestion.suggestedTags.length > 0) {
               suggestion.suggestedTags.forEach(tagName => {
                 const found = tags.find(t => t.name === tagName);
@@ -963,23 +1078,33 @@ todoForm.addEventListener('submit', async (e) => {
               });
             }
           }
+        } catch (error) {
+          reportTodoActionError(error, 'Không thể dùng AI để phân loại công việc');
         }
-      } catch(e) {} // silent fail
-    }
+      }
 
-    const projectVal = document.getElementById('todo-project')?.value?.trim() || '';
-    await addTodo(title, deadline, todoPriority.value || priority, description, tagIds, recurrence, projectVal);
-    todoInput.value = '';
-    todoDeadline.value = '';
-    todoPriority.value = 'none';
-    todoDesc.value = '';
-    todoDesc.style.height = 'auto';
-    if (todoRecurrence) todoRecurrence.value = 'none';
-    const projInput = document.getElementById('todo-project');
-    if (projInput) projInput.value = '';
-    selectedTagIds.clear();
-    renderFormTagsDropdown();
-    todoInput.focus();
+      const projectVal = document.getElementById('todo-project')?.value?.trim() || '';
+      await addTodo(title, deadline, todoPriority.value || priority, description, tagIds, recurrence, projectVal);
+      todoInput.value = '';
+      todoDeadline.value = '';
+      todoPriority.value = 'none';
+      todoDesc.value = '';
+      todoDesc.style.height = 'auto';
+      if (todoRecurrence) todoRecurrence.value = 'none';
+      const projInput = document.getElementById('todo-project');
+      if (projInput) projInput.value = '';
+      selectedTagIds.clear();
+      renderFormTagsDropdown();
+      todoInput.focus();
+    } catch (error) {
+      reportTodoActionError(error, 'Không thể thêm công việc');
+    } finally {
+      if (submitButton) {
+        submitButton.textContent = submitLabel;
+        submitButton.disabled = false;
+      }
+      todoForm.removeAttribute('aria-busy');
+    }
   }
 });
 
@@ -1341,40 +1466,52 @@ function updateBulkCount() {
 async function bulkComplete() {
   if (selectedIds.size === 0) return;
   try {
-    await fetch(`${API_URL}/bulk/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [...selectedIds] }) });
+    const res = await fetch(`${API_URL}/bulk/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [...selectedIds] }) });
+    if (!res.ok) throw new Error(await getTodoApiError(res, `Không thể hoàn thành hàng loạt (HTTP ${res.status})`));
     window.globalUtils?.guToast?.(`Đã hoàn thành ${selectedIds.size} việc`, 'success');
     exitBulkMode();
     await fetchTodos();
-  } catch (e) { window.globalUtils?.guToast?.('Lỗi thao tác hàng loạt', 'error'); }
+  } catch (error) { reportTodoActionError(error, 'Không thể hoàn thành hàng loạt'); }
 }
 async function bulkDelete() {
   if (selectedIds.size === 0) return;
   if (!confirm(`Xóa ${selectedIds.size} công việc?`)) return;
   try {
-    await fetch(`${API_URL}/bulk/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [...selectedIds] }) });
+    const res = await fetch(`${API_URL}/bulk/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [...selectedIds] }) });
+    if (!res.ok) throw new Error(await getTodoApiError(res, `Không thể xóa hàng loạt (HTTP ${res.status})`));
     window.globalUtils?.guToast?.(`Đã xóa ${selectedIds.size} việc`, 'success');
     exitBulkMode();
     await fetchTodos();
-  } catch (e) { window.globalUtils?.guToast?.('Lỗi xóa hàng loạt', 'error'); }
+  } catch (error) { reportTodoActionError(error, 'Không thể xóa hàng loạt'); }
 }
 async function bulkMoveProject() {
   if (selectedIds.size === 0) return;
   const project = prompt('Nhập tên dự án (để trống = gỡ dự án):');
   if (project === null) return;
   try {
-    await fetch(`${API_URL}/bulk/move`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [...selectedIds], project }) });
+    const res = await fetch(`${API_URL}/bulk/move`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [...selectedIds], project }) });
+    if (!res.ok) throw new Error(await getTodoApiError(res, `Không thể chuyển dự án hàng loạt (HTTP ${res.status})`));
     window.globalUtils?.guToast?.(`Đã chuyển ${selectedIds.size} việc`, 'success');
     exitBulkMode();
     await fetchTodos();
     loadProjects();
-  } catch (e) { window.globalUtils?.guToast?.('Lỗi chuyển dự án', 'error'); }
+  } catch (error) { reportTodoActionError(error, 'Không thể chuyển dự án hàng loạt'); }
 }
 
 // ==================== INITIAL LOAD ====================
 async function init() {
-  await fetchTags();
-  await fetchTodos();
-  loadProjects();
+  try {
+    await Promise.all([fetchTags(), fetchTodos(), loadProjects()]);
+  } catch (error) {
+    console.error('TaskFlow initial data load failed:', error);
+    const emptyTitle = emptyState.querySelector('.empty-title');
+    const emptySubtitle = emptyState.querySelector('.empty-sub');
+    if (emptyTitle) emptyTitle.textContent = 'Không thể tải dữ liệu';
+    if (emptySubtitle) emptySubtitle.textContent = error.message || 'Kiểm tra MongoDB rồi khởi động lại TaskFlow.';
+    emptyState.classList.add('show');
+    window.globalUtils?.guToast?.(error.message || 'Không thể tải dữ liệu TaskFlow', 'error', 10000);
+    return;
+  }
   initNotifications();
   updateViewToggle();
 }

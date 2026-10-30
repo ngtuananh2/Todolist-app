@@ -881,6 +881,41 @@ Trả về tóm tắt với format:
     return { summary: response.choices[0].message.content.trim() };
   }
 
+  // ==================== AI FORMAT NOTE (Markdown structuring) ====================
+  async formatNote(title, text) {
+    const hasAnyAIProvider = isGroqConfigured || isGeminiConfigured || isOpenRouterConfigured || isOpenAIConfigured;
+    if (!hasAnyAIProvider) throw createAIConfigError();
+
+    const safeTitle = String(title || '').trim().slice(0, 200);
+    const safeText = String(text || '').trim().slice(0, 6000);
+
+    const prompt = `Bạn là trợ lý biên tập ghi chú. Nhiệm vụ: chuyển đoạn văn thô thành Markdown có cấu trúc rõ ràng.
+
+QUY TẮC BẮT BUỘC:
+- Chỉ trả về Markdown, KHÔNG giải thích, KHÔNG thêm lời dẫn.
+- Không bịa thêm thông tin. Không suy đoán. Giữ nguyên ý và dữ kiện.
+- Nếu có tiêu đề rõ ràng thì dùng H1 (# ...). Nếu không chắc, KHÔNG tự tạo H1.
+- Chia mục hợp lý bằng H2 (##) và H3 (###) khi cần.
+- Dùng **in đậm** cho thuật ngữ/ý chính (không lạm dụng).
+- Dùng list (- ...) cho các ý liệt kê; dùng checklist (- [ ] ...) cho "việc cần làm" nếu nhận ra.
+- Giữ nguyên code/snippet (nếu có) bằng \`\`\`...\`\`\`.
+
+${safeTitle ? `TIÊU ĐỀ (nếu có):\n${safeTitle}\n` : ''}NỘI DUNG THÔ:
+${safeText}
+
+TRẢ VỀ MARKDOWN:`;
+
+    const response = await groq.chat.completions.create({
+      model: GROQ_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 1600
+    });
+
+    const markdown = String(response?.choices?.[0]?.message?.content || '').trim();
+    return { markdown };
+  }
+
   // ==================== AI GRAMMAR CHECK ====================
   async grammarCheck(text) {
     const prompt = `You are an English grammar expert helping a Vietnamese student. Analyze the following English text for grammar, spelling, vocabulary, and style errors.

@@ -6,16 +6,22 @@
   <script>
     (function () {
       try {
-        if (localStorage.getItem('theme') === 'dark') {
-          document.documentElement.setAttribute('data-theme', 'dark');
-        }
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.documentElement.style.colorScheme = savedTheme;
+        document.body?.setAttribute('data-theme', savedTheme);
+        const iconLight = document.getElementById('theme-icon-light');
+        const iconDark = document.getElementById('theme-icon-dark');
+        if (iconLight) iconLight.style.display = savedTheme === 'dark' ? 'none' : 'block';
+        if (iconDark) iconDark.style.display = savedTheme === 'dark' ? 'block' : 'none';
       } catch (_) {}
     })();
   </script>
   <title>TaskFlow — Học Tiếng Anh</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"></noscript>
   <link rel="stylesheet" href="english.css">
   <link rel="stylesheet" href="ai-chat.css">
   <link rel="stylesheet" href="global-utils.css">
@@ -78,10 +84,14 @@
           <p class="en-subtitle">Ngữ pháp, bài tập & từ vựng</p>
         </div>
         <div class="en-header-stats">
-          <button class="en-stat" style="cursor:pointer;background:#10b981;color:#fff;border-radius:8px" onclick="window.globalUtils?.exportModule('english')" title="Xuất dữ liệu English">
+          <button class="en-stat en-stat-export" onclick="window.globalUtils?.exportModule('english')" title="Xuất dữ liệu English">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             <span class="en-stat-label">Xuất</span>
           </button>
+          <button class="en-stat en-stat-export" data-import-module="english" title="Nhập file JSON và gộp dữ liệu English">
+            <span class="en-stat-label">Nhập file</span>
+          </button>
+          <input type="file" accept=".json,application/json" data-import-module-file="english" hidden>
           <div class="en-stat en-stat-streak" id="stat-streak-box" title="Chuỗi ngày học liên tiếp">
             <span class="en-stat-num" id="stat-streak">🔥 0</span><span class="en-stat-label">Streak</span>
           </div>
@@ -99,41 +109,6 @@
           </div>
         </div>
       </div>
-
-      <section class="en-exam-plan" id="exam-plan-panel">
-        <div class="en-exam-plan-head">
-          <div>
-            <h3>🎯 Kế hoạch thi IELTS / TOEIC</h3>
-            <p class="en-fc-sub">Đặt mục tiêu và theo dõi dự đoán điểm theo tiến độ học hiện tại</p>
-          </div>
-          <div class="en-exam-plan-head-actions">
-            <button class="en-btn en-btn-secondary" id="btn-ai-weekly-drills">AI gợi ý luyện tuần</button>
-            <button class="en-btn en-btn-primary" id="btn-generate-new-week">Generate tuần mới</button>
-          </div>
-        </div>
-        <div class="en-exam-plan-grid">
-          <div class="en-exam-plan-item">
-            <label for="exam-goal">Chứng chỉ</label>
-            <select id="exam-goal" class="en-select">
-              <option value="ielts">IELTS</option>
-              <option value="toeic">TOEIC</option>
-            </select>
-          </div>
-          <div class="en-exam-plan-item">
-            <label for="exam-target">Mục tiêu</label>
-            <select id="exam-target" class="en-select"></select>
-          </div>
-          <div class="en-exam-plan-item">
-            <label for="exam-date">Ngày thi</label>
-            <input id="exam-date" type="date" class="en-input">
-          </div>
-          <div class="en-exam-plan-item en-exam-plan-actions">
-            <button class="en-btn en-btn-primary" id="btn-save-exam-plan">Lưu mục tiêu</button>
-          </div>
-        </div>
-        <div class="en-exam-plan-meta" id="exam-plan-meta"></div>
-        <div class="en-roadmap" id="exam-roadmap"></div>
-      </section>
 
       <!-- Tabs -->
       <div class="en-tabs">
@@ -180,6 +155,10 @@
         <button class="en-tab" data-tab="reading">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           Đọc hiểu
+        </button>
+        <button class="en-tab" data-tab="mindmap">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><line x1="8.7" y1="7.7" x2="15.3" y2="7.7"/><line x1="7.5" y1="8.5" x2="10.5" y2="15.5"/><line x1="16.5" y1="8.5" x2="13.5" y2="15.5"/></svg>
+          Mindmap
         </button>
         <button class="en-tab" data-tab="daily-challenge">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -258,6 +237,8 @@
               <option value="intermediate">Intermediate</option>
               <option value="advanced">Advanced</option>
             </select>
+            <button class="en-btn en-btn-secondary" id="btn-toggle-unmastered" title="Chỉ hiển thị từ chưa thuộc">Chưa thuộc: Tắt</button>
+            <button class="en-btn en-btn-secondary" id="btn-review-unmastered" title="Ôn ngay các từ chưa thuộc">Ôn từ chưa thuộc</button>
             <button class="en-btn en-btn-secondary" id="btn-import-vocab" title="Import CSV">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               Import CSV
@@ -279,8 +260,93 @@
           <div class="en-wotd-example" id="wotd-example"></div>
         </div>
 
+        <section class="en-oxford-panel">
+          <div class="en-oxford-head">
+            <div>
+              <h3>Nguồn Từ Vựng</h3>
+              <p>Chọn nguồn từ vựng để tải và thêm vào flashcard</p>
+            </div>
+            <div class="en-oxford-controls">
+              <select id="vocab-source" class="en-select">
+                <option value="oxford">Oxford 3000 (American)</option>
+                <option value="google10000">Google Top 10k</option>
+                <option value="frequency50k">FrequencyWords 50k</option>
+              </select>
+              <select id="oxford-level" class="en-select">
+                <option value="">All levels</option>
+                <option value="A1">A1</option>
+                <option value="A2">A2</option>
+                <option value="B1">B1</option>
+                <option value="B2">B2</option>
+              </select>
+              <select id="oxford-limit" class="en-select">
+                <option value="40">40 từ</option>
+                <option value="80" selected>80 từ</option>
+                <option value="120">120 từ</option>
+                <option value="200">200 từ</option>
+              </select>
+              <button class="en-btn en-btn-secondary" id="btn-load-oxford">Tải danh sách</button>
+              <button class="en-btn en-btn-primary" id="btn-add-oxford-selected">Add vào flashcard</button>
+            </div>
+          </div>
+          <div class="en-oxford-quick">
+            <span>Add nhanh 20 từ:</span>
+            <button class="en-btn en-btn-secondary" id="btn-quick-oxford-a1">A1</button>
+            <button class="en-btn en-btn-secondary" id="btn-quick-oxford-a2">A2</button>
+            <button class="en-btn en-btn-secondary" id="btn-quick-oxford-b1">B1</button>
+            <button class="en-btn en-btn-secondary" id="btn-quick-oxford-b2">B2</button>
+          </div>
+          <div class="en-oxford-meta" id="oxford-meta">Chưa tải danh sách từ vựng.</div>
+          <div class="en-oxford-list" id="oxford-list"></div>
+        </section>
+
         <div class="en-vocab-grid" id="vocab-grid">
           <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <!-- ===== TAB: Mindmap ===== -->
+      <div class="en-tab-content" id="tab-mindmap">
+        <div class="en-mindmap-header">
+          <div>
+            <h3>🧠 Mindmap kiến thức</h3>
+            <p class="en-fc-sub">Ghi chú nhanh kiến thức theo dạng sơ đồ tư duy</p>
+          </div>
+          <div class="en-mindmap-actions">
+            <button class="en-btn en-btn-secondary" id="mindmap-add-child">+ Node con</button>
+            <button class="en-btn en-btn-secondary" id="mindmap-add-sibling">+ Node ngang</button>
+            <button class="en-btn en-btn-secondary" id="mindmap-delete">Xóa node</button>
+            <button class="en-btn en-btn-secondary" id="mindmap-layout-vertical">Dọc</button>
+            <button class="en-btn en-btn-secondary" id="mindmap-layout-horizontal">Ngang</button>
+            <button class="en-btn en-btn-secondary" id="mindmap-layout-radial">Tỏa tròn</button>
+            <button class="en-btn en-btn-primary" id="mindmap-save">Lưu mindmap</button>
+          </div>
+        </div>
+
+        <div class="en-mindmap-body">
+          <div class="en-mindmap-canvas">
+            <div class="en-mindmap-hint">Kéo thả để đổi nhánh. Double-click để sửa tiêu đề.</div>
+            <div id="mindmap-tree" class="en-mindmap-tree"></div>
+          </div>
+          <div class="en-mindmap-panel">
+            <div class="en-mindmap-panel-title">Xuất / Nhập JSON</div>
+            <textarea id="mindmap-io" class="en-input en-mindmap-io" placeholder="Dán JSON mindmap vào đây để nhập, hoặc bấm Xuất để copy."></textarea>
+            <div class="en-mindmap-panel-actions">
+              <button class="en-btn en-btn-secondary" id="mindmap-export">Xuất</button>
+              <button class="en-btn en-btn-secondary" id="mindmap-import">Nhập</button>
+              <button class="en-btn en-btn-secondary" id="mindmap-copy">Copy</button>
+            </div>
+            <div class="en-mindmap-panel-title">Node đang chọn</div>
+            <div id="mindmap-selected" class="en-mindmap-selected">(Chưa chọn)</div>
+            <div class="en-mindmap-title-row">
+              <input id="mindmap-title-input" class="en-input" placeholder="Sửa tiêu đề node...">
+              <button class="en-btn en-btn-secondary" id="mindmap-title-save">Cập nhật</button>
+            </div>
+            <div class="en-mindmap-color-row">
+              <input type="color" id="mindmap-color-input" class="en-mindmap-color">
+              <button class="en-btn en-btn-secondary" id="mindmap-color-apply">Màu nhánh</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -293,6 +359,28 @@
           </div>
           <div class="en-fc-stats">
             <span class="en-fc-stat"><strong id="fc-due-count">0</strong> từ cần ôn</span>
+            <div class="en-fc-session-config">
+              <label for="fc-word-limit">Số từ/lần:</label>
+              <select id="fc-word-limit" class="en-select en-fc-round-select">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="30">30</option>
+                <option value="50">50</option>
+                <option value="0">Tất cả</option>
+              </select>
+              <label for="fc-round-count">Số vòng:</label>
+              <select id="fc-round-count" class="en-select en-fc-round-select">
+                <option value="1" selected>1x</option>
+                <option value="2">2x</option>
+                <option value="3">3x</option>
+                <option value="5">5x</option>
+              </select>
+              <label class="en-fc-hard-toggle" for="fc-repeat-hard">
+                <input type="checkbox" id="fc-repeat-hard">
+                <span>Ôn lại từ khó</span>
+              </label>
+            </div>
+            <button class="en-btn en-btn-secondary" id="btn-fc-unmastered" type="button">Ôn từ chưa thuộc</button>
             <button class="en-btn en-btn-primary" id="btn-start-flashcard">Bắt đầu ôn tập</button>
           </div>
         </div>
@@ -300,6 +388,13 @@
           <div class="en-fc-progress">
             <span id="fc-progress-text">1/10</span>
             <div class="en-fc-bar"><div class="en-fc-bar-fill" id="fc-bar-fill"></div></div>
+            <div class="en-fc-tools">
+              <button class="en-btn en-btn-secondary en-fc-speak-btn" id="btn-fc-speak" type="button">🔊 Nghe từ</button>
+              <label class="en-fc-auto-toggle" for="fc-auto-speak">
+                <input type="checkbox" id="fc-auto-speak" checked>
+                <span>Tự phát</span>
+              </label>
+            </div>
           </div>
           <div class="en-fc-card" id="fc-card">
             <div class="en-fc-card-inner" id="fc-card-inner">
@@ -329,6 +424,7 @@
           <div class="en-fc-done-icon">🎉</div>
           <h3>Hoàn thành ôn tập!</h3>
           <p id="fc-done-msg"></p>
+          <button class="en-btn en-btn-secondary" id="btn-fc-restart-unmastered" type="button">Ôn từ chưa thuộc</button>
           <button class="en-btn en-btn-primary" id="btn-fc-restart">Ôn tiếp</button>
         </div>
       </div>
@@ -362,6 +458,14 @@
           </div>
         </div>
         <div class="conv-chat" id="conv-chat" style="display:none">
+          <div class="conv-vocab-tools">
+            <span class="conv-vocab-count">Đã gạch chân: <strong id="conv-marked-count">0</strong> từ</span>
+            <div class="conv-vocab-actions">
+              <button class="en-btn en-btn-secondary" id="btn-conv-clear-words" type="button">Bỏ gạch chân</button>
+              <button class="en-btn en-btn-primary" id="btn-conv-save-words" type="button">Lưu từ đã gạch chân</button>
+            </div>
+          </div>
+          <div class="conv-word-meaning" id="conv-word-meaning" style="display:none"></div>
           <div class="conv-messages" id="conv-messages"></div>
           <div class="conv-input-area">
             <input type="text" id="conv-input" class="conv-text-input" placeholder="Nhập câu trả lời bằng tiếng Anh..." maxlength="500">
@@ -661,6 +765,14 @@
           <div class="rdg-passage-box">
             <div class="rdg-passage-title" id="rdg-passage-title"></div>
             <div class="rdg-passage-meta" id="rdg-passage-meta"></div>
+            <div class="rdg-vocab-tools">
+              <span class="rdg-vocab-count">Đã gạch chân: <strong id="rdg-marked-count">0</strong> từ</span>
+              <div class="rdg-vocab-actions">
+                <button class="en-btn en-btn-secondary" id="btn-rdg-clear-words" type="button">Bỏ gạch chân</button>
+                <button class="en-btn en-btn-primary" id="btn-rdg-save-words" type="button">Lưu từ đã gạch chân</button>
+              </div>
+            </div>
+            <div class="rdg-word-meaning" id="rdg-word-meaning" style="display:none"></div>
             <div class="rdg-passage-text" id="rdg-passage-text"></div>
           </div>
           <div class="rdg-questions" id="rdg-questions"></div>

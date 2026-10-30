@@ -1,12 +1,13 @@
 {
   "name": "taskflow",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "main": "electron.js",
   "description": "TaskFlow — Ứng dụng quản lý công việc thông minh",
   "author": "TaskFlow",
   "license": "ISC",
   "scripts": {
     "start": "node server.js",
+    "test": "node --test",
     "sass": "sass src/scss/style.scss public/style.css",
     "sass:watch": "sass --watch src/scss/style.scss public/style.css",
     "dev": "npm run sass && node server.js",
@@ -17,11 +18,20 @@
   "build": {
     "appId": "com.taskflow.app",
     "productName": "TaskFlow",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ngtuananh2",
+        "repo": "Todolist-app",
+        "releaseType": "release"
+      }
+    ],
     "directories": {
       "output": "dist"
     },
     "files": [
       "electron.js",
+      "preload.js",
       "server.js",
       "src/**/*",
       ".env",
@@ -54,10 +64,15 @@
     "productivity"
   ],
   "dependencies": {
+    "compression": "^1.8.1",
     "dotenv": "^17.3.1",
+    "electron-updater": "^6.8.11",
     "express": "^5.2.1",
     "groq-sdk": "^0.37.0",
-    "mongoose": "^9.2.4"
+    "helmet": "^7.2.0",
+    "mongoose": "^9.2.4",
+    "node-cache": "^5.1.2",
+    "nodemailer": "^10.0.14"
   },
   "devDependencies": {
     "electron": "^40.6.1",

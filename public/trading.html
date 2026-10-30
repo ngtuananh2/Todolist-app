@@ -6,16 +6,22 @@
   <script>
     (function () {
       try {
-        if (localStorage.getItem('theme') === 'dark') {
-          document.documentElement.setAttribute('data-theme', 'dark');
-        }
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.documentElement.style.colorScheme = savedTheme;
+        document.body?.setAttribute('data-theme', savedTheme);
+        const iconLight = document.getElementById('theme-icon-light');
+        const iconDark = document.getElementById('theme-icon-dark');
+        if (iconLight) iconLight.style.display = savedTheme === 'dark' ? 'none' : 'block';
+        if (iconDark) iconDark.style.display = savedTheme === 'dark' ? 'block' : 'none';
       } catch (_) {}
     })();
   </script>
   <title>TaskFlow — Quản Lý Trading</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"></noscript>
   <link rel="stylesheet" href="trading.css">
   <link rel="stylesheet" href="ai-chat.css">
   <link rel="stylesheet" href="global-utils.css">
@@ -56,7 +62,7 @@
         </a>
       </div>
       <div class="nav-right">
-        <button class="nav-btn" id="btn-theme" title="Đổi giao diện">
+        <button class="nav-btn" id="btn-theme" title="Đổi giao diện" type="button">
           <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
@@ -81,6 +87,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Xuất
         </button>
+        <button class="btn" data-import-module="trading" title="Nhập file JSON và gộp dữ liệu Trading">
+          Nhập file
+        </button>
+        <input type="file" accept=".json,application/json" data-import-module-file="trading" hidden>
         <button class="btn btn-primary" id="btn-new-trade">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Thêm lệnh
@@ -117,6 +127,17 @@
 
     <!-- ===== TAB: DASHBOARD ===== -->
     <div class="tab-content active" id="tab-dashboard">
+      <div class="overview-hero">
+        <div class="overview-hero-main">
+          <h2 class="overview-title">Tổng quan hiệu suất</h2>
+          <p class="overview-description" id="overview-summary">Đang tính toán...</p>
+        </div>
+        <div class="overview-hero-side">
+          <div class="hero-badge" id="overview-pill">Đang chuẩn bị...</div>
+          <div class="overview-subtext" id="overview-subtext">Đang đọc dữ liệu...</div>
+        </div>
+      </div>
+
       <!-- KPI Cards -->
       <div class="kpi-grid">
         <div class="kpi-card">
@@ -148,10 +169,31 @@
           </div>
         </div>
         <div class="kpi-card">
+          <div class="kpi-icon kpi-icon-rr">📏</div>
+          <div class="kpi-info">
+            <span class="kpi-label">RR trung bình</span>
+            <span class="kpi-value" id="kpi-rr">0</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-icon-streak">🔥</div>
+          <div class="kpi-info">
+            <span class="kpi-label">Chuỗi thắng/thua</span>
+            <span class="kpi-value" id="kpi-streak">0/0</span>
+          </div>
+        </div>
+        <div class="kpi-card">
           <div class="kpi-icon kpi-icon-open">🔓</div>
           <div class="kpi-info">
             <span class="kpi-label">Lệnh mở</span>
             <span class="kpi-value" id="kpi-open">0</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-icon-risk">🛡️</div>
+          <div class="kpi-info">
+            <span class="kpi-label">SL/TP chưa đặt</span>
+            <span class="kpi-value" id="kpi-risk">0</span>
           </div>
         </div>
         <div class="kpi-card">
@@ -160,6 +202,17 @@
             <span class="kpi-label">Max Drawdown</span>
             <span class="kpi-value" id="kpi-dd">$0</span>
           </div>
+        </div>
+      </div>
+
+      <div class="overview-grid">
+        <div class="overview-panel">
+          <div class="overview-panel-title">🛡️ Kỷ luật rủi ro</div>
+          <div id="risk-summary" class="risk-list"></div>
+        </div>
+        <div class="overview-panel">
+          <div class="overview-panel-title">💡 Gợi ý nhanh</div>
+          <div id="insight-summary" class="insight-list"></div>
         </div>
       </div>
 
@@ -173,6 +226,22 @@
           <h3 class="chart-title">🏆 Win/Loss phân bố</h3>
           <div class="chart-container" id="chart-winloss"></div>
         </div>
+      </div>
+
+      <div class="dashboard-grid dashboard-grid-balanced">
+        <div class="chart-card">
+          <h3 class="chart-title">📅 Trading Calendar</h3>
+          <div class="chart-container" id="chart-trading-calendar"></div>
+        </div>
+        <div class="chart-card">
+          <h3 class="chart-title">📐 Phân bố R-Multiple</h3>
+          <div class="chart-container" id="chart-r-multiple"></div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <h3 class="section-title">🧭 Edge Map</h3>
+        <div class="edge-map" id="edge-map"></div>
       </div>
 
       <!-- Open Positions -->
@@ -221,11 +290,35 @@
           </select>
         </div>
         <div class="filter-group">
+          <select class="filter-select" id="filter-type">
+            <option value="">Tất cả hướng</option>
+            <option value="buy">Buy</option>
+            <option value="sell">Sell</option>
+            <option value="long">Long</option>
+            <option value="short">Short</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <select class="filter-select" id="filter-timeframe">
+            <option value="">Tất cả TF</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <select class="filter-select" id="filter-session">
+            <option value="">Tất cả phiên</option>
+            <option value="Asia">Asia</option>
+            <option value="London">London</option>
+            <option value="New York">New York</option>
+            <option value="Overlap">Overlap</option>
+          </select>
+        </div>
+        <div class="filter-group">
           <input type="date" class="filter-input" id="filter-start-date" title="Từ ngày">
         </div>
         <div class="filter-group">
           <input type="date" class="filter-input" id="filter-end-date" title="Đến ngày">
         </div>
+        <button class="btn btn-outline" id="btn-clear-trade-filters" type="button">Xóa lọc</button>
       </div>
 
       <!-- Trades Table -->
@@ -271,6 +364,16 @@
           <div class="monthly-pnl-wrap" id="monthly-pnl"></div>
         </div>
 
+        <div class="analytics-card analytics-card-wide">
+          <h3 class="chart-title">🔥 Bản đồ nhiệt hiệu suất</h3>
+          <div class="heatmap-grid-wrap" id="analytics-heatmap"></div>
+        </div>
+
+        <div class="analytics-card analytics-card-wide">
+          <h3 class="chart-title">🏁 Top / cuối bảng</h3>
+          <div class="leaderboard-grid" id="analytics-leaderboard"></div>
+        </div>
+
         <!-- By Symbol -->
         <div class="analytics-card">
           <h3 class="chart-title">🪙 Theo Symbol</h3>
@@ -287,6 +390,16 @@
         <div class="analytics-card">
           <h3 class="chart-title">🌐 Theo thị trường</h3>
           <div id="analytics-by-market" class="analytics-list"></div>
+        </div>
+
+        <div class="analytics-card">
+          <h3 class="chart-title">⏱️ Theo timeframe</h3>
+          <div id="analytics-by-timeframe" class="analytics-list"></div>
+        </div>
+
+        <div class="analytics-card">
+          <h3 class="chart-title">🕒 Theo phiên</h3>
+          <div id="analytics-by-session" class="analytics-list"></div>
         </div>
 
         <!-- By Emotion -->
@@ -681,6 +794,7 @@
     </form>
   </div>
 
+  <script src="global-utils.js"></script>
   <script src="trading.js"></script>
   <script src="ai-chat.js"></script>
   <script>
@@ -689,6 +803,5 @@
       onAction: () => { if (typeof loadTrades === 'function') loadTrades(); if (typeof loadStats === 'function') loadStats(); }
     });
   </script>
-  <script src="global-utils.js"></script>
 </body>
 </html>

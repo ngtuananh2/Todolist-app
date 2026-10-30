@@ -8,8 +8,8 @@ const router = Router();
 // GET /api/notes — list all notes (with filters)
 router.get('/', async (req, res, next) => {
   try {
-    const { search, type, category, tag, pinned } = req.query;
-    const notes = await noteService.getAllNotes({ search, type, category, tag, pinned });
+    const { search, type, category, tag, pinned, archived } = req.query;
+    const notes = await noteService.getAllNotes({ search, type, category, tag, pinned, archived });
     res.json(notes);
   } catch (err) { next(err); }
 });
@@ -17,8 +17,34 @@ router.get('/', async (req, res, next) => {
 // GET /api/notes/categories — list unique categories
 router.get('/categories', async (req, res, next) => {
   try {
-    const cats = await noteService.getCategories();
+    const cats = await noteService.getCategories({
+      includeArchived: req.query.includeArchived === 'true'
+    });
     res.json(cats);
+  } catch (err) { next(err); }
+});
+
+router.put('/categories', async (req, res, next) => {
+  try {
+    const oldName = typeof req.body?.oldName === 'string' ? req.body.oldName.trim() : '';
+    const newName = typeof req.body?.newName === 'string' ? req.body.newName.trim() : '';
+    if (!oldName || !newName || oldName.length > 100 || newName.length > 100) {
+      return res.status(400).json({ error: 'Tên danh mục phải có từ 1 đến 100 ký tự' });
+    }
+
+    const result = await noteService.renameCategory(oldName, newName);
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
+router.delete('/categories/:name', async (req, res, next) => {
+  try {
+    const category = req.params.name.trim();
+    if (!category || category.length > 100) {
+      return res.status(400).json({ error: 'Tên danh mục không hợp lệ' });
+    }
+    const result = await noteService.deleteCategory(category);
+    res.json(result);
   } catch (err) { next(err); }
 });
 
@@ -27,6 +53,22 @@ router.get('/tags', async (req, res, next) => {
   try {
     const tags = await noteService.getTags();
     res.json(tags);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/notes/reorder — save the visible order for all active notes
+router.put('/reorder', async (req, res, next) => {
+  try {
+    const { orderedIds } = req.body;
+    if (!Array.isArray(orderedIds) || orderedIds.some(id => typeof id !== 'string')) {
+      return res.status(400).json({ error: 'orderedIds phải là danh sách ID ghi chú' });
+    }
+
+    const reordered = await noteService.reorderNotes(orderedIds);
+    if (!reordered) {
+      return res.status(409).json({ error: 'Danh sách ghi chú đã thay đổi. Hãy tải lại rồi thử lại.' });
+    }
+    res.json({ success: true });
   } catch (err) { next(err); }
 });
 
@@ -130,6 +172,15 @@ router.patch('/:id/pin', async (req, res, next) => {
 router.patch('/:id/archive', async (req, res, next) => {
   try {
     const note = await noteService.archiveNote(req.params.id);
+    if (!note) return res.status(404).json({ error: 'Không tìm thấy ghi chú' });
+    res.json(note);
+  } catch (err) { next(err); }
+});
+
+// PATCH /api/notes/:id/unarchive — restore from archive
+router.patch('/:id/unarchive', async (req, res, next) => {
+  try {
+    const note = await noteService.unarchiveNote(req.params.id);
     if (!note) return res.status(404).json({ error: 'Không tìm thấy ghi chú' });
     res.json(note);
   } catch (err) { next(err); }

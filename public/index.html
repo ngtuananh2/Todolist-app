@@ -6,16 +6,22 @@
   <script>
     (function () {
       try {
-        if (localStorage.getItem('theme') === 'dark') {
-          document.documentElement.setAttribute('data-theme', 'dark');
-        }
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.documentElement.style.colorScheme = savedTheme;
+        document.body?.setAttribute('data-theme', savedTheme);
+        const iconLight = document.getElementById('theme-icon-light');
+        const iconDark = document.getElementById('theme-icon-dark');
+        if (iconLight) iconLight.style.display = savedTheme === 'dark' ? 'none' : 'block';
+        if (iconDark) iconDark.style.display = savedTheme === 'dark' ? 'block' : 'none';
       } catch (_) {}
     })();
   </script>
   <title>TaskFlow — Quản lý công việc</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"></noscript>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="ai-chat.css">
   <link rel="stylesheet" href="global-utils.css">
@@ -281,7 +287,7 @@
         <div id="todo-list" class="todo-list"></div>
 
         <!-- Empty state -->
-        <div id="empty-state" class="empty-state">
+        <div id="empty-state" class="empty-state show" role="status" aria-live="polite">
           <div class="empty-visual">
             <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
               <rect x="14" y="10" width="36" height="44" rx="4" stroke="#d1d5db" stroke-width="1.5" fill="#f9fafb"/>
@@ -290,8 +296,8 @@
               <line x1="22" y1="38" x2="34" y2="38" stroke="#e5e7eb" stroke-width="1.5" stroke-linecap="round"/>
             </svg>
           </div>
-          <p class="empty-title">Chưa có công việc nào</p>
-          <p class="empty-sub">Nhập công việc ở trên để bắt đầu</p>
+          <p class="empty-title">Đang kết nối dữ liệu...</p>
+          <p class="empty-sub">Công việc của bạn sẽ xuất hiện trong giây lát</p>
         </div>
 
         <!-- Footer -->

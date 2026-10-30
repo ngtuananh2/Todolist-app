@@ -1,11 +1,48 @@
-const { EnglishProgress, Vocab } = require('../config/database');
+const { EnglishProgress, Vocab, EnglishMindmap } = require('../config/database');
+
+const OXFORD_3000_URL = 'https://www.oxfordlearnersdictionaries.com/wordlist/american_english/oxford3000/';
+const OXFORD_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+let oxfordCache = { fetchedAt: 0, words: [] };
+const EXTERNAL_SOURCE_TTL_MS = 6 * 60 * 60 * 1000;
+const EXTERNAL_VOCAB_SOURCES = {
+  google10000: {
+    label: 'Google Top 10k',
+    url: 'https://raw.githubusercontent.com/first20hours/google-10000-english/master/20k.txt'
+  },
+  frequency50k: {
+    label: 'FrequencyWords 50k',
+    url: 'https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/en/en_50k.txt'
+  }
+};
+const externalSourceCache = {
+  google10000: { fetchedAt: 0, words: [] },
+  frequency50k: { fetchedAt: 0, words: [] }
+};
+
+const EXTERNAL_LEVEL_RANGES = {
+  A1: [0, 1000],
+  A2: [1000, 3000],
+  B1: [3000, 7000],
+  B2: [7000, 15000]
+};
 
 // ==================== ENGLISH SERVICE ====================
+
+const DEFAULT_MINDMAP = {
+  id: 'root',
+  title: 'English Mindmap',
+  children: [
+    { id: 'node-grammar', title: 'Grammar', children: [] },
+    { id: 'node-vocab', title: 'Vocabulary', children: [] },
+    { id: 'node-skills', title: 'Skills', children: [] }
+  ]
+};
 
 // ===== Progress =====
 
 async function getProgress() {
-  return EnglishProgress.find().sort({ lessonId: 1 });
+  const docs = await EnglishProgress.find().sort({ lessonId: 1 }).lean();
+  return docs.map(p => ({ ...p, id: p._id.toString() }));
 }
 
 async function saveProgress(lessonId, score, totalQ) {
@@ -37,9 +74,48 @@ async function resetProgress(lessonId) {
   return { success: true };
 }
 
+// ===== Mindmap =====
+
+function normalizeMindmapTree(tree) {
+  if (!tree || typeof tree !== 'object') return DEFAULT_MINDMAP;
+  if (!tree.id || !tree.title) return DEFAULT_MINDMAP;
+  return tree;
+}
+
+async function getMindmap() {
+  const doc = await EnglishMindmap.findOne().lean();
+  if (!doc) {
+    return { title: DEFAULT_MINDMAP.title, tree: DEFAULT_MINDMAP };
+  }
+  return { title: doc.title || DEFAULT_MINDMAP.title, tree: normalizeMindmapTree(doc.tree) };
+}
+
+async function saveMindmap({ title, tree }) {
+  const now = new Date().toISOString();
+  const payload = {
+    title: String(title || DEFAULT_MINDMAP.title).trim() || DEFAULT_MINDMAP.title,
+    tree: normalizeMindmapTree(tree)
+  };
+
+  const doc = await EnglishMindmap.findOne();
+  if (!doc) {
+    return new EnglishMindmap({
+      title: payload.title,
+      tree: payload.tree,
+      createdAt: now,
+      updatedAt: now
+    }).save();
+  }
+
+  doc.title = payload.title;
+  doc.tree = payload.tree;
+  doc.updatedAt = now;
+  return doc.save();
+}
+
 // ===== Vocabulary =====
 
-async function getAllVocab({ search, category, level, mastered } = {}) {
+async function getAllVocab({ search, category, level, mastered, limit } = {}) {
   const filter = {};
   if (search) filter.$or = [
     { word: { $regex: search, $options: 'i' } },
@@ -48,7 +124,9 @@ async function getAllVocab({ search, category, level, mastered } = {}) {
   if (category) filter.category = category;
   if (level) filter.level = level;
   if (mastered !== undefined) filter.mastered = mastered === 'true' || mastered === true;
-  return Vocab.find(filter).sort({ createdAt: -1 });
+  const safeLimit = Math.max(1, Math.min(parseInt(limit, 10) || 500, 2000));
+  const vocabs = await Vocab.find(filter).sort({ createdAt: -1 }).limit(safeLimit).lean();
+  return vocabs.map(v => ({ ...v, id: v._id.toString() }));
 }
 
 async function createVocab({ word, meaning, example, phonetic, category, level }) {
@@ -62,6 +140,279 @@ async function createVocab({ word, meaning, example, phonetic, category, level }
     level: level || 'beginner',
     createdAt: now
   }).save();
+}
+
+function mapCefrToAppLevel(cefr) {
+  const normalized = String(cefr || '').toUpperCase();
+  if (normalized === 'A1' || normalized === 'A2') return 'beginner';
+  if (normalized === 'B1') return 'intermediate';
+  if (normalized === 'B2') return 'advanced';
+  return 'beginner';
+}
+
+function decodeHtmlEntities(input) {
+  if (!input) return '';
+  return String(input)
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .trim();
+}
+
+function normalizeWord(word) {
+  return String(word || '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isLikelyEnglishWord(word) {
+  return /^[a-zA-Z][a-zA-Z\-'. ]{0,39}$/.test(word) && word.split(' ').length <= 4;
+}
+
+function parseOxfordWordsFromHtml(html) {
+  const words = [];
+  const seen = new Set();
+  const anchorRegex = /<a[^>]+href="[^"]*\/definition\/american_english\/[^"/][^"]*"[^>]*title="[^"]* definition"[^>]*>([^<]+)<\/a>/gi;
+  let match;
+
+  while ((match = anchorRegex.exec(html)) !== null) {
+    const rawWord = decodeHtmlEntities(match[1]).replace(/\s+/g, ' ').trim();
+    if (!rawWord || !isLikelyEnglishWord(rawWord)) continue;
+
+    const probe = html.slice(match.index, Math.min(match.index + 360, html.length));
+    const cefrMatch = probe.match(/\b(A1|A2|B1|B2)\b/);
+    const cefr = cefrMatch ? cefrMatch[1] : 'A1';
+    const key = normalizeWord(rawWord);
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    words.push({
+      word: rawWord,
+      cefr,
+      level: mapCefrToAppLevel(cefr),
+      category: 'oxford3000'
+    });
+  }
+
+  return words;
+}
+
+function parseSimpleWordLines(text) {
+  const seen = new Set();
+  const words = [];
+  const lines = String(text || '').split(/\r?\n/);
+
+  for (const line of lines) {
+    const word = String(line || '').trim().toLowerCase();
+    if (!word || !isLikelyEnglishWord(word)) continue;
+    if (seen.has(word)) continue;
+    seen.add(word);
+    words.push(word);
+  }
+
+  return words;
+}
+
+function parseFrequencyWords(text) {
+  const seen = new Set();
+  const words = [];
+  const lines = String(text || '').split(/\r?\n/);
+
+  for (const line of lines) {
+    const cols = String(line || '').trim().split(/\s+/);
+    if (!cols.length) continue;
+    const word = String(cols[0] || '').toLowerCase();
+    if (!word || !isLikelyEnglishWord(word)) continue;
+    if (seen.has(word)) continue;
+    seen.add(word);
+    words.push(word);
+  }
+
+  return words;
+}
+
+function getExternalSourceList() {
+  return [
+    { id: 'oxford', label: 'Oxford 3000 (American English)' },
+    ...Object.entries(EXTERNAL_VOCAB_SOURCES).map(([id, cfg]) => ({ id, label: cfg.label }))
+  ];
+}
+
+function sliceWithOffset(items = [], offset = 0, limit = 80) {
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length) return [];
+
+  const safeLimit = Math.max(1, Math.min(parseInt(limit, 10) || 80, list.length));
+  const safeOffset = Math.max(0, parseInt(offset, 10) || 0) % list.length;
+
+  const end = safeOffset + safeLimit;
+  if (end <= list.length) {
+    return list.slice(safeOffset, end);
+  }
+
+  const first = list.slice(safeOffset);
+  const remain = safeLimit - first.length;
+  return first.concat(list.slice(0, remain));
+}
+
+async function getExternalSourceWords({ source = 'google10000', level, limit = 80, offset = 0, refresh = false } = {}) {
+  if (!EXTERNAL_VOCAB_SOURCES[source]) {
+    throw new Error('Nguồn từ vựng không hợp lệ');
+  }
+
+  const safeLimit = Math.max(1, Math.min(parseInt(limit, 10) || 80, 300));
+  const requestedLevel = level ? String(level).toUpperCase() : '';
+  const cache = externalSourceCache[source];
+  const now = Date.now();
+
+  let baseWords = cache.words;
+  if (refresh || !baseWords.length || (now - cache.fetchedAt) >= EXTERNAL_SOURCE_TTL_MS) {
+    const res = await fetch(EXTERNAL_VOCAB_SOURCES[source].url, {
+      headers: { 'User-Agent': 'TaskFlow/1.0' }
+    });
+    if (!res.ok) {
+      throw new Error(`Không tải được nguồn ${EXTERNAL_VOCAB_SOURCES[source].label} (HTTP ${res.status})`);
+    }
+
+    const text = await res.text();
+    baseWords = source === 'frequency50k' ? parseFrequencyWords(text) : parseSimpleWordLines(text);
+    if (!baseWords.length) {
+      throw new Error(`Không đọc được dữ liệu từ nguồn ${EXTERNAL_VOCAB_SOURCES[source].label}`);
+    }
+
+    externalSourceCache[source] = { fetchedAt: now, words: baseWords };
+  }
+
+  let candidateWords = baseWords;
+  if (requestedLevel && EXTERNAL_LEVEL_RANGES[requestedLevel]) {
+    const [start, end] = EXTERNAL_LEVEL_RANGES[requestedLevel];
+    candidateWords = baseWords.slice(start, Math.min(end, baseWords.length));
+  }
+
+  return sliceWithOffset(candidateWords, offset, safeLimit).map(word => ({
+    word,
+    cefr: requestedLevel,
+    level: requestedLevel ? mapCefrToAppLevel(requestedLevel) : 'beginner',
+    category: source
+  }));
+}
+
+async function getWordSourceWords({ source = 'oxford', level, limit = 80, offset = 0, refresh = false } = {}) {
+  const normalized = String(source || 'oxford').toLowerCase();
+  if (normalized === 'oxford') {
+    return getOxford3000Words({ level, limit, offset, refresh });
+  }
+  return getExternalSourceWords({ source: normalized, level, limit, offset, refresh });
+}
+
+async function getOxford3000Words({ level, limit = 80, offset = 0, refresh = false } = {}) {
+  const safeLimit = Math.max(1, Math.min(parseInt(limit, 10) || 80, 300));
+  const requestedLevel = level ? String(level).toUpperCase() : '';
+  const now = Date.now();
+
+  if (!refresh && oxfordCache.words.length > 0 && (now - oxfordCache.fetchedAt) < OXFORD_CACHE_TTL_MS) {
+    const cached = sliceWithOffset(oxfordCache.words, offset, safeLimit);
+    if (!requestedLevel) return cached;
+    return cached.map(w => ({
+      ...w,
+      cefr: requestedLevel,
+      level: mapCefrToAppLevel(requestedLevel)
+    }));
+  }
+
+  const res = await fetch(OXFORD_3000_URL, {
+    headers: {
+      'User-Agent': 'TaskFlow/1.0 (+https://www.oxfordlearnersdictionaries.com/)'
+    }
+  });
+
+  if (!res.ok) {
+    throw new Error(`Không tải được Oxford 3000 (HTTP ${res.status})`);
+  }
+
+  const html = await res.text();
+  const parsedWords = parseOxfordWordsFromHtml(html);
+  if (parsedWords.length === 0) {
+    throw new Error('Không parse được danh sách Oxford 3000 từ nguồn đã cung cấp');
+  }
+
+  oxfordCache = {
+    fetchedAt: now,
+    words: parsedWords
+  };
+
+  const base = sliceWithOffset(parsedWords, offset, safeLimit);
+  if (!requestedLevel) return base;
+  return base.map(w => ({
+    ...w,
+    cefr: requestedLevel,
+    level: mapCefrToAppLevel(requestedLevel)
+  }));
+}
+
+async function importOxfordWords(words = []) {
+  if (!Array.isArray(words) || words.length === 0) {
+    return { imported: 0, skipped: 0, reason: 'empty' };
+  }
+
+  const now = new Date().toISOString();
+  const existing = await Vocab.find({}, { word: 1 });
+  const existingSet = new Set(existing.map(v => normalizeWord(v.word)));
+
+  const uniqueIncoming = [];
+  const incomingSet = new Set();
+
+  for (const item of words) {
+    const word = decodeHtmlEntities(item.word || '').replace(/\s+/g, ' ').trim();
+    if (!word || !isLikelyEnglishWord(word)) continue;
+
+    const key = normalizeWord(word);
+    if (incomingSet.has(key)) continue;
+    incomingSet.add(key);
+
+    uniqueIncoming.push({
+      word,
+      cefr: String(item.cefr || '').toUpperCase(),
+      level: item.level || mapCefrToAppLevel(item.cefr),
+      meaning: item.meaning,
+      phonetic: item.phonetic,
+      example: item.example,
+      category: item.category
+    });
+  }
+
+  const docs = uniqueIncoming
+    .filter(item => !existingSet.has(normalizeWord(item.word)))
+    .map(item => ({
+      word: item.word,
+      meaning: String(item.meaning || '').trim() || (item.cefr
+        ? `[Oxford ${item.cefr}] Tu trong Oxford 3000. Bo sung nghia sau.`
+        : '[Oxford 3000] Tu trong Oxford 3000. Bo sung nghia sau.'),
+      example: String(item.example || '').trim(),
+      phonetic: String(item.phonetic || '').trim(),
+      category: String(item.category || '').trim() || 'oxford3000',
+      level: ['beginner', 'intermediate', 'advanced'].includes(item.level) ? item.level : 'beginner',
+      mastered: false,
+      reviewCount: 0,
+      nextReview: '',
+      easeFactor: 2.5,
+      interval: 0,
+      repetition: 0,
+      createdAt: now
+    }));
+
+  if (docs.length > 0) {
+    await Vocab.insertMany(docs);
+  }
+
+  return {
+    imported: docs.length,
+    skipped: uniqueIncoming.length - docs.length
+  };
 }
 
 async function updateVocab(id, data) {
@@ -92,21 +443,33 @@ async function deleteVocab(id) {
 }
 
 async function getVocabStats() {
-  const all = await Vocab.find();
-  const total = all.length;
-  const mastered = all.filter(v => v.mastered).length;
+  const [total, mastered, byLevelAgg, byCatAgg] = await Promise.all([
+    Vocab.countDocuments(),
+    Vocab.countDocuments({ mastered: true }),
+    Vocab.aggregate([
+      { $group: { _id: '$level', count: { $sum: 1 } } }
+    ]),
+    Vocab.aggregate([
+      { $group: { _id: '$category', count: { $sum: 1 } } }
+    ])
+  ]);
   const byLevel = { beginner: 0, intermediate: 0, advanced: 0 };
+  byLevelAgg.forEach(item => {
+    if (item._id && byLevel[item._id] !== undefined) byLevel[item._id] = item.count;
+  });
   const byCategory = {};
-  all.forEach(v => {
-    byLevel[v.level] = (byLevel[v.level] || 0) + 1;
-    byCategory[v.category] = (byCategory[v.category] || 0) + 1;
+  byCatAgg.forEach(item => {
+    if (item._id) byCategory[item._id] = item.count;
   });
   return { total, mastered, learning: total - mastered, byLevel, byCategory };
 }
 
 async function getStats() {
-  const progress = await getProgress();
-  const vocabStats = await getVocabStats();
+  // Run getProgress and getVocabStats in parallel for efficiency
+  const [progress, vocabStats] = await Promise.all([
+    getProgress(),
+    getVocabStats()
+  ]);
   const totalLessons = progress.length;
   const totalAttempts = progress.reduce((s, p) => s + p.attempts, 0);
   const avgScore = totalLessons > 0
@@ -215,25 +578,27 @@ async function importVocab(vocabArray) {
 // ===== Word of the Day =====
 
 async function getWordOfDay() {
-  // Use date as seed for consistent daily word
   const today = new Date().toISOString().split('T')[0];
-  const all = await Vocab.find({ mastered: false });
-  if (all.length === 0) {
-    const any = await Vocab.find();
-    if (any.length === 0) return null;
-    const seed = today.split('-').reduce((s, n) => s + parseInt(n), 0);
-    return any[seed % any.length];
+  const count = await Vocab.countDocuments({ mastered: false });
+  const seed = today.split('-').reduce((s, n) => s + parseInt(n, 10), 0);
+  if (count > 0) {
+    const word = await Vocab.findOne({ mastered: false }).skip(seed % count).lean();
+    if (word) return { ...word, id: word._id.toString() };
   }
-  const seed = today.split('-').reduce((s, n) => s + parseInt(n), 0);
-  return all[seed % all.length];
+  const totalAny = await Vocab.countDocuments();
+  if (totalAny === 0) return null;
+  const word = await Vocab.findOne().skip(seed % totalAny).lean();
+  return word ? { ...word, id: word._id.toString() } : null;
 }
 
 // ===== Study Streak =====
 
 async function getStreak() {
   // Count consecutive days with at least 1 review
-  const reviews = await Vocab.find({ reviewCount: { $gt: 0 } });
-  const progress = await EnglishProgress.find();
+  const [reviews, progress] = await Promise.all([
+    Vocab.find({ reviewCount: { $gt: 0 } }).select('createdAt').lean(),
+    EnglishProgress.find().select('createdAt lastPractice').lean()
+  ]);
 
   // Collect all activity dates
   const dateSet = new Set();
@@ -286,6 +651,12 @@ module.exports = {
   getDueForReview,
   processReview,
   importVocab,
+  getExternalSourceList,
+  getWordSourceWords,
+  getOxford3000Words,
+  importOxfordWords,
   getWordOfDay,
-  getStreak
+  getStreak,
+  getMindmap,
+  saveMindmap
 };

@@ -189,7 +189,7 @@ function renderTable(dates) {
         <div class="ht-td-habit-inner">
           <span class="ht-habit-icon">${habit.icon}</span>
           <span class="ht-habit-name">${escapeHtml(habit.name)}</span>
-          <button class="ht-habit-edit" onclick="openEditHabit('${habit.id}')" title="Sửa">
+          <button class="ht-habit-edit" data-action="edit-habit" data-habit-id="${habit.id}" title="Sửa">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
         </div>
@@ -200,8 +200,10 @@ function renderTable(dates) {
       const isFuture = d.isFuture;
       bodyHtml += `<td class="ht-td-check ${d.isToday ? 'ht-today' : ''} ${isFuture ? 'ht-future' : ''}">
         <button class="ht-check-btn ${checked ? 'checked' : ''}" 
+          data-action="toggle-habit"
+          data-habit-id="${habit.id}"
+          data-date="${d.date}"
           ${isFuture ? 'disabled' : ''}
-          onclick="handleToggle('${habit.id}', '${d.date}', this)"
           style="${checked ? `background:${habit.color}; border-color:${habit.color}` : ''}">
           ${checked ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
         </button>
@@ -769,6 +771,29 @@ function initDragDrop() {
   });
 }
 
+function initTableActions() {
+  const tbody = document.getElementById('ht-tbody');
+  if (!tbody) return;
+
+  tbody.addEventListener('click', async (e) => {
+    const editBtn = e.target.closest('[data-action="edit-habit"]');
+    if (editBtn) {
+      const habitId = editBtn.dataset.habitId;
+      openEditHabit(habitId);
+      return;
+    }
+
+    const toggleBtn = e.target.closest('[data-action="toggle-habit"]');
+    if (toggleBtn) {
+      const habitId = toggleBtn.dataset.habitId;
+      const date = toggleBtn.dataset.date;
+      if (habitId && date) {
+        await handleToggle(habitId, date, toggleBtn);
+      }
+    }
+  });
+}
+
 // ==================== INIT ====================
 async function init() {
   await fetchHabits();
@@ -776,6 +801,7 @@ async function init() {
   const dates = getWeekDates(weekOffset);
   await fetchLogs(dates);
   render();
+  initTableActions();
   initDragDrop();
   loadHeatmap();
   renderMilestones();

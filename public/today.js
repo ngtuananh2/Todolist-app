@@ -15,6 +15,7 @@
   async function loadToday() {
     try {
       const res = await fetch('/api/dashboard/today');
+      if (!res.ok) throw new Error(`Tải dữ liệu thất bại (HTTP ${res.status})`);
       const data = await res.json();
       renderSummary(data);
       renderOverdue(data.todos.overdue);
@@ -55,6 +56,7 @@
             ${tagsHtml}
           </div>
         </div>
+        <button type="button" class="today-complete" data-complete-todo="${escapeHtml(String(t.id))}" aria-label="Đánh dấu hoàn thành: ${escapeHtml(t.title)}" title="Đánh dấu hoàn thành">✓</button>
         <a href="/" class="today-goto" title="Đi tới Công việc">→</a>
       </div>`;
   }
@@ -135,6 +137,26 @@
   }
 
   function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  $('today-grid').addEventListener('click', async event => {
+    const button = event.target.closest('button[data-complete-todo]');
+    if (!button) return;
+    button.disabled = true;
+    try {
+      const response = await fetch(`/api/todos/${encodeURIComponent(button.dataset.completeTodo)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: true })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Không thể cập nhật công việc');
+      if (window.globalUtils?.guToast) window.globalUtils.guToast('Đã hoàn thành công việc', 'success');
+      await loadToday();
+    } catch (error) {
+      button.disabled = false;
+      if (window.globalUtils?.guToast) window.globalUtils.guToast(error.message || 'Lỗi cập nhật công việc', 'error');
+    }
+  });
 
   $('btn-refresh').onclick = loadToday;
   loadToday();

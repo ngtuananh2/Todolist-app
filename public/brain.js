@@ -7,6 +7,10 @@ let editingNoteId = null;
 let selectedType = 'note';
 let selectedColor = '';
 let viewingNote = null;
+let pinnedOnly = false;
+let showArchived = false;
+let draggedNoteId = null;
+let draggedNoteCard = null;
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,14 +18,38 @@ document.addEventListener('DOMContentLoaded', () => {
   initDate();
   loadNotes();
   loadCategories();
+  loadTags();
   loadStats();
   bindEvents();
   setupMarkdownEditor();
 });
 
-// Theme is handled by global-utils.js
-function initTheme() { /* handled by global-utils.js */ }
-function toggleTheme() { if (window.globalUtils) window.globalUtils.toggleTheme(); }
+// Theme is handled by global-utils.js, with a fallback for reliability
+function initTheme() {
+  if (window.globalUtils?.initTheme) {
+    window.globalUtils.initTheme();
+    return;
+  }
+
+  const savedTheme = localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  document.body?.setAttribute('data-theme', savedTheme);
+  document.documentElement.style.colorScheme = savedTheme;
+}
+
+function toggleTheme() {
+  if (window.globalUtils?.toggleTheme) {
+    window.globalUtils.toggleTheme();
+    return;
+  }
+
+  const currentTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', nextTheme);
+  document.body?.setAttribute('data-theme', nextTheme);
+  localStorage.setItem('theme', nextTheme);
+  document.documentElement.style.colorScheme = nextTheme;
+}
 
 function initDate() {
   const el = document.getElementById('nav-date');
@@ -43,11 +71,25 @@ async function fetchNotes(params = {}) {
   } catch (e) { _toast('Lỗi tải ghi chú', 'error'); console.error(e); return []; }
 }
 
+async function fetchNoteById(id) {
+  try {
+    const res = await fetch(`${API}/${id}`);
+    return await res.json();
+  } catch (e) { _toast('Lỗi tải ghi chú', 'error'); console.error(e); return null; }
+}
+
 async function fetchCategories() {
   try {
     const res = await fetch(`${API}/categories`);
     return await res.json();
   } catch (e) { _toast('Lỗi tải danh mục', 'error'); console.error(e); return []; }
+}
+
+async function fetchTags() {
+  try {
+    const res = await fetch(`${API}/tags`);
+    return await res.json();
+  } catch (e) { _toast('Lỗi tải tags', 'error'); console.error(e); return []; }
 }
 
 async function fetchStats() {
@@ -81,6 +123,18 @@ async function updateNoteAPI(id, data) {
   } catch (e) { _toast('Lỗi cập nhật', 'error'); console.error(e); }
 }
 
+async function reorderNotesAPI(orderedIds) {
+  const res = await fetch(`${API}/reorder`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderedIds })
+  });
+  if (!res.ok) {
+    const result = await res.json().catch(() => ({}));
+    throw new Error(result.error || `Không thể lưu thứ tự (HTTP ${res.status})`);
+  }
+}
+
 async function togglePinAPI(id) {
   try {
     const res = await fetch(`${API}/${id}/pin`, { method: 'PATCH' });
@@ -102,17 +156,32 @@ async function archiveNoteAPI(id) {
   } catch (e) { _toast('Lỗi lưu trữ', 'error'); console.error(e); }
 }
 
+async function unarchiveNoteAPI(id) {
+  try {
+    const res = await fetch(`${API}/${id}/unarchive`, { method: 'PATCH' });
+    return await res.json();
+  } catch (e) { _toast('Lỗi khôi phục', 'error'); console.error(e); }
+}
+
 // ==================== DATA LOADING ====================
 async function loadNotes() {
   const params = {};
   const search = document.getElementById('sb-search-input').value;
   const type = document.getElementById('sb-filter-type').value;
   const category = document.getElementById('sb-filter-category').value;
+  const tag = document.getElementById('sb-filter-tag')?.value || '';
   if (search) params.search = search;
   if (type !== 'all') params.type = type;
   if (category) params.category = category;
+  if (tag) params.tag = tag;
+  if (pinnedOnly) params.pinned = 'true';
+  if (showArchived) params.archived = 'true';
 
   allNotes = await fetchNotes(params);
+  const resultsCount = document.getElementById('sb-results-count');
+  if (resultsCount) resultsCount.textContent = `${allNotes.length} mục`;
+  const clearSearch = document.getElementById('sb-search-clear');
+  if (clearSearch) clearSearch.hidden = !search.trim();
   renderNotes();
 }
 
@@ -120,18 +189,30 @@ async function loadCategories() {
   const cats = await fetchCategories();
   const select = document.getElementById('sb-filter-category');
   const datalist = document.getElementById('category-list');
-  // Keep first option
-  select.innerHTML = '<option value="">Tất cả danh mục</option>';
+  const selectedCategory = select.value;
+  select.replaceChildren(new Option('Tất cả danh mục', ''));
   cats.forEach(c => {
-    select.innerHTML += `<option value="${c}">${c}</option>`;
+    select.add(new Option(c, c));
   });
-  // Update datalist
+  select.value = cats.includes(selectedCategory) ? selectedCategory : '';
   if (datalist) {
-    datalist.innerHTML = '';
+    datalist.replaceChildren();
     cats.forEach(c => {
-      datalist.innerHTML += `<option value="${c}">`;
+      const option = document.createElement('option');
+      option.value = c;
+      datalist.appendChild(option);
     });
   }
+}
+
+async function loadTags() {
+  const tags = await fetchTags();
+  const select = document.getElementById('sb-filter-tag');
+  if (!select) return;
+  select.innerHTML = '<option value="">Tất cả tags</option>';
+  tags.forEach(t => {
+    select.innerHTML += `<option value="${escapeHtml(t)}">#${escapeHtml(t)}</option>`;
+  });
 }
 
 async function loadStats() {
@@ -151,22 +232,101 @@ function renderNotes() {
   if (allNotes.length === 0) {
     container.style.display = 'none';
     empty.style.display = 'flex';
+    const filtered = hasActiveNoteFilters();
+    empty.querySelector('h3').textContent = filtered ? 'Không tìm thấy mục phù hợp' : 'Second Brain trống';
+    empty.querySelector('p').textContent = filtered
+      ? 'Thử đổi từ khóa hoặc xóa bộ lọc để xem các mục khác.'
+      : 'Thêm ghi chú, link hoặc hình ảnh để bắt đầu xây dựng kho kiến thức của bạn';
+    document.getElementById('btn-add-note-empty').style.display = filtered ? 'none' : '';
+    document.getElementById('sb-empty-clear-filters').style.display = filtered ? '' : 'none';
     return;
   }
 
   container.style.display = '';
   empty.style.display = 'none';
+  document.getElementById('btn-add-note-empty').style.display = '';
 
+  const reorderEnabled = isNoteReorderEnabled();
   container.innerHTML = allNotes.map(note => renderNoteCard(note)).join('');
+  const reorderHint = document.getElementById('sb-reorder-hint');
+  container.classList.toggle('sb-reorder-disabled', !reorderEnabled);
+  container.querySelectorAll('.sb-card-drag-handle').forEach(handle => {
+    handle.disabled = !reorderEnabled;
+    handle.draggable = reorderEnabled;
+    handle.title = reorderEnabled ? 'Kéo để sắp xếp' : 'Xóa bộ lọc để sắp xếp';
+  });
+  if (reorderHint) {
+    reorderHint.textContent = reorderEnabled
+      ? 'Kéo biểu tượng ⠿ trên thẻ để sắp xếp lại các mục.'
+      : 'Xóa tìm kiếm và bộ lọc để kéo thả sắp xếp toàn bộ mục.';
+  }
 
   // Bind card clicks
   container.querySelectorAll('.sb-card').forEach(card => {
     card.addEventListener('click', (e) => {
-      if (e.target.closest('.sb-card-pin') || e.target.closest('.sb-card-menu-btn')) return;
+      if (e.target.closest('.sb-card-pin') || e.target.closest('.sb-card-menu-btn') || e.target.closest('.sb-card-drag-handle')) return;
       const id = card.dataset.id;
       openViewModal(id);
     });
   });
+
+  container.querySelectorAll('.sb-card-drag-handle').forEach(handle => {
+    handle.addEventListener('dragstart', (e) => {
+      if (!reorderEnabled) {
+        e.preventDefault();
+        return;
+      }
+      const card = handle.closest('.sb-card');
+      draggedNoteCard = card;
+      draggedNoteId = card.dataset.id;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', draggedNoteId);
+      card.classList.add('sb-card-dragging');
+    });
+  });
+
+  container.querySelectorAll('.sb-card').forEach(card => {
+    card.addEventListener('dragover', (e) => {
+      if (!draggedNoteCard || card.dataset.pinned !== draggedNoteCard.dataset.pinned) return;
+      e.preventDefault();
+      const bounds = card.getBoundingClientRect();
+      const draggedBounds = draggedNoteCard.getBoundingClientRect();
+      const sameGridRow = currentView === 'grid' && Math.abs(bounds.top - draggedBounds.top) < 10;
+      const insertBefore = sameGridRow
+        ? e.clientX < bounds.left + bounds.width / 2
+        : e.clientY < bounds.top + bounds.height / 2;
+      card.classList.toggle('sb-card-drop-before', insertBefore);
+      card.classList.toggle('sb-card-drop-after', !insertBefore);
+    });
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('sb-card-drop-before', 'sb-card-drop-after');
+    });
+    card.addEventListener('drop', async (e) => {
+      const draggedCard = draggedNoteCard;
+      if (!draggedCard || draggedCard === card || draggedCard.dataset.pinned !== card.dataset.pinned || !isNoteReorderEnabled()) return;
+      e.preventDefault();
+      const insertBefore = card.classList.contains('sb-card-drop-before');
+      container.insertBefore(draggedCard, insertBefore ? card : card.nextSibling);
+      container.querySelectorAll('.sb-card').forEach(item => item.classList.remove('sb-card-drop-before', 'sb-card-drop-after', 'sb-card-dragging'));
+      draggedNoteId = null;
+      draggedNoteCard = null;
+
+      try {
+        await reorderNotesAPI(Array.from(container.querySelectorAll('.sb-card'), item => item.dataset.id));
+        allNotes = Array.from(container.querySelectorAll('.sb-card'), item => allNotes.find(note => note.id === item.dataset.id));
+        _toast('Đã lưu thứ tự ghi chú', 'success');
+      } catch (error) {
+        _toast(error.message, 'error');
+        await loadNotes();
+      }
+    });
+  });
+
+  container.addEventListener('dragend', () => {
+    draggedNoteId = null;
+    draggedNoteCard = null;
+    container.querySelectorAll('.sb-card').forEach(card => card.classList.remove('sb-card-drop-before', 'sb-card-drop-after', 'sb-card-dragging'));
+  }, { once: true });
 
   // Bind pin buttons
   container.querySelectorAll('.sb-card-pin').forEach(btn => {
@@ -178,6 +338,38 @@ function renderNotes() {
       loadStats();
     });
   });
+}
+
+function isNoteReorderEnabled() {
+  return !showArchived
+    && !pinnedOnly
+    && !document.getElementById('sb-search-input').value.trim()
+    && document.getElementById('sb-filter-type').value === 'all'
+    && !document.getElementById('sb-filter-category').value
+    && !document.getElementById('sb-filter-tag')?.value;
+}
+
+function hasActiveNoteFilters() {
+  return Boolean(
+    document.getElementById('sb-search-input').value.trim()
+    || document.getElementById('sb-filter-type').value !== 'all'
+    || document.getElementById('sb-filter-category').value
+    || document.getElementById('sb-filter-tag')?.value
+    || pinnedOnly
+    || showArchived
+  );
+}
+
+async function clearNoteFilters() {
+  document.getElementById('sb-search-input').value = '';
+  document.getElementById('sb-filter-type').value = 'all';
+  document.getElementById('sb-filter-category').value = '';
+  if (document.getElementById('sb-filter-tag')) document.getElementById('sb-filter-tag').value = '';
+  pinnedOnly = false;
+  showArchived = false;
+  document.getElementById('sb-toggle-pinned').textContent = '📌 Ghim: Tắt';
+  document.getElementById('sb-toggle-archived').textContent = '🗄️ Archive: Tắt';
+  await loadNotes();
 }
 
 function renderNoteCard(note) {
@@ -211,8 +403,11 @@ function renderNoteCard(note) {
   ).join('');
 
   return `
-    <div class="sb-card ${pinnedClass}" data-id="${note.id}" style="${colorStyle}" data-dark-color="${darkColorStyle}">
+    <div class="sb-card ${pinnedClass}" data-id="${note.id}" data-pinned="${Boolean(note.pinned)}" style="${colorStyle}" data-dark-color="${darkColorStyle}">
       <div class="sb-card-top">
+        <button class="sb-card-drag-handle" type="button" draggable="true" title="Kéo để sắp xếp" aria-label="Kéo để sắp xếp">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="5" cy="3" r="1.3"/><circle cx="11" cy="3" r="1.3"/><circle cx="5" cy="8" r="1.3"/><circle cx="11" cy="8" r="1.3"/><circle cx="5" cy="13" r="1.3"/><circle cx="11" cy="13" r="1.3"/></svg>
+        </button>
         <span class="sb-card-type">${typeIcons[note.type] || '📝'}</span>
         <button class="sb-card-pin" title="${note.pinned ? 'Bỏ ghim' : 'Ghim'}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="${note.pinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76z"/></svg>
@@ -282,6 +477,13 @@ function openViewModal(id) {
   content += `<div class="sb-view-dates">
     <span>Tạo: ${formatDate(viewingNote.createdAt)}</span>
     <span>Cập nhật: ${formatDate(viewingNote.updatedAt)}</span>
+  </div>`;
+
+  // Archive actions
+  content += `<div class="sb-view-archive">
+    <button class="sb-btn sb-btn-ghost" data-action="toggle-archive" type="button">
+      ${viewingNote.archived ? '↩️ Khôi phục khỏi Archive' : '🗄️ Lưu vào Archive'}
+    </button>
   </div>`;
 
   // Backlinks placeholder
@@ -386,13 +588,17 @@ async function saveNote() {
   closeNoteModal();
   loadNotes();
   loadCategories();
+  loadTags();
   loadStats();
 }
 
 // ==================== EVENTS ====================
 function bindEvents() {
   // Theme
-  document.getElementById('btn-theme').addEventListener('click', toggleTheme);
+  const themeButton = document.getElementById('btn-theme');
+  if (themeButton && !window.globalUtils?.toggleTheme) {
+    themeButton.addEventListener('click', toggleTheme);
+  }
 
   // Add note
   document.getElementById('btn-add-note').addEventListener('click', () => openNoteModal());
@@ -432,8 +638,19 @@ function bindEvents() {
   });
   document.getElementById('modal-view-edit').addEventListener('click', () => {
     if (!viewingNote) return;
+    const noteToEdit = viewingNote; // keep reference before closeViewModal clears it
     closeViewModal();
-    openNoteModal(viewingNote);
+    // Fetch fresh note to ensure edit form is populated even if local state is stale
+    (async () => {
+      const fresh = await fetchNoteById(noteToEdit.id);
+      if (fresh && !fresh.error) {
+        // Backend may return _id instead of id in some cases
+        if (!fresh.id && fresh._id) fresh.id = String(fresh._id);
+        openNoteModal(fresh);
+      } else {
+        openNoteModal(noteToEdit);
+      }
+    })();
   });
   document.getElementById('modal-view-delete').addEventListener('click', async () => {
     if (!viewingNote) return;
@@ -442,7 +659,29 @@ function bindEvents() {
     closeViewModal();
     loadNotes();
     loadCategories();
+    loadTags();
     loadStats();
+  });
+
+  // Archive / Unarchive (button is rendered inside view modal)
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action="toggle-archive"]');
+    if (!btn || !viewingNote) return;
+    e.preventDefault();
+
+    if (viewingNote.archived) {
+      await unarchiveNoteAPI(viewingNote.id);
+      _toast('Đã khôi phục khỏi Archive', 'success');
+    } else {
+      await archiveNoteAPI(viewingNote.id);
+      _toast('Đã lưu vào Archive', 'success');
+    }
+
+    closeViewModal();
+    await loadNotes();
+    await loadCategories();
+    await loadTags();
+    await loadStats();
   });
 
   // Search
@@ -450,11 +689,34 @@ function bindEvents() {
   document.getElementById('sb-search-input').addEventListener('input', () => {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(loadNotes, 300);
+    document.getElementById('sb-search-clear').hidden = !document.getElementById('sb-search-input').value.trim();
   });
+  document.getElementById('sb-search-clear').addEventListener('click', () => {
+    const searchInput = document.getElementById('sb-search-input');
+    searchInput.value = '';
+    document.getElementById('sb-search-clear').hidden = true;
+    loadNotes();
+    searchInput.focus();
+  });
+  document.getElementById('sb-empty-clear-filters').addEventListener('click', clearNoteFilters);
 
   // Filters
   document.getElementById('sb-filter-type').addEventListener('change', loadNotes);
   document.getElementById('sb-filter-category').addEventListener('change', loadNotes);
+  document.getElementById('sb-filter-tag')?.addEventListener('change', loadNotes);
+
+  // Pinned/Archived toggles
+  document.getElementById('sb-toggle-pinned')?.addEventListener('click', async () => {
+    pinnedOnly = !pinnedOnly;
+    document.getElementById('sb-toggle-pinned').textContent = `📌 Ghim: ${pinnedOnly ? 'Bật' : 'Tắt'}`;
+    await loadNotes();
+  });
+
+  document.getElementById('sb-toggle-archived')?.addEventListener('click', async () => {
+    showArchived = !showArchived;
+    document.getElementById('sb-toggle-archived').textContent = `🗄️ Archive: ${showArchived ? 'Bật' : 'Tắt'}`;
+    await loadNotes();
+  });
 
   // View toggle
   document.getElementById('btn-view-grid').addEventListener('click', () => setView('grid'));
@@ -470,7 +732,19 @@ function bindEvents() {
 
   // Keyboard
   document.addEventListener('keydown', (e) => {
+    const targetTag = e.target.tagName?.toLowerCase();
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey
+      && !['input', 'textarea', 'select'].includes(targetTag) && !e.target.isContentEditable) {
+      e.preventDefault();
+      document.getElementById('sb-search-input').focus();
+      document.getElementById('sb-search-input').select();
+      return;
+    }
     if (e.key === 'Escape') {
+      if (document.activeElement.id === 'sb-search-input' && document.getElementById('sb-search-input').value) {
+        document.getElementById('sb-search-clear').click();
+        return;
+      }
       closeNoteModal();
       closeViewModal();
     }
@@ -528,12 +802,81 @@ function setupMarkdownEditor() {
   // Preview toggle
   document.getElementById('md-toggle-preview')?.addEventListener('click', toggleMdPreview);
 
+  // AI format button
+  document.getElementById('md-ai-format')?.addEventListener('click', aiFormatCurrentNoteText);
+
   // Keyboard shortcuts in textarea
   const textarea = document.getElementById('note-input-content');
   textarea?.addEventListener('keydown', e => {
     if (e.ctrlKey && e.key === 'b') { e.preventDefault(); applyMarkdown('bold'); }
     if (e.ctrlKey && e.key === 'i') { e.preventDefault(); applyMarkdown('italic'); }
     if (e.ctrlKey && e.key === 'k') { e.preventDefault(); applyMarkdown('link'); }
+  });
+
+  // Optional: detect large paste and offer AI format
+  textarea?.addEventListener('paste', (e) => {
+    try {
+      const clipboardImageDataUrl = window.taskflowClipboard?.readImageDataUrl?.();
+      if (clipboardImageDataUrl) {
+        e.preventDefault();
+        insertImageMarkdownIntoNote(clipboardImageDataUrl, `clipboard-image-${Date.now()}.png`);
+        return;
+      }
+
+      const clipboardData = e.clipboardData;
+      const imageFiles = [
+        ...Array.from(clipboardData?.files || []).filter(file => file.type.startsWith('image/')),
+        ...Array.from(clipboardData?.items || [])
+          .filter(item => item.type && item.type.startsWith('image/'))
+          .map(item => item.getAsFile && item.getAsFile())
+          .filter(Boolean)
+      ];
+
+      if (imageFiles.length) {
+        e.preventDefault();
+        insertFilesIntoNoteContent(imageFiles);
+        return;
+      }
+
+      // Fallback: attempt to read clipboard via async Clipboard API (useful in Electron)
+      if (navigator.clipboard && navigator.clipboard.read) {
+        try {
+          const cbRead = async () => {
+            const items = await navigator.clipboard.read();
+            const filesFromClipboard = [];
+            for (const it of items) {
+              for (const type of it.types) {
+                if (type.startsWith('image/')) {
+                  try {
+                    const blob = await it.getType(type);
+                    const fname = `pasted-image-${Date.now()}.${type.split('/')[1] || 'png'}`;
+                    const file = new File([blob], fname, { type: blob.type });
+                    filesFromClipboard.push(file);
+                  } catch (_) {}
+                }
+              }
+            }
+            if (filesFromClipboard.length) {
+              e.preventDefault();
+              insertFilesIntoNoteContent(filesFromClipboard);
+            }
+          };
+          // don't await here to avoid blocking paste event handling in some browsers
+          cbRead();
+        } catch (_) {}
+      }
+
+      const pasteText = e.clipboardData?.getData('text/plain') || '';
+      if (pasteText && pasteText.length >= 500) {
+        setTimeout(() => {
+          const cur = String(textarea.value || '').trim();
+          if (!cur) return;
+          if (confirm('Bạn vừa paste một đoạn dài. Muốn AI tự format thành Markdown (H1/H2/in đậm/list) không?')) {
+            aiFormatCurrentNoteText();
+          }
+        }, 0);
+      }
+    } catch (_) {}
   });
 
   // Tab key for indentation
@@ -552,6 +895,78 @@ function setupMarkdownEditor() {
     document.getElementById('md-file-input')?.click();
   });
   document.getElementById('md-file-input')?.addEventListener('change', handleFileUpload);
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Không thể đọc file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function insertTextIntoNoteContent(insert) {
+  const textarea = document.getElementById('note-input-content');
+  if (!textarea) return;
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+  textarea.value = textarea.value.substring(0, start) + insert + textarea.value.substring(end);
+  const cursor = start + insert.length;
+  textarea.selectionStart = textarea.selectionEnd = cursor;
+  textarea.focus();
+}
+
+function insertImageMarkdownIntoNote(dataUrl, fileName) {
+  if (!dataUrl) return;
+  const insert = `\n![${fileName}](${dataUrl})\n`;
+  insertTextIntoNoteContent(insert);
+}
+
+async function insertFilesIntoNoteContent(files) {
+  if (!files || !files.length) return;
+  for (const file of files) {
+    const dataUrl = await readFileAsDataUrl(file);
+    const insert = file.type.startsWith('image/')
+      ? `\n![${file.name}](${dataUrl})\n`
+      : `\n[📎 ${file.name}](${dataUrl})\n`;
+    insertTextIntoNoteContent(insert);
+    _toast(`Đã đính kèm: ${file.name}`, 'success');
+  }
+}
+
+async function aiFormatCurrentNoteText() {
+  const textarea = document.getElementById('note-input-content');
+  if (!textarea) return;
+  const raw = String(textarea.value || '').trim();
+  if (!raw) return _toast('Chưa có nội dung để format', 'error');
+
+  const title = String(document.getElementById('note-input-title')?.value || '').trim();
+  const btn = document.getElementById('md-ai-format');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Formatting...'; }
+
+  try {
+    const res = await fetch('/api/ai/format-note', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, text: raw })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) {
+      throw new Error(data.error || 'Không thể format');
+    }
+
+    const md = String(data.markdown || '').trim();
+    if (!md) throw new Error('AI không trả về nội dung');
+
+    textarea.value = md;
+    resetMdPreview();
+    _toast('Đã format xong (Markdown)', 'success');
+  } catch (e) {
+    _toast('Lỗi AI format: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✨ AI Format'; }
+  }
 }
 
 function applyMarkdown(type) {
@@ -606,33 +1021,18 @@ function applyMarkdown(type) {
   textarea.focus();
 }
 
-function handleFileUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
+async function handleFileUpload(e) {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
   const maxSize = 2 * 1024 * 1024; // 2MB
-  if (file.size > maxSize) {
-    _toast('File quá lớn (tối đa 2MB)', 'error');
-    e.target.value = '';
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const textarea = document.getElementById('note-input-content');
-    if (!textarea) return;
-    const dataUrl = reader.result;
-    let insert = '';
-    if (file.type.startsWith('image/')) {
-      insert = `\n![${file.name}](${dataUrl})\n`;
-    } else {
-      insert = `\n[📎 ${file.name}](${dataUrl})\n`;
+  const validFiles = files.filter(file => {
+    if (file.size > maxSize) {
+      _toast(`File quá lớn: ${file.name} (tối đa 2MB)`, 'error');
+      return false;
     }
-    const pos = textarea.selectionStart;
-    textarea.value = textarea.value.substring(0, pos) + insert + textarea.value.substring(pos);
-    textarea.selectionStart = textarea.selectionEnd = pos + insert.length;
-    textarea.focus();
-    _toast(`Đã đính kèm: ${file.name}`, 'success');
-  };
-  reader.readAsDataURL(file);
+    return true;
+  });
+  await insertFilesIntoNoteContent(validFiles);
   e.target.value = '';
 }
 
@@ -799,6 +1199,103 @@ async function deleteTagAction(tagName) {
     await loadNotes();
     openTagsManager();
   } catch { _toast('Lỗi xóa tag', 'error'); }
+}
+
+// ==================== CATEGORY MANAGEMENT ====================
+async function openCategoriesManager() {
+  try {
+    const res = await fetch(`${API}/categories?includeArchived=true`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    showCategoriesManagerModal(await res.json());
+  } catch (error) {
+    console.error('Unable to load Second Brain categories:', error);
+    _toast('Không thể tải danh mục', 'error');
+  }
+}
+
+function showCategoriesManagerModal(categories) {
+  let overlay = document.getElementById('categories-mgr-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'categories-mgr-overlay';
+    overlay.className = 'graph-overlay';
+    overlay.addEventListener('click', event => {
+      if (event.target === overlay || event.target.closest('.graph-close')) overlay.style.display = 'none';
+    });
+    document.body.appendChild(overlay);
+  }
+
+  const rows = categories.length
+    ? categories.map(category => `
+      <div class="tag-mgr-item">
+        <span class="tag-mgr-name">📁 ${escapeHtml(category)}</span>
+        <div class="tag-mgr-actions">
+          <button class="sb-btn" type="button" data-category-action="rename" data-category="${escapeHtml(category)}">Đổi tên</button>
+          <button class="sb-btn sb-btn-danger" type="button" data-category-action="clear" data-category="${escapeHtml(category)}">Gỡ khỏi ghi chú</button>
+        </div>
+      </div>`).join('')
+    : '<div style="padding:20px;text-align:center;color:var(--text-secondary)">Chưa có danh mục nào</div>';
+
+  overlay.innerHTML = `<div class="graph-modal" style="height:auto;max-height:70vh">
+    <div class="graph-header">
+      <span class="graph-title">📁 Quản lý danh mục (${categories.length})</span>
+      <button class="graph-close" type="button" aria-label="Đóng">&times;</button>
+    </div>
+    <div style="overflow-y:auto;padding:12px 16px;flex:1">${rows}</div>
+  </div>`;
+  overlay.style.display = 'flex';
+  overlay.querySelectorAll('[data-category-action="rename"]').forEach(button => {
+    button.addEventListener('click', () => renameCategoryAction(button.dataset.category));
+  });
+  overlay.querySelectorAll('[data-category-action="clear"]').forEach(button => {
+    button.addEventListener('click', () => clearCategoryAction(button.dataset.category));
+  });
+}
+
+async function renameCategoryAction(oldName) {
+  const newName = prompt(`Đổi tên danh mục "${oldName}" thành:`, oldName)?.trim();
+  if (!newName || newName === oldName) return;
+  if (newName.length > 100) {
+    _toast('Tên danh mục không được vượt quá 100 ký tự', 'error');
+    return;
+  }
+
+  const selectedCategory = document.getElementById('sb-filter-category').value;
+  try {
+    const res = await fetch(`${API}/categories`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldName, newName })
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || `HTTP ${res.status}`);
+    _toast(`Đã đổi tên danh mục thành "${newName}"`, 'success');
+    await loadCategories();
+    if (selectedCategory === oldName) {
+      document.getElementById('sb-filter-category').value = newName;
+    }
+    await Promise.all([loadNotes(), loadStats()]);
+    await openCategoriesManager();
+  } catch (error) {
+    console.error('Unable to rename Second Brain category:', error);
+    _toast(error.message || 'Không thể đổi tên danh mục', 'error');
+  }
+}
+
+async function clearCategoryAction(category) {
+  if (!confirm(`Gỡ danh mục "${category}" khỏi tất cả ghi chú? Ghi chú sẽ không bị xóa.`)) return;
+  try {
+    const res = await fetch(`${API}/categories/${encodeURIComponent(category)}`, { method: 'DELETE' });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || `HTTP ${res.status}`);
+    _toast(`Đã gỡ danh mục khỏi ${result.modified} ghi chú`, 'success');
+    await loadCategories();
+    await Promise.all([loadNotes(), loadStats()]);
+    await openCategoriesManager();
+  } catch (error) {
+    console.error('Unable to clear Second Brain category:', error);
+    _toast(error.message || 'Không thể gỡ danh mục', 'error');
+  }
 }
 
 // ==================== VERSION HISTORY ====================

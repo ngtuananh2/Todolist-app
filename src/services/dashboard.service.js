@@ -1,4 +1,8 @@
-const { Todo, Tag, Habit, HabitLog, Note, EnglishProgress, Vocab, Trade, TradingAccount } = require('../config/database');
+const {
+  Todo, Tag, Habit, HabitLog, Note, NoteVersion, EnglishProgress,
+  EnglishMindmap, Vocab, Trade, TradingAccount, Schedule
+} = require('../config/database');
+const { validateBackupPayload, validateModulePayload } = require('./backup-payload');
 
 class DashboardService {
   /* ─────── Aggregated stats from ALL modules ─────── */
@@ -16,12 +20,13 @@ class DashboardService {
 
   /* ─────── Activity timeline (recent actions across all modules) ─────── */
   async getTimeline(limit = 30) {
+    const boundLimit = Math.min(limit, 50);
     const [todos, notes, vocabs, trades, habitLogs] = await Promise.all([
-      Todo.find().sort({ createdAt: -1 }).limit(limit).lean(),
-      Note.find().sort({ createdAt: -1 }).limit(limit).lean(),
-      Vocab.find().sort({ createdAt: -1 }).limit(limit).lean(),
-      Trade.find().sort({ createdAt: -1 }).limit(limit).lean(),
-      HabitLog.find({ done: true }).sort({ date: -1 }).limit(limit).populate('habitId').lean()
+      Todo.find().select('title completed completedAt createdAt').sort({ createdAt: -1 }).limit(boundLimit).lean(),
+      Note.find().select('title type createdAt').sort({ createdAt: -1 }).limit(boundLimit).lean(),
+      Vocab.find().select('word meaning createdAt').sort({ createdAt: -1 }).limit(boundLimit).lean(),
+      Trade.find().select('type symbol status pnl createdAt').sort({ createdAt: -1 }).limit(boundLimit).lean(),
+      HabitLog.find({ done: true }).populate('habitId', 'name icon').sort({ date: -1 }).limit(boundLimit).lean()
     ]);
 
     const items = [];
@@ -52,7 +57,7 @@ class DashboardService {
       if (l.habitId) {
         items.push({
           type: 'habit', icon: l.habitId.icon || '✅',
-          title: `Hoàn thành: ${l.habitId.name}`, date: l.date + 'T12:00:00.000Z', module: 'habit'
+          title: `Hoàn thành: ${l.habitId.name || 'Thói quen'}`, date: l.date + 'T12:00:00.000Z', module: 'habit'
         });
       }
     });
@@ -67,11 +72,11 @@ class DashboardService {
     const today = now.toISOString().split('T')[0];
 
     const [allTodos, habits, todayLogs, dueVocab, openTrades] = await Promise.all([
-      Todo.find({ completed: false }).populate('tags').lean(),
-      Habit.find({ archived: false }).lean(),
-      HabitLog.find({ date: today, done: true }).lean(),
-      Vocab.find({ mastered: false, nextReview: { $ne: '', $lte: today } }).lean(),
-      Trade.find({ status: 'open' }).lean()
+      Todo.find({ completed: false }).select('title description deadline priority').lean().limit(1000),
+      Habit.find({ archived: false }).select('name icon color order').lean(),
+      HabitLog.find({ date: today, done: true }).select('habitId').lean(),
+      Vocab.find({ mastered: false, nextReview: { $ne: '', $lte: today } }).select('word meaning phonetic category level').lean(),
+      Trade.find({ status: 'open' }).select('symbol type entryPrice quantity leverage stopLoss takeProfit market').lean()
     ]);
 
     // Todos: overdue + due today + high priority
@@ -122,15 +127,20 @@ class DashboardService {
 
   /* ─────── Backup: export ALL data ─────── */
   async exportAll() {
-    const [todos, tags, habits, habitLogs, notes, progress, vocab, trades, accounts] = await Promise.all([
+    const [todos, tags, habits, habitLogs, notes, noteVersions, progress, mindmaps, vocab, trades, accounts, schedules] = await Promise.all([
       Todo.find().lean(), Tag.find().lean(), Habit.find().lean(),
-      HabitLog.find().lean(), Note.find().lean(), EnglishProgress.find().lean(),
-      Vocab.find().lean(), Trade.find().lean(), TradingAccount.find().lean()
+      HabitLog.find().lean(), Note.find().lean(), NoteVersion.find().lean(),
+      EnglishProgress.find().lean(), EnglishMindmap.find().lean(),
+      Vocab.find().lean(), Trade.find().lean(), TradingAccount.find().lean(), Schedule.find().lean()
     ]);
     return {
       version: '2.0',
       exportedAt: new Date().toISOString(),
-      data: { todos, tags, habits, habitLogs, notes, englishProgress: progress, vocab, trades, tradingAccounts: accounts }
+      data: {
+        todos, tags, habits, habitLogs, notes, noteVersions,
+        englishProgress: progress, englishMindmaps: mindmaps, vocab,
+        trades, tradingAccounts: accounts, schedules
+      }
     };
   }
 
@@ -151,13 +161,15 @@ class DashboardService {
         break;
       }
       case 'brain': {
-        const notes = await Note.find().lean();
-        data = { notes };
+        const [notes, noteVersions] = await Promise.all([Note.find().lean(), NoteVersion.find().lean()]);
+        data = { notes, noteVersions };
         break;
       }
       case 'english': {
-        const [progress, vocab] = await Promise.all([EnglishProgress.find().lean(), Vocab.find().lean()]);
-        data = { englishProgress: progress, vocab };
+        const [progress, mindmaps, vocab] = await Promise.all([
+          EnglishProgress.find().lean(), EnglishMindmap.find().lean(), Vocab.find().lean()
+        ]);
+        data = { englishProgress: progress, englishMindmaps: mindmaps, vocab };
         break;
       }
       case 'trading': {
@@ -172,90 +184,264 @@ class DashboardService {
     return { version: '2.0', module: moduleName, exportedAt, data };
   }
 
+  async importModule(moduleName, payload) {
+    const { data, collections, counts } = validateModulePayload(moduleName, payload);
+    const moduleModels = {
+      habit: { habits: Habit, habitLogs: HabitLog },
+      brain: { notes: Note, noteVersions: NoteVersion },
+      english: { englishProgress: EnglishProgress, englishMindmaps: EnglishMindmap, vocab: Vocab },
+      trading: { trades: Trade, tradingAccounts: TradingAccount }
+    };
+    const imported = {};
+    const skipped = {};
+    const plans = [];
+
+    for (const key of collections) {
+      const Model = moduleModels[moduleName][key];
+      const records = data[key];
+      for (const [index, record] of records.entries()) {
+        const validationError = new Model(record).validateSync();
+        if (validationError) {
+          const error = new Error(`Dữ liệu ${key}[${index}] không hợp lệ: ${validationError.message}`);
+          error.status = 400;
+          throw error;
+        }
+      }
+
+      const existingIds = records.length
+        ? await Model.distinct('_id', { _id: { $in: records.map(record => record._id) } })
+        : [];
+      const existingIdSet = new Set(existingIds.map(id => id.toString()));
+      const recordsToImport = records.filter(record => !existingIdSet.has(record._id));
+      await this._assertNoMergeUniqueConflicts(key, Model, recordsToImport);
+      plans.push({ key, Model, recordsToImport });
+      imported[key] = recordsToImport.length;
+      skipped[key] = counts[key] - recordsToImport.length;
+    }
+
+    for (const { Model, recordsToImport } of plans) {
+      if (recordsToImport.length) await Model.insertMany(recordsToImport);
+    }
+
+    return { success: true, mode: 'merge', imported, skipped };
+  }
+
   /* ─────── Restore: import ALL data ─────── */
-  async importAll(payload) {
-    if (!payload?.data) throw new Error('Invalid backup file');
-    const d = payload.data;
-    const counts = {};
+  previewImport(payload) {
+    const { counts, omittedCollections } = validateBackupPayload(payload);
+    return {
+      version: payload.version || 'unknown',
+      exportedAt: payload.exportedAt || null,
+      counts,
+      omittedCollections
+    };
+  }
 
-    if (d.tags?.length) { await Tag.deleteMany({}); await Tag.insertMany(d.tags); counts.tags = d.tags.length; }
-    if (d.todos?.length) { await Todo.deleteMany({}); await Todo.insertMany(d.todos); counts.todos = d.todos.length; }
-    if (d.habits?.length) { await Habit.deleteMany({}); await Habit.insertMany(d.habits); counts.habits = d.habits.length; }
-    if (d.habitLogs?.length) { await HabitLog.deleteMany({}); await HabitLog.insertMany(d.habitLogs); counts.habitLogs = d.habitLogs.length; }
-    if (d.notes?.length) { await Note.deleteMany({}); await Note.insertMany(d.notes); counts.notes = d.notes.length; }
-    if (d.englishProgress?.length) { await EnglishProgress.deleteMany({}); await EnglishProgress.insertMany(d.englishProgress); counts.englishProgress = d.englishProgress.length; }
-    if (d.vocab?.length) { await Vocab.deleteMany({}); await Vocab.insertMany(d.vocab); counts.vocab = d.vocab.length; }
-    if (d.trades?.length) { await Trade.deleteMany({}); await Trade.insertMany(d.trades); counts.trades = d.trades.length; }
-    if (d.tradingAccounts?.length) { await TradingAccount.deleteMany({}); await TradingAccount.insertMany(d.tradingAccounts); counts.tradingAccounts = d.tradingAccounts.length; }
+  async importAll(payload, mode = 'replace') {
+    if (!['merge', 'replace'].includes(mode)) {
+      const error = new Error('Chế độ khôi phục không hợp lệ');
+      error.status = 400;
+      throw error;
+    }
 
-    return { success: true, imported: counts };
+    const { data } = validateBackupPayload(payload);
+    const collections = {
+      todos: Todo,
+      tags: Tag,
+      habits: Habit,
+      habitLogs: HabitLog,
+      notes: Note,
+      noteVersions: NoteVersion,
+      englishProgress: EnglishProgress,
+      englishMindmaps: EnglishMindmap,
+      vocab: Vocab,
+      trades: Trade,
+      tradingAccounts: TradingAccount,
+      schedules: Schedule
+    };
+    const plans = [];
+
+    for (const [key, Model] of Object.entries(collections)) {
+      const records = data[key];
+      if (!Array.isArray(records)) continue;
+
+      records.forEach((record, index) => {
+        const validationError = new Model(record).validateSync();
+        if (validationError) {
+          const error = new Error(`Dữ liệu ${key}[${index}] không hợp lệ: ${validationError.message}`);
+          error.status = 400;
+          throw error;
+        }
+      });
+
+      let recordsToImport = records;
+      if (mode === 'merge' && records.length) {
+        const existingIds = await Model.distinct('_id', {
+          _id: { $in: records.map(record => record._id) }
+        });
+        const existingIdSet = new Set(existingIds.map(id => id.toString()));
+        recordsToImport = records.filter(record => !existingIdSet.has(record._id));
+        await this._assertNoMergeUniqueConflicts(key, Model, recordsToImport);
+      }
+      plans.push({ key, Model, recordsToImport, total: records.length });
+    }
+
+    const imported = {};
+    const skipped = {};
+    for (const { key, Model, recordsToImport, total } of plans) {
+      if (mode === 'replace') await Model.deleteMany({});
+      if (recordsToImport.length) await Model.insertMany(recordsToImport);
+      imported[key] = recordsToImport.length;
+      if (mode === 'merge') skipped[key] = total - recordsToImport.length;
+    }
+
+    return { success: true, mode, imported, ...(mode === 'merge' ? { skipped } : {}) };
+  }
+
+  async _assertNoMergeUniqueConflicts(key, Model, records) {
+    const uniqueFields = {
+      tags: ['name'],
+      englishProgress: ['lessonId'],
+      schedules: ['key']
+    };
+    const fields = uniqueFields[key] || [];
+
+    for (const field of fields) {
+      const values = [...new Set(records.map(record => record[field]).filter(Boolean))];
+      if (!values.length) continue;
+      const existing = await Model.find({ [field]: { $in: values } }).select(`_id ${field}`).lean();
+      if (existing.length) {
+        const error = new Error(`Không thể gộp ${key}: đã tồn tại ${field} trùng. Hãy chọn thay thế hoặc xử lý dữ liệu trùng trước.`);
+        error.status = 409;
+        throw error;
+      }
+    }
+
+    if (key === 'habitLogs' && records.length) {
+      const dates = [...new Set(records.map(record => record.date).filter(Boolean))];
+      const existing = await HabitLog.find({ date: { $in: dates } }).select('_id habitId date').lean();
+      const existingKeys = new Set(existing.map(record => `${record.habitId}:${record.date}`));
+      if (records.some(record => existingKeys.has(`${record.habitId}:${record.date}`))) {
+        const error = new Error('Không thể gộp habitLogs: đã tồn tại lịch sử thói quen trùng. Hãy chọn thay thế hoặc xử lý dữ liệu trùng trước.');
+        error.status = 409;
+        throw error;
+      }
+    }
   }
 
   // ─── Private helpers ───
   async _todoStats() {
-    const all = await Todo.find().lean();
-    const total = all.length;
-    const done = all.filter(t => t.completed).length;
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const weekStart = new Date(now);
+    weekStart.setHours(0, 0, 0, 0);
+    weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+    const weekStartDate = weekStart.toISOString().slice(0, 10);
+
+    const [total, done, overdue, highPriority, weeklyCompleted] = await Promise.all([
+      Todo.countDocuments(),
+      Todo.countDocuments({ completed: true }),
+      Todo.countDocuments({ completed: false, deadline: { $ne: null, $lt: today } }),
+      Todo.countDocuments({ completed: false, priority: 'high' }),
+      Todo.countDocuments({ completed: true, completedAt: { $gte: weekStartDate } })
+    ]);
     const active = total - done;
-    const overdue = all.filter(t => !t.completed && t.deadline && new Date(t.deadline) < new Date()).length;
-    const highPriority = all.filter(t => !t.completed && t.priority === 'high').length;
-    return { total, done, active, overdue, highPriority, completionRate: total ? Math.round(done / total * 100) : 0 };
+    return {
+      total, done, active, overdue, highPriority, weeklyCompleted,
+      completionRate: total ? Math.round(done / total * 100) : 0
+    };
   }
 
   async _habitStats() {
-    const habits = await Habit.find({ archived: false }).lean();
-    const today = new Date().toISOString().split('T')[0];
-    const logs = await HabitLog.find({ done: true }).lean();
-    const todayLogs = logs.filter(l => l.date === today);
-    
-    // Calculate streaks
+    const habits = await Habit.find({ archived: false }).select('_id name icon').lean();
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const d365 = new Date(now);
+    d365.setDate(d365.getDate() - 365);
+    const d365Str = d365.toISOString().split('T')[0];
+
+    const [logs, totalLogs] = await Promise.all([
+      HabitLog.find({ done: true, date: { $gte: d365Str } }).select('habitId date').lean(),
+      HabitLog.countDocuments({ done: true })
+    ]);
+
+    const logMap = new Map();
+    let todayDone = 0;
+    logs.forEach(l => {
+      const hid = l.habitId.toString();
+      if (!logMap.has(hid)) logMap.set(hid, new Set());
+      logMap.get(hid).add(l.date);
+      if (l.date === today) todayDone++;
+    });
+
     let totalStreak = 0;
     for (const h of habits) {
-      const hLogs = logs.filter(l => l.habitId.toString() === h._id.toString()).map(l => l.date).sort().reverse();
+      const dates = logMap.get(h._id.toString());
+      if (!dates) continue;
       let streak = 0;
-      let d = new Date();
+      let d = new Date(now);
+      const todayStr = d.toISOString().split('T')[0];
+      if (!dates.has(todayStr)) {
+        d.setDate(d.getDate() - 1);
+      }
       for (let i = 0; i < 365; i++) {
         const ds = d.toISOString().split('T')[0];
-        if (hLogs.includes(ds)) { streak++; d.setDate(d.getDate() - 1); }
-        else break;
+        if (dates.has(ds)) {
+          streak++;
+          d.setDate(d.getDate() - 1);
+        } else {
+          break;
+        }
       }
       totalStreak = Math.max(totalStreak, streak);
     }
 
-    return { total: habits.length, todayDone: todayLogs.length, todayTotal: habits.length, longestStreak: totalStreak, totalLogs: logs.length };
+    return { total: habits.length, todayDone, todayTotal: habits.length, longestStreak: totalStreak, totalLogs };
   }
 
   async _brainStats() {
-    const all = await Note.find({ archived: false }).lean();
-    const total = all.length;
-    const pinned = all.filter(n => n.pinned).length;
+    const [total, pinned, byTypeAgg] = await Promise.all([
+      Note.countDocuments({ archived: false }),
+      Note.countDocuments({ archived: false, pinned: true }),
+      Note.aggregate([
+        { $match: { archived: false } },
+        { $group: { _id: '$type', count: { $sum: 1 } } }
+      ])
+    ]);
     const byType = { note: 0, link: 0, image: 0 };
-    all.forEach(n => { if (byType[n.type] !== undefined) byType[n.type]++; });
+    byTypeAgg.forEach(item => {
+      if (byType[item._id] !== undefined) byType[item._id] = item.count;
+    });
     return { total, pinned, byType };
   }
 
   async _vocabStats() {
-    const all = await Vocab.find().lean();
-    const mastered = all.filter(v => v.mastered).length;
-    return { total: all.length, mastered, learning: all.length - mastered };
+    const [total, mastered] = await Promise.all([
+      Vocab.countDocuments(),
+      Vocab.countDocuments({ mastered: true })
+    ]);
+    return { total, mastered, learning: total - mastered };
   }
 
   async _tradingStats() {
-    const all = await Trade.find().lean();
-    const closed = all.filter(t => t.status === 'closed');
-    const open = all.filter(t => t.status === 'open');
+    const trades = await Trade.find().select('status pnl').lean();
+    const closed = trades.filter(t => t.status === 'closed');
+    const open = trades.filter(t => t.status === 'open');
     const totalPnl = closed.reduce((s, t) => s + (t.pnl || 0), 0);
     const wins = closed.filter(t => t.pnl > 0).length;
     const winRate = closed.length ? Math.round(wins / closed.length * 100) : 0;
-    return { total: all.length, open: open.length, closed: closed.length, totalPnl, winRate };
+    return { total: trades.length, open: open.length, closed: closed.length, totalPnl: Math.round(totalPnl * 100) / 100, winRate };
   }
 
   async _englishStats() {
-    const progress = await EnglishProgress.find().lean();
-    const vocab = await Vocab.find().lean();
+    const [progress, totalVocab, masteredVocab] = await Promise.all([
+      EnglishProgress.find().select('bestScore').lean().limit(500),
+      Vocab.countDocuments(),
+      Vocab.countDocuments({ mastered: true })
+    ]);
     const totalLessons = progress.length;
     const avgScore = totalLessons ? Math.round(progress.reduce((s, p) => s + (p.bestScore || 0), 0) / totalLessons) : 0;
-    return { lessonsCompleted: totalLessons, avgScore, totalVocab: vocab.length, mastered: vocab.filter(v => v.mastered).length };
+    return { lessonsCompleted: totalLessons, avgScore, totalVocab, mastered: masteredVocab };
   }
 
   /* ─────── Notifications / Reminders ─────── */
@@ -269,7 +455,7 @@ class DashboardService {
     const overdueTodos = await Todo.find({
       completed: false,
       deadline: { $ne: null, $exists: true }
-    }).lean();
+    }).lean().limit(500);
     overdueTodos.forEach(t => {
       if (t.deadline && t.deadline < today) {
         notifications.push({
@@ -299,7 +485,7 @@ class DashboardService {
     const dueVocab = await Vocab.find({
       mastered: false,
       nextReview: { $ne: '', $lte: today }
-    }).lean();
+    }).lean().limit(200);
     if (dueVocab.length > 0) {
       notifications.push({
         type: 'vocab_review', icon: '📖', priority: 'medium',
@@ -310,8 +496,8 @@ class DashboardService {
     }
 
     // 3. Habits not done today
-    const habits = await Habit.find({ archived: false }).lean();
-    const todayLogs = await HabitLog.find({ date: today, done: true }).lean();
+    const habits = await Habit.find({ archived: false }).lean().limit(200);
+    const todayLogs = await HabitLog.find({ date: today, done: true }).lean().limit(300);
     const doneIds = new Set(todayLogs.map(l => l.habitId.toString()));
     const undoneHabits = habits.filter(h => !doneIds.has(h._id.toString()));
     if (undoneHabits.length > 0) {
@@ -324,7 +510,7 @@ class DashboardService {
     }
 
     // 4. Open trades (risk awareness)
-    const openTrades = await Trade.find({ status: 'open' }).lean();
+    const openTrades = await Trade.find({ status: 'open' }).lean().limit(100);
     if (openTrades.length > 0) {
       notifications.push({
         type: 'open_trades', icon: '📊', priority: 'low',

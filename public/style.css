@@ -1,67 +1,72 @@
 :root {
-  --stone-50: #fafaf9;
-  --stone-100: #f5f5f4;
-  --stone-200: #e7e5e4;
-  --stone-300: #d6d3d1;
-  --stone-400: #a8a29e;
-  --stone-500: #78716c;
-  --stone-600: #57534e;
-  --stone-700: #44403c;
-  --stone-800: #292524;
-  --stone-900: #1c1917;
-  --bg: #f4f3f1;
-  --surface: #ffffff;
-  --border: #e5e3e0;
-  --border-lt: #eeedeb;
-  --text: #2c2825;
-  --text-2: #5c5650;
-  --text-3: #918a84;
-  --text-4: #c0bab4;
-  --accent: #7c7268;
-  --accent-dark: #5e554d;
-  --accent-soft: #edeae7;
-  --done: #6d8f63;
-  --done-soft: #ebf1e9;
-  --danger: #b86565;
-  --danger-soft: #f8eded;
-  --priority-high: #d9534f;
-  --priority-medium: #e8a838;
-  --priority-low: #5a9bd5;
+  --stone-50: #f8fafc;
+  --stone-100: #f1f5f9;
+  --stone-200: #e2e8f0;
+  --stone-300: #cbd5e1;
+  --stone-400: #94a3b8;
+  --stone-500: #64748b;
+  --stone-600: #475569;
+  --stone-700: #334155;
+  --stone-800: #1e293b;
+  --stone-900: #0f172a;
+  --bg: #f8fafc;
+  --surface: rgba(255, 255, 255, 0.85);
+  --border: #e2e8f0;
+  --border-lt: #f1f5f9;
+  --text: #000000;
+  --text-2: #1a1a1a;
+  --text-3: #333333;
+  --text-4: #666666;
+  --accent: #6366f1;
+  --accent-dark: #4f46e5;
+  --accent-soft: #e0e7ff;
+  --done: #10b981;
+  --done-soft: #ecfdf5;
+  --danger: #ef4444;
+  --danger-soft: #fef2f2;
+  --priority-high: #f87171;
+  --priority-medium: #fbbf24;
+  --priority-low: #60a5fa;
   --radius: 10px;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
   --nav-h: 56px;
   --sidebar-w: 260px;
+  --glass-blur: 12px;
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --card-shadow-hover: 0 10px 15px -3px rgba(99, 102, 241, 0.08), 0 4px 6px -4px rgba(99, 102, 241, 0.08);
 }
 
 [data-theme=dark] {
-  --stone-50: #292524;
-  --stone-100: #2f2a27;
-  --stone-200: #3a342f;
-  --stone-300: #4a433d;
-  --stone-400: #6b6259;
-  --stone-500: #8e8378;
-  --stone-600: #b8aa9b;
-  --stone-700: #d6d0c9;
-  --stone-800: #ebe7e2;
-  --stone-900: #f7f5f2;
-  --bg: #1c1917;
-  --surface: #2a2623;
-  --border: #44403c;
-  --border-lt: #3a342f;
-  --text: #f5f5f4;
-  --text-2: #d6d3d1;
-  --text-3: #a8a29e;
-  --text-4: #7f7871;
-  --accent: #b8aa9b;
-  --accent-dark: #e7e5e4;
-  --accent-soft: #3a342f;
-  --done: #7fa374;
-  --done-soft: #2f3b2c;
-  --danger: #c98989;
-  --danger-soft: #432c2c;
-  --priority-high: #d78686;
-  --priority-medium: #c3a56f;
-  --priority-low: #8aa8c0;
+  --stone-50: #0b0f1a;
+  --stone-100: #131a2a;
+  --stone-200: #1e293b;
+  --stone-300: #334155;
+  --stone-400: #475569;
+  --stone-500: #64748b;
+  --stone-600: #94a3b8;
+  --stone-700: #cbd5e1;
+  --stone-800: #e2e8f0;
+  --stone-900: #f8fafc;
+  --bg: #0a0e1a;
+  --surface: rgba(17, 24, 39, 0.85);
+  --border: rgba(148, 163, 184, 0.12);
+  --border-lt: rgba(148, 163, 184, 0.06);
+  --text: #f1f5f9;
+  --text-2: #cbd5e1;
+  --text-3: #94a3b8;
+  --text-4: #475569;
+  --accent: #818cf8;
+  --accent-dark: #a5b4fc;
+  --accent-soft: rgba(99, 102, 241, 0.18);
+  --done: #34d399;
+  --done-soft: rgba(16, 185, 129, 0.12);
+  --danger: #f87171;
+  --danger-soft: rgba(239, 68, 68, 0.12);
+  --priority-high: #f87171;
+  --priority-medium: #fbbf24;
+  --priority-low: #60a5fa;
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
 }
 
 *,
@@ -1694,7 +1699,7 @@ body {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--stone-700), var(--accent-dark));
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: #fff;
   border: none;
   cursor: pointer;
@@ -1759,7 +1764,7 @@ body {
   justify-content: space-between;
   padding: 14px 16px;
   border-bottom: 1px solid var(--stone-200);
-  background: linear-gradient(135deg, var(--stone-700) 0%, var(--accent-dark) 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
   color: #fff;
 }
 
@@ -1831,7 +1836,7 @@ body {
   background: var(--accent-soft);
 }
 .ai-msg-user .ai-msg-content {
-  background: linear-gradient(135deg, var(--stone-700), var(--accent-dark));
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: #fff;
   border-bottom-right-radius: 4px;
 }
@@ -1991,7 +1996,7 @@ body {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--stone-700), var(--accent-dark));
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: #fff;
   border: none;
   cursor: pointer;

@@ -4,7 +4,7 @@ const { Trade, TradingAccount } = require('../config/database');
 
 // ===== Trades =====
 
-async function getAllTrades({ search, status, market, strategy, symbol, startDate, endDate, sortBy, sortOrder } = {}) {
+async function getAllTrades({ search, status, market, strategy, symbol, startDate, endDate, sortBy, sortOrder, limit } = {}) {
   const filter = {};
 
   if (search) {
@@ -27,8 +27,10 @@ async function getAllTrades({ search, status, market, strategy, symbol, startDat
 
   const sort = {};
   sort[sortBy || 'entryDate'] = sortOrder === 'asc' ? 1 : -1;
+  const safeLimit = Math.max(1, Math.min(parseInt(limit, 10) || 500, 2000));
 
-  return Trade.find(filter).sort(sort);
+  const trades = await Trade.find(filter).sort(sort).limit(safeLimit).lean();
+  return trades.map(t => ({ ...t, id: t._id.toString() }));
 }
 
 async function getTradeById(id) {
@@ -161,7 +163,7 @@ async function deleteAccount(id) {
 // ===== Analytics & Stats =====
 
 async function getStats() {
-  const allTrades = await Trade.find();
+  const allTrades = await Trade.find().lean();
   const closed = allTrades.filter(t => t.status === 'closed');
   const open = allTrades.filter(t => t.status === 'open');
   const cancelled = allTrades.filter(t => t.status === 'cancelled');
@@ -203,6 +205,19 @@ async function getStats() {
     }
   });
   const avgHoldTimeMs = holdCount > 0 ? totalHoldMs / holdCount : 0;
+
+  // Risk/Reward stats
+  let rrSum = 0, rrCount = 0;
+  closed.forEach(t => {
+    const rr = _calculateRiskReward(t);
+    if (rr !== null) {
+      rrSum += rr;
+      rrCount++;
+    }
+  });
+  const avgRiskReward = rrCount > 0 ? Math.round((rrSum / rrCount) * 100) / 100 : null;
+  const openWithoutStopLoss = open.filter(t => !t.stopLoss).length;
+  const openWithoutTakeProfit = open.filter(t => !t.takeProfit).length;
 
   // By market
   const byMarket = {};
@@ -309,6 +324,9 @@ async function getStats() {
       maxLossStreak,
       maxDrawdown: Math.round(maxDrawdown * 100) / 100,
       avgHoldTimeMs,
+      avgRiskReward,
+      openWithoutStopLoss,
+      openWithoutTakeProfit,
       openPositionsValue: Math.round(openValue * 100) / 100
     },
     byMarket,
@@ -321,7 +339,7 @@ async function getStats() {
 }
 
 async function getStrategies() {
-  const trades = await Trade.find({ strategy: { $ne: '' } });
+  const trades = await Trade.find({ strategy: { $ne: '' } }).select('strategy status pnl').lean();
   const strategies = {};
   trades.forEach(t => {
     if (!strategies[t.strategy]) {
@@ -341,13 +359,13 @@ async function getStrategies() {
 }
 
 async function getSymbols() {
-  const trades = await Trade.find().distinct('symbol');
-  return trades.sort();
+  const symbols = await Trade.distinct('symbol');
+  return symbols.sort();
 }
 
 async function getExchanges() {
-  const trades = await Trade.find({ exchange: { $ne: '' } }).distinct('exchange');
-  return trades.sort();
+  const exchanges = await Trade.distinct('exchange', { exchange: { $ne: '' } });
+  return exchanges.sort();
 }
 
 // ===== Helpers =====
@@ -367,6 +385,14 @@ function _calculatePnl(trade) {
   trade.pnlPercent = entryPrice > 0
     ? Math.round((rawPnl / (entryPrice * quantity) * 100) * 100) / 100
     : 0;
+}
+
+function _calculateRiskReward(trade) {
+  if (!trade.entryPrice || !trade.stopLoss || !trade.takeProfit) return null;
+  const risk = Math.abs(trade.entryPrice - trade.stopLoss);
+  const reward = Math.abs(trade.takeProfit - trade.entryPrice);
+  if (risk <= 0) return null;
+  return Math.round((reward / risk) * 100) / 100;
 }
 
 module.exports = {

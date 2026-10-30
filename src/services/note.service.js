@@ -5,8 +5,17 @@ const { Note, NoteVersion } = require('../config/database');
 /**
  * Get all notes (non-archived), with optional filters
  */
-async function getAllNotes({ search, type, category, tag, pinned } = {}) {
-  const filter = { archived: false };
+async function getAllNotes({ search, type, category, tag, pinned, archived, limit } = {}) {
+  const archivedMode = String(archived || '').toLowerCase(); // '', 'true', 'false', 'all'
+  const filter = {};
+
+  if (archivedMode === 'all') {
+    // no archived filter
+  } else if (archivedMode === 'true') {
+    filter.archived = true;
+  } else {
+    filter.archived = false;
+  }
 
   if (type && type !== 'all') filter.type = type;
   if (category) filter.category = category;
@@ -24,7 +33,8 @@ async function getAllNotes({ search, type, category, tag, pinned } = {}) {
     ];
   }
 
-  return Note.find(filter).sort({ pinned: -1, updatedAt: -1 }).lean().then(notes =>
+  const safeLimit = Math.max(1, Math.min(parseInt(limit, 10) || 500, 1000));
+  return Note.find(filter).sort({ pinned: -1, order: 1, updatedAt: -1 }).limit(safeLimit).lean().then(notes =>
     notes.map(n => ({ ...n, id: n._id.toString(), _id: undefined, __v: undefined }))
   );
 }
@@ -32,19 +42,35 @@ async function getAllNotes({ search, type, category, tag, pinned } = {}) {
 /**
  * Get all unique categories
  */
-async function getCategories() {
-  const cats = await Note.distinct('category', { archived: false, category: { $ne: '' } });
+async function getCategories({ includeArchived = false } = {}) {
+  const filter = { category: { $ne: '' } };
+  if (!includeArchived) filter.archived = false;
+  const cats = await Note.distinct('category', filter);
   return cats.sort();
+}
+
+async function renameCategory(oldName, newName) {
+  const result = await Note.updateMany(
+    { category: oldName },
+    { $set: { category: newName } }
+  );
+  return { modified: result.modifiedCount };
+}
+
+async function deleteCategory(category) {
+  const result = await Note.updateMany(
+    { category },
+    { $set: { category: '' } }
+  );
+  return { modified: result.modifiedCount };
 }
 
 /**
  * Get all unique tags
  */
 async function getTags() {
-  const notes = await Note.find({ archived: false }, { tags: 1 }).lean();
-  const tagSet = new Set();
-  notes.forEach(n => (n.tags || []).forEach(t => tagSet.add(t)));
-  return [...tagSet].sort();
+  const tags = await Note.distinct('tags', { archived: false });
+  return tags.filter(Boolean).sort();
 }
 
 /**
@@ -60,6 +86,7 @@ async function getNoteById(id) {
  */
 async function createNote({ title, content, url, type, category, tags, color }) {
   const now = new Date().toISOString();
+  const lastNote = await Note.findOne({ archived: false }).sort({ order: -1, updatedAt: -1 }).select('order').lean();
   const note = await Note.create({
     title: title.trim(),
     content: content || '',
@@ -67,12 +94,35 @@ async function createNote({ title, content, url, type, category, tags, color }) 
     type: type || (url ? 'link' : 'note'),
     category: category || '',
     tags: tags || [],
+    order: (lastNote?.order || 0) + 1,
     color: color || '',
     favicon: url ? `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=32` : '',
     createdAt: now,
     updatedAt: now
   });
   return note;
+}
+
+async function reorderNotes(orderedIds) {
+  if (new Set(orderedIds).size !== orderedIds.length) return false;
+
+  const activeNotes = await Note.find({ archived: false }).select('_id').lean();
+  const activeIds = new Set(activeNotes.map(note => note._id.toString()));
+
+  if (orderedIds.length !== activeIds.size || orderedIds.some(id => !activeIds.has(id))) {
+    return false;
+  }
+
+  if (orderedIds.length > 0) {
+    await Note.bulkWrite(orderedIds.map((id, order) => ({
+      updateOne: {
+        filter: { _id: id, archived: false },
+        update: { $set: { order } }
+      }
+    })));
+  }
+
+  return true;
 }
 
 /**
@@ -131,22 +181,38 @@ async function archiveNote(id) {
 }
 
 /**
+ * Restore a note from archive
+ */
+async function unarchiveNote(id) {
+  const note = await Note.findByIdAndUpdate(id, {
+    archived: false,
+    updatedAt: new Date().toISOString()
+  }, { new: true });
+  return note;
+}
+
+/**
  * Delete a note permanently
  */
 async function deleteNote(id) {
-  await Note.findByIdAndDelete(id);
+  await Promise.all([
+    Note.findByIdAndDelete(id),
+    NoteVersion.deleteMany({ noteId: id })
+  ]);
 }
 
 /**
  * Get stats for Second Brain
  */
 async function getStats() {
-  const total = await Note.countDocuments({ archived: false });
-  const notes = await Note.countDocuments({ archived: false, type: 'note' });
-  const links = await Note.countDocuments({ archived: false, type: 'link' });
-  const images = await Note.countDocuments({ archived: false, type: 'image' });
-  const pinned = await Note.countDocuments({ archived: false, pinned: true });
-  const categories = await getCategories();
+  const [total, notes, links, images, pinned, categories] = await Promise.all([
+    Note.countDocuments({ archived: false }),
+    Note.countDocuments({ archived: false, type: 'note' }),
+    Note.countDocuments({ archived: false, type: 'link' }),
+    Note.countDocuments({ archived: false, type: 'image' }),
+    Note.countDocuments({ archived: false, pinned: true }),
+    getCategories()
+  ]);
   return { total, notes, links, images, pinned, categories: categories.length };
 }
 
@@ -165,7 +231,7 @@ async function getBacklinks(noteId) {
  * Get graph data — all notes with their [[link]] connections
  */
 async function getGraph() {
-  const notes = await Note.find({ archived: false }).lean();
+  const notes = await Note.find({ archived: false }).select('_id title type category pinned content').lean();
   const titleMap = {};
   notes.forEach(n => { titleMap[n.title.toLowerCase()] = n._id.toString(); });
 
@@ -237,12 +303,16 @@ async function deleteTag(tagName) {
 module.exports = {
   getAllNotes,
   getCategories,
+  renameCategory,
+  deleteCategory,
   getTags,
   getNoteById,
   createNote,
+  reorderNotes,
   updateNote,
   togglePin,
   archiveNote,
+  unarchiveNote,
   deleteNote,
   getStats,
   getBacklinks,

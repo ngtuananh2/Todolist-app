@@ -24,6 +24,7 @@ const todoSchema = new mongoose.Schema({
   completed:   { type: Boolean, default: false },
   priority:    { type: String, default: 'none', enum: ['none', 'low', 'medium', 'high'] },
   deadline:    { type: String, default: null },
+  deadlineReminderSentAt: { type: Date, default: null },
   completedAt: { type: String, default: null },
   createdAt:   { type: String, required: true },
   order:       { type: Number, default: 0 },
@@ -35,6 +36,21 @@ const todoSchema = new mongoose.Schema({
     completed: { type: Boolean, default: false }
   }]
 });
+
+const scheduleSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true, default: 'main' },
+  data: { type: mongoose.Schema.Types.Mixed, default: null },
+  sentOccurrences: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Add database indexes for better query performance
+todoSchema.index({ completed: 1, deadline: 1 });
+todoSchema.index({ completed: 1, deadlineReminderSentAt: 1, deadline: 1 });
+todoSchema.index({ order: 1, createdAt: -1 });
+todoSchema.index({ createdAt: -1 });
+todoSchema.index({ title: 'text', description: 'text' });
+todoSchema.index({ project: 1 });
 
 // Virtual "id" trả về _id dạng string
 todoSchema.set('toJSON', {
@@ -82,6 +98,10 @@ const habitSchema = new mongoose.Schema({
   createdAt: { type: String, required: true }
 });
 
+// Add indexes for habit queries
+habitSchema.index({ archived: 1 });
+habitSchema.index({ createdAt: -1 });
+
 habitSchema.set('toJSON', {
   virtuals: true,
   transform: (doc, ret) => {
@@ -99,6 +119,8 @@ const habitLogSchema = new mongoose.Schema({
 });
 
 habitLogSchema.index({ habitId: 1, date: 1 }, { unique: true });
+habitLogSchema.index({ date: 1, done: 1 });
+habitLogSchema.index({ habitId: 1, done: 1, date: -1 });
 
 habitLogSchema.set('toJSON', {
   virtuals: true,
@@ -122,12 +144,16 @@ const noteSchema = new mongoose.Schema({
   tags:        [{ type: String }],
   pinned:      { type: Boolean, default: false },
   archived:    { type: Boolean, default: false },
+  order:       { type: Number, default: 0 },
   color:       { type: String, default: '' },
   favicon:     { type: String, default: '' },
   createdAt:   { type: String, required: true },
   updatedAt:   { type: String, required: true }
 });
 
+noteSchema.index({ archived: 1, pinned: -1, order: 1, updatedAt: -1 });
+noteSchema.index({ archived: 1, category: 1 });
+noteSchema.index({ archived: 1, type: 1 });
 noteSchema.index({ title: 'text', content: 'text', tags: 'text' });
 
 noteSchema.set('toJSON', {
@@ -181,7 +207,32 @@ const vocabSchema = new mongoose.Schema({
   createdAt:   { type: String, required: true }
 });
 
+// Add indexes for vocab queries
+vocabSchema.index({ mastered: 1, nextReview: 1 });
+vocabSchema.index({ mastered: 1, nextReview: 1, createdAt: -1 });
+vocabSchema.index({ createdAt: -1 });
+vocabSchema.index({ word: 1 });
+vocabSchema.index({ category: 1 });
+vocabSchema.index({ level: 1 });
+
 vocabSchema.set('toJSON', {
+  virtuals: true,
+  transform: (doc, ret) => {
+    ret.id = ret._id.toString();
+    delete ret._id;
+    delete ret.__v;
+    return ret;
+  }
+});
+
+const englishMindmapSchema = new mongoose.Schema({
+  title:     { type: String, default: 'English Mindmap' },
+  tree:      { type: mongoose.Schema.Types.Mixed, default: {} },
+  createdAt: { type: String, required: true },
+  updatedAt: { type: String, required: true }
+});
+
+englishMindmapSchema.set('toJSON', {
   virtuals: true,
   transform: (doc, ret) => {
     ret.id = ret._id.toString();
@@ -223,8 +274,10 @@ const tradeSchema = new mongoose.Schema({
 });
 
 tradeSchema.index({ symbol: 1, status: 1 });
-tradeSchema.index({ entryDate: -1 });
+tradeSchema.index({ status: 1, exitDate: -1 });
+tradeSchema.index({ entryDate: -1, status: 1 });
 tradeSchema.index({ market: 1 });
+tradeSchema.index({ strategy: 1, status: 1 });
 tradeSchema.index({ strategy: 'text', notes: 'text', symbol: 'text' });
 
 tradeSchema.set('toJSON', {
@@ -260,6 +313,7 @@ tradingAccountSchema.set('toJSON', {
 });
 
 const Todo = mongoose.model('Todo', todoSchema);
+const Schedule = mongoose.model('Schedule', scheduleSchema);
 const Tag  = mongoose.model('Tag', tagSchema);
 const Habit = mongoose.model('Habit', habitSchema);
 const HabitLog = mongoose.model('HabitLog', habitLogSchema);
@@ -275,6 +329,7 @@ const noteVersionSchema = new mongoose.Schema({
   tags:      [{ type: String }],
   savedAt:   { type: String, required: true }
 });
+noteVersionSchema.index({ noteId: 1, savedAt: -1 });
 noteVersionSchema.set('toJSON', {
   virtuals: true, transform: (_, ret) => { ret.id = ret._id.toString(); delete ret._id; delete ret.__v; return ret; }
 });
@@ -282,9 +337,9 @@ const NoteVersion = mongoose.model('NoteVersion', noteVersionSchema);
 
 const EnglishProgress = mongoose.model('EnglishProgress', englishProgressSchema);
 const Vocab = mongoose.model('Vocab', vocabSchema);
+const EnglishMindmap = mongoose.model('EnglishMindmap', englishMindmapSchema);
 const Trade = mongoose.model('Trade', tradeSchema);
 const TradingAccount = mongoose.model('TradingAccount', tradingAccountSchema);
 
-module.exports = { connectDB, Todo, Tag, Habit, HabitLog, Note, NoteVersion, EnglishProgress, Vocab, Trade, TradingAccount, mongoose };
-
+module.exports = { connectDB, Todo, Schedule, Tag, Habit, HabitLog, Note, NoteVersion, EnglishProgress, Vocab, EnglishMindmap, Trade, TradingAccount, mongoose };
 

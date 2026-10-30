@@ -4,6 +4,7 @@
 
   const SETTINGS_KEY = 'taskflow_settings';
   const REMINDER_KEY = 'taskflow_smart_reminders';
+  const APP_SETTINGS_KEY = 'taskflow_app_settings';
 
   // Default settings
   const DEFAULTS = {
@@ -14,7 +15,8 @@
     notifDeadline: true,
     notifVocab: true,
     notifHabit: true,
-    notifSchedule: true
+    notifSchedule: true,
+    launchOnStartup: false
   };
 
   let fallbackToastTimer = null;
@@ -29,6 +31,27 @@
 
   function saveSettings(settings) {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  }
+
+  async function loadAppSettings() {
+    const res = await fetch('/api/app-settings');
+    if (!res.ok) throw new Error(`Không thể tải cài đặt ứng dụng (HTTP ${res.status})`);
+    const data = await res.json();
+    return { launchOnStartup: false, windowSize: '1200x780', ...data };
+  }
+
+  async function saveAppSettings(patch) {
+    const current = await loadAppSettings();
+    const res = await fetch('/api/app-settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch)
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || `Không thể lưu cài đặt (HTTP ${res.status})`);
+    const next = { ...current, ...result, ...patch };
+    localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(next));
+    return { settings: next, windowSizeApplied: result.windowSizeApplied };
   }
 
   function updateSettings(patch) {
@@ -104,6 +127,31 @@
 
   // ── Populate form from settings ──
   function populateForm(settings) {
+    // Startup
+    const startupToggle = document.getElementById('setting-launch-startup');
+    if (startupToggle) {
+      const supported = settings.desktopCapabilities?.launchOnStartup === true;
+      startupToggle.checked = supported && Boolean(settings.launchOnStartup);
+      startupToggle.disabled = !supported;
+      const status = document.getElementById('setting-launch-startup-status');
+      if (status && !supported) {
+        status.textContent = 'Chỉ khả dụng trong ứng dụng desktop đã đóng gói trên Windows.';
+      }
+    }
+
+    const windowSize = document.getElementById('setting-window-size');
+    if (windowSize) {
+      if (Array.isArray(settings.windowSizeOptions) && settings.windowSizeOptions.length) {
+        windowSize.replaceChildren(...settings.windowSizeOptions.map(option => {
+          const element = document.createElement('option');
+          element.value = option.value;
+          element.textContent = option.label;
+          return element;
+        }));
+      }
+      windowSize.value = settings.windowSize || '1200x780';
+    }
+
     // Dark mode toggle
     const darkToggle = document.getElementById('setting-dark-mode');
     if (darkToggle) {
@@ -159,8 +207,118 @@
     }
   }
 
+  function updateUpdateStatus(status) {
+    const statusEl = document.getElementById('setting-update-status');
+    const installBtn = document.getElementById('setting-update-install');
+    const checkBtn = document.getElementById('setting-update-check');
+    if (!statusEl || !installBtn || !checkBtn) return;
+
+    installBtn.hidden = status.status !== 'downloaded';
+    checkBtn.disabled = status.status === 'checking' || status.status === 'downloading';
+
+    const messages = {
+      idle: 'Tự động kiểm tra phiên bản mới khi mở ứng dụng desktop.',
+      unsupported: 'Tự cập nhật chỉ khả dụng trong bản desktop Windows đã cài bằng trình cài đặt.',
+      checking: 'Đang kiểm tra phiên bản mới...',
+      'no-release': 'Chưa có bản cập nhật nào được phát hành trên GitHub. Cần phát hành bản mới trước khi tự cập nhật hoạt động.',
+      available: `Có phiên bản ${status.version}. Đang tải về...`,
+      downloading: `Đang tải bản cập nhật... ${status.percent}%`,
+      downloaded: `Đã tải phiên bản ${status.version}. Khởi động lại để cài đặt.`,
+      current: `Bạn đang dùng phiên bản mới nhất (${status.version}).`,
+      error: 'Không thể kiểm tra hoặc tải cập nhật. Vui lòng thử lại.'
+    };
+    statusEl.textContent = messages[status.status] || messages.idle;
+  }
+
+  function initUpdateControls() {
+    const api = window.taskflowUpdates;
+    const checkBtn = document.getElementById('setting-update-check');
+    const installBtn = document.getElementById('setting-update-install');
+    if (!checkBtn || !installBtn) return;
+    if (!api) {
+      updateUpdateStatus({ status: 'unsupported' });
+      checkBtn.disabled = true;
+      return;
+    }
+
+    api.getVersion()
+      .then(version => {
+        const versionEl = document.getElementById('setting-app-version');
+        if (versionEl) versionEl.textContent = version;
+      })
+      .catch(error => {
+        console.error('[settings] Cannot read desktop app version:', error);
+      });
+
+    api.getStatus()
+      .then(updateUpdateStatus)
+      .catch(error => {
+        console.error('[settings] Cannot read update status:', error);
+        updateUpdateStatus({ status: 'error' });
+      });
+    api.onStatus(updateUpdateStatus);
+
+    checkBtn.addEventListener('click', async () => {
+      checkBtn.disabled = true;
+      try {
+        updateUpdateStatus(await api.check());
+      } catch (error) {
+        console.error('[settings] Update check failed:', error);
+        updateUpdateStatus({ status: 'error' });
+      }
+    });
+
+    installBtn.addEventListener('click', async () => {
+      installBtn.disabled = true;
+      try {
+        await api.install();
+      } catch (error) {
+        console.error('[settings] Update installation failed:', error);
+        showToast(error.message || 'Không thể cài đặt bản cập nhật', 'error');
+        installBtn.disabled = false;
+      }
+    });
+  }
+
   // ── Bind events ──
   function bindEvents() {
+    initUpdateControls();
+
+    // Startup launch
+    document.getElementById('setting-launch-startup')?.addEventListener('change', async function () {
+      const toggle = this;
+      toggle.disabled = true;
+      try {
+        await saveAppSettings({ launchOnStartup: toggle.checked });
+        showToast(toggle.checked ? 'Đã bật khởi động cùng Windows' : 'Đã tắt khởi động cùng Windows');
+      } catch (err) {
+        toggle.checked = !toggle.checked;
+        showToast(err.message || 'Không thể lưu cài đặt khởi động', 'error');
+      } finally {
+        toggle.disabled = false;
+      }
+    });
+
+    document.getElementById('setting-window-size')?.addEventListener('change', async function () {
+      const select = this;
+      const previousValue = select.dataset.savedValue || '1200x780';
+      select.disabled = true;
+      try {
+        const result = await saveAppSettings({ windowSize: select.value });
+        select.dataset.savedValue = select.value;
+        if (result.windowSizeApplied) {
+          showToast(`Đã đổi kích thước cửa sổ thành ${select.value.replace('x', ' × ')}`);
+        } else {
+          showToast('Đã lưu cài đặt. Kích thước chỉ áp dụng trong ứng dụng desktop Electron.', 'info');
+        }
+      } catch (err) {
+        select.value = previousValue;
+        showToast(err.message || 'Không thể lưu kích thước cửa sổ', 'error');
+      } finally {
+        select.disabled = false;
+      }
+    });
+
     // Dark mode
     document.getElementById('setting-dark-mode')?.addEventListener('change', () => {
       const darkToggle = document.getElementById('setting-dark-mode');
@@ -288,27 +446,7 @@
 
     // Restore
     const restoreBtn = document.getElementById('setting-restore');
-    const restoreFile = document.getElementById('restore-file');
-    restoreBtn?.addEventListener('click', () => restoreFile?.click());
-    restoreFile?.addEventListener('change', async function () {
-      if (!this.files.length) return;
-      const file = this.files[0];
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-        const res = await fetch('/api/dashboard/restore', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-        if (!res.ok) throw new Error('Restore failed');
-        showToast('Khôi phục dữ liệu thành công! Tải lại trang...', 'success');
-        setTimeout(() => location.reload(), 1500);
-      } catch (e) {
-        showToast('Lỗi khôi phục: ' + e.message, 'error');
-      }
-      this.value = '';
-    });
+    restoreBtn?.addEventListener('click', () => document.getElementById('restore-file')?.click());
 
     // Reset all data
     document.getElementById('setting-reset')?.addEventListener('click', async () => {
@@ -332,8 +470,15 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            todos: [], tags: [], notes: [], vocabs: [],
-            trades: [], tradingAccounts: [], habits: [], habitLogs: []
+            mode: 'replace',
+            payload: {
+              version: '2.0',
+              data: {
+                todos: [], tags: [], notes: [], noteVersions: [],
+                englishProgress: [], englishMindmaps: [], vocab: [],
+                trades: [], tradingAccounts: [], habits: [], habitLogs: [], schedules: []
+              }
+            }
           })
         });
         
@@ -401,18 +546,34 @@
   }
 
   // ── Init ──
-  function init() {
+  async function init() {
     setNavDate();
     const settings = loadSettings();
+    let appSettings;
+    try {
+      appSettings = await loadAppSettings();
+    } catch (error) {
+      appSettings = { launchOnStartup: false, windowSize: '1200x780' };
+      try {
+        const saved = JSON.parse(localStorage.getItem(APP_SETTINGS_KEY) || '{}');
+        appSettings = { ...appSettings, ...saved };
+      } catch (storageError) {
+        console.error('[settings] Invalid saved application settings:', storageError);
+      }
+      showToast(error.message || 'Không thể tải cài đặt ứng dụng', 'error');
+    }
+    const mergedSettings = { ...settings, ...appSettings };
 
     try {
-      populateForm(settings);
+      populateForm(mergedSettings);
+      const windowSize = document.getElementById('setting-window-size');
+      if (windowSize) windowSize.dataset.savedValue = mergedSettings.windowSize || '1200x780';
     } catch (e) {
       console.error('[settings] populateForm failed:', e);
     }
 
     try {
-      applySettings(settings);
+      applySettings(mergedSettings);
     } catch (e) {
       console.error('[settings] applySettings failed:', e);
     }

@@ -155,7 +155,7 @@
 
   function renderKPIs(d) {
     $('kpi-todo').textContent = d.todos.total;
-    $('kpi-todo-sub').textContent = `${d.todos.done} hoàn thành · ${d.todos.overdue} quá hạn`;
+    $('kpi-todo-sub').textContent = `${d.todos.done} hoàn thành · ${d.todos.overdue} quá hạn · ${d.todos.weeklyCompleted || 0} tuần này`;
     $('kpi-habit').textContent = d.habits.total;
     $('kpi-habit-sub').textContent = `${d.habits.todayDone}/${d.habits.todayTotal} hôm nay`;
     $('kpi-brain').textContent = d.notes.total;
@@ -283,18 +283,6 @@
     } catch (e) { alert('Lỗi sao lưu: ' + e.message); }
   };
   $('btn-restore').onclick = () => $('restore-file').click();
-  $('restore-file').onchange = async (e) => {
-    const file = e.target.files[0]; if (!file) return;
-    if (!confirm('⚠️ Khôi phục sẽ GHI ĐÈ toàn bộ dữ liệu hiện tại. Tiếp tục?')) return;
-    try {
-      const text = await file.text();
-      const payload = JSON.parse(text);
-      const res = await fetch('/api/dashboard/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      const result = await res.json();
-      if (result.success) { alert('✅ Khôi phục thành công!'); loadDashboard(); loadTimeline(); }
-    } catch (err) { alert('Lỗi khôi phục: ' + err.message); }
-  };
-
   // ─── Keyboard Shortcuts ───
   function openShortcuts() { $('ks-overlay').style.display = 'flex'; }
   function closeShortcuts() { $('ks-overlay').style.display = 'none'; }

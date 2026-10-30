@@ -483,16 +483,27 @@ const LESSONS = [
 let currentTab = 'grammar';
 let progressData = {};
 let vocabList = [];
+let vocabOnlyUnmastered = false;
+let oxfordWords = [];
+let oxfordSelectedWords = new Set();
+const vocabSourceOffsets = new Map();
+const vocabSourcePools = new Map();
 let quizState = null; // { lessonId, questions, currentQ, answers, submitted }
 let editingVocabId = null;
 let examPlan = { goal: 'ielts', target: '6.5', date: '' };
 let examMockState = null;
 let errorNotebook = [];
+let mindmapState = null;
+let mindmapSelectedId = null;
+let mindmapDraggedId = null;
+let mindmapLayout = 'vertical';
 
 const EXAM_PLAN_KEY = 'en_exam_plan';
+const EXAM_PLAN_VIS_KEY = 'en_exam_plan_hidden';
 const EXAM_HISTORY_KEY = 'en_exam_history';
 const ERROR_NOTEBOOK_KEY = 'en_error_notebook';
 const ROADMAP_WEEK_KEY = 'en_roadmap_week';
+const MINDMAP_LAYOUT_KEY = 'en_mindmap_layout';
 
 const ROADMAP_LIBRARY = {
   ielts: {
@@ -582,8 +593,10 @@ async function initApp() {
   setupTheme();
   setupDate();
   setupTabs();
+  setupExamPlanToggle();
   setupExamPlanner();
   setupExamMock();
+  setupMindmap();
   await loadProgress();
   renderLessons();
   renderExerciseList();
@@ -591,6 +604,7 @@ async function initApp() {
   setupVocabEvents();
   loadWordOfDay();
   loadStreak();
+  await loadMindmap();
 }
 
 // Theme is handled by global-utils.js
@@ -728,6 +742,36 @@ function setupExamPlanner() {
     renderDetailedRoadmap(generateWeeklyRoadmap({ force: true }));
     if (window.globalUtils?.guToast) window.globalUtils.guToast('Đã lưu mục tiêu thi', 'success');
   });
+}
+
+function setupExamPlanToggle() {
+  const toggleBtn = $('btn-toggle-exam-plan');
+  const hideBtn = $('btn-hide-exam-plan');
+  const panel = $('exam-plan-panel');
+  if (!toggleBtn || !panel) return;
+
+  let hidden = false;
+  try {
+    hidden = localStorage.getItem(EXAM_PLAN_VIS_KEY) === 'true';
+  } catch (_) {}
+
+  const update = (isHidden) => {
+    panel.style.display = isHidden ? 'none' : '';
+    toggleBtn.textContent = isHidden ? 'Hiện kế hoạch thi' : 'Ẩn kế hoạch thi';
+    if (hideBtn) hideBtn.style.display = isHidden ? 'none' : '';
+  };
+
+  const setHidden = (isHidden) => {
+    hidden = !!isHidden;
+    try {
+      localStorage.setItem(EXAM_PLAN_VIS_KEY, hidden ? 'true' : 'false');
+    } catch (_) {}
+    update(hidden);
+  };
+
+  toggleBtn.addEventListener('click', () => setHidden(!hidden));
+  hideBtn?.addEventListener('click', () => setHidden(true));
+  update(hidden);
 }
 
 function renderExamTargetOptions() {
@@ -1891,6 +1935,7 @@ async function loadVocab() {
     const level = $('vocab-level')?.value;
     if (search) params.set('search', search);
     if (level) params.set('level', level);
+    if (vocabOnlyUnmastered) params.set('mastered', 'false');
 
     const res = await fetch('/api/english/vocab?' + params);
     vocabList = await res.json();
@@ -1952,6 +1997,12 @@ function setupVocabEvents() {
     searchTimeout = setTimeout(loadVocab, 300);
   });
   $('vocab-level')?.addEventListener('change', loadVocab);
+  $('btn-toggle-unmastered')?.addEventListener('click', () => {
+    vocabOnlyUnmastered = !vocabOnlyUnmastered;
+    updateUnmasteredFilterUI();
+    loadVocab();
+  });
+  $('btn-review-unmastered')?.addEventListener('click', reviewUnmasteredWords);
 
   $('btn-add-vocab')?.addEventListener('click', () => openAddVocab());
   $('vocab-modal-cancel')?.addEventListener('click', closeVocabModal);
@@ -1961,6 +2012,7 @@ function setupVocabEvents() {
 
   // AI lookup button
   $('btn-ai-lookup')?.addEventListener('click', aiLookupWord);
+
   // AI + Save button
   $('vocab-ai-save')?.addEventListener('click', aiLookupAndSave);
   // Enter in word input triggers AI lookup
@@ -1971,6 +2023,902 @@ function setupVocabEvents() {
   // CSV Import
   $('btn-import-vocab')?.addEventListener('click', () => $('csv-file-input')?.click());
   $('csv-file-input')?.addEventListener('change', handleCSVImport);
+
+  // Oxford 3000
+  $('btn-load-oxford')?.addEventListener('click', () => loadOxfordWords());
+  $('btn-add-oxford-selected')?.addEventListener('click', importSelectedOxfordWords);
+  $('btn-quick-oxford-a1')?.addEventListener('click', () => quickAddOxfordByLevel('A1'));
+  $('btn-quick-oxford-a2')?.addEventListener('click', () => quickAddOxfordByLevel('A2'));
+  $('btn-quick-oxford-b1')?.addEventListener('click', () => quickAddOxfordByLevel('B1'));
+  $('btn-quick-oxford-b2')?.addEventListener('click', () => quickAddOxfordByLevel('B2'));
+  $('vocab-source')?.addEventListener('change', () => {
+    resetVocabSourceBatchOffset();
+    toggleSourceModeUI();
+  });
+  $('oxford-level')?.addEventListener('change', () => {
+    resetVocabSourceBatchOffset();
+    if (oxfordWords.length > 0) loadOxfordWords();
+  });
+  $('oxford-limit')?.addEventListener('change', () => {
+    resetVocabSourceBatchOffset();
+    if (oxfordWords.length > 0) loadOxfordWords();
+  });
+
+  toggleSourceModeUI();
+  updateUnmasteredFilterUI();
+}
+
+function setupMindmap() {
+  $('mindmap-add-child')?.addEventListener('click', () => addMindmapNode('child'));
+  $('mindmap-add-sibling')?.addEventListener('click', () => addMindmapNode('sibling'));
+  $('mindmap-delete')?.addEventListener('click', deleteSelectedMindmapNode);
+  $('mindmap-layout-vertical')?.addEventListener('click', () => setMindmapLayout('vertical'));
+  $('mindmap-layout-horizontal')?.addEventListener('click', () => setMindmapLayout('horizontal'));
+  $('mindmap-layout-radial')?.addEventListener('click', () => setMindmapLayout('radial'));
+  $('mindmap-save')?.addEventListener('click', () => saveMindmap(true));
+  $('mindmap-export')?.addEventListener('click', exportMindmapToIO);
+  $('mindmap-import')?.addEventListener('click', importMindmapFromIO);
+  $('mindmap-copy')?.addEventListener('click', copyMindmapIO);
+
+  const titleInput = $('mindmap-title-input');
+  const titleSave = $('mindmap-title-save');
+  titleSave?.addEventListener('click', commitMindmapTitleEdit);
+  titleInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') commitMindmapTitleEdit();
+  });
+  titleInput?.addEventListener('blur', commitMindmapTitleEdit);
+
+  const colorInput = $('mindmap-color-input');
+  $('mindmap-color-apply')?.addEventListener('click', commitMindmapColorEdit);
+  colorInput?.addEventListener('change', commitMindmapColorEdit);
+
+  window.addEventListener('resize', debounce(() => {
+    if (mindmapLayout === 'radial') renderMindmap();
+  }, 150));
+
+  loadMindmapLayout();
+}
+
+function loadMindmapLayout() {
+  try {
+    const saved = localStorage.getItem(MINDMAP_LAYOUT_KEY);
+    if (saved === 'horizontal' || saved === 'vertical' || saved === 'radial') {
+      mindmapLayout = saved;
+    }
+  } catch (_) {}
+  updateMindmapLayoutUI();
+}
+
+function setMindmapLayout(layout) {
+  if (layout !== 'horizontal' && layout !== 'vertical' && layout !== 'radial') return;
+  mindmapLayout = layout;
+  try { localStorage.setItem(MINDMAP_LAYOUT_KEY, layout); } catch (_) {}
+  updateMindmapLayoutUI();
+  renderMindmap();
+}
+
+function updateMindmapLayoutUI() {
+  const verticalBtn = $('mindmap-layout-vertical');
+  const horizontalBtn = $('mindmap-layout-horizontal');
+  const radialBtn = $('mindmap-layout-radial');
+  if (verticalBtn) verticalBtn.classList.toggle('is-active', mindmapLayout === 'vertical');
+  if (horizontalBtn) horizontalBtn.classList.toggle('is-active', mindmapLayout === 'horizontal');
+  if (radialBtn) radialBtn.classList.toggle('is-active', mindmapLayout === 'radial');
+}
+
+function debounce(fn, delay) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+function getThemeAccentColor() {
+  const value = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  return value || '#7c7268';
+}
+
+function createMindmapNode(title, color = '') {
+  return {
+    id: `mm-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    title: String(title || 'New Node'),
+    color: color || getThemeAccentColor(),
+    children: []
+  };
+}
+
+function ensureMindmapState() {
+  if (mindmapState && mindmapState.tree) return;
+  const accent = getThemeAccentColor();
+  mindmapState = {
+    title: 'English Mindmap',
+    tree: {
+      id: 'root',
+      title: 'English Mindmap',
+      color: accent,
+      children: [
+        { id: 'node-grammar', title: 'Grammar', color: '#5a9bd5', children: [] },
+        { id: 'node-vocab', title: 'Vocabulary', color: '#6d8f63', children: [] },
+        { id: 'node-skills', title: 'Skills', color: '#c48543', children: [] }
+      ]
+    }
+  };
+}
+
+async function loadMindmap() {
+  ensureMindmapState();
+  try {
+    const res = await fetch('/api/english/mindmap');
+    if (!res.ok) throw new Error('Load mindmap failed');
+    const data = await res.json();
+    if (data?.tree) {
+      mindmapState = { title: data.title || 'English Mindmap', tree: data.tree };
+    }
+  } catch (e) {
+    console.warn('Load mindmap error:', e);
+  }
+
+  if (!mindmapSelectedId && mindmapState.tree.children?.length) {
+    mindmapSelectedId = mindmapState.tree.children[0].id;
+  }
+  renderMindmap();
+}
+
+async function saveMindmap(showToast) {
+  ensureMindmapState();
+  try {
+    const res = await fetch('/api/english/mindmap', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: mindmapState.title, tree: mindmapState.tree })
+    });
+    if (!res.ok) throw new Error('Save mindmap failed');
+    if (showToast && window.globalUtils?.guToast) {
+      window.globalUtils.guToast('Đã lưu mindmap', 'success');
+    }
+  } catch (e) {
+    console.warn('Save mindmap error:', e);
+    if (showToast && window.globalUtils?.guToast) {
+      window.globalUtils.guToast('Không thể lưu mindmap', 'error');
+    }
+  }
+}
+
+function renderMindmap() {
+  ensureMindmapState();
+  const wrap = $('mindmap-tree');
+  if (!wrap) return;
+
+  wrap.classList.toggle('horizontal', mindmapLayout === 'horizontal');
+  wrap.classList.toggle('radial', mindmapLayout === 'radial');
+
+  if (mindmapLayout === 'radial') {
+    renderMindmapRadial(wrap);
+  } else {
+    wrap.innerHTML = '';
+    const ul = document.createElement('ul');
+    (mindmapState.tree.children || []).forEach(node => {
+      ul.appendChild(renderMindmapNode(node));
+    });
+    wrap.appendChild(ul);
+  }
+
+  updateMindmapSelectedUI();
+}
+
+function renderMindmapNode(node) {
+  const li = document.createElement('li');
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'en-mindmap-node' + (node.id === mindmapSelectedId ? ' selected' : '');
+  btn.textContent = node.title || 'Untitled';
+  btn.dataset.id = node.id;
+  btn.draggable = true;
+  applyMindmapNodeColor(btn, node);
+  bindMindmapNodeEvents(btn, node);
+
+  li.appendChild(btn);
+
+  if (node.children && node.children.length) {
+    const ul = document.createElement('ul');
+    node.children.forEach(child => ul.appendChild(renderMindmapNode(child)));
+    li.appendChild(ul);
+  }
+
+  return li;
+}
+
+function bindMindmapNodeEvents(btn, node) {
+  btn.addEventListener('click', () => {
+    mindmapSelectedId = node.id;
+    renderMindmap();
+  });
+
+  btn.addEventListener('dblclick', () => {
+    startEditMindmapNode(node.id, btn);
+  });
+
+  btn.addEventListener('dragstart', (e) => {
+    mindmapDraggedId = node.id;
+    e.dataTransfer?.setData('text/plain', node.id);
+  });
+
+  btn.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    btn.classList.add('drag-over');
+  });
+
+  btn.addEventListener('dragleave', () => {
+    btn.classList.remove('drag-over');
+  });
+
+  btn.addEventListener('drop', (e) => {
+    e.preventDefault();
+    btn.classList.remove('drag-over');
+    const draggedId = mindmapDraggedId || e.dataTransfer?.getData('text/plain');
+    if (!draggedId || draggedId === node.id) return;
+    if (isMindmapDescendant(draggedId, node.id)) return;
+    moveMindmapNode(draggedId, node.id);
+  });
+}
+
+function applyMindmapNodeColor(el, node) {
+  const color = node.color || getThemeAccentColor();
+  el.style.borderColor = color;
+  el.style.color = color;
+}
+
+function renderMindmapRadial(wrap) {
+  wrap.innerHTML = '';
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.classList.add('en-mindmap-svg');
+  const nodeLayer = document.createElement('div');
+  nodeLayer.className = 'en-mindmap-node-layer';
+
+  wrap.appendChild(svg);
+  wrap.appendChild(nodeLayer);
+
+  const rect = wrap.getBoundingClientRect();
+  const width = rect.width || 800;
+  const height = Math.max(rect.height, 520);
+  const center = { x: width / 2, y: height / 2 };
+
+  const depth = Math.max(1, getMindmapDepth(mindmapState.tree));
+  const radiusStep = Math.min(width, height) / (depth * 1.65);
+  const positions = new Map();
+
+  layoutMindmapRadial(mindmapState.tree, 0, 0, Math.PI * 2, positions, center, radiusStep);
+  relaxMindmapPositions(positions, width, height);
+
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+  drawMindmapEdges(svg, mindmapState.tree, positions);
+  drawMindmapNodes(nodeLayer, positions);
+}
+
+function getMindmapDepth(node) {
+  if (!node || !node.children || node.children.length === 0) return 1;
+  return 1 + Math.max(...node.children.map(getMindmapDepth));
+}
+
+function getMindmapLeafCount(node) {
+  if (!node.children || node.children.length === 0) return 1;
+  return node.children.reduce((sum, child) => sum + getMindmapLeafCount(child), 0);
+}
+
+function layoutMindmapRadial(node, depth, startAngle, endAngle, positions, center, radiusStep) {
+  const angle = (startAngle + endAngle) / 2;
+  const radius = depth * radiusStep;
+  const x = center.x + radius * Math.cos(angle);
+  const y = center.y + radius * Math.sin(angle);
+  positions.set(node.id, { x, y, node, depth });
+
+  if (!node.children || node.children.length === 0) return;
+
+  const totalLeaves = getMindmapLeafCount(node);
+  let currentAngle = startAngle;
+
+  node.children.forEach(child => {
+    const leaves = getMindmapLeafCount(child);
+    const slice = (leaves / totalLeaves) * (endAngle - startAngle);
+    const childStart = currentAngle;
+    const childEnd = currentAngle + slice;
+    layoutMindmapRadial(child, depth + 1, childStart, childEnd, positions, center, radiusStep);
+    currentAngle = childEnd;
+  });
+}
+
+function estimateMindmapNodeSize(node, depth) {
+  const text = String(node?.title || 'Untitled');
+  const isRoot = node?.id === 'root';
+  const maxWidth = isRoot ? 220 : Math.max(110, Math.min(170, 78 + text.length * 5.2));
+  const lines = Math.max(1, Math.ceil(text.length / (isRoot ? 17 : 14)));
+  const width = Math.min(maxWidth, 64 + text.length * (isRoot ? 5.4 : 5.8));
+  const height = (isRoot ? 34 : 28) + (lines - 1) * 15;
+  const depthScale = Math.max(0.88, 1 - Math.min(depth, 6) * 0.025);
+  return {
+    width: width * depthScale,
+    height: height * depthScale
+  };
+}
+
+function relaxMindmapPositions(positions, width, height) {
+  const entries = Array.from(positions.values());
+  const iterations = 20;
+  const padding = 32;
+
+  for (let iter = 0; iter < iterations; iter++) {
+    for (let i = 0; i < entries.length; i++) {
+      for (let j = i + 1; j < entries.length; j++) {
+        const a = entries[i];
+        const b = entries[j];
+        if (!a || !b || a.node.id === b.node.id) continue;
+
+        const aSize = estimateMindmapNodeSize(a.node, a.depth || 0);
+        const bSize = estimateMindmapNodeSize(b.node, b.depth || 0);
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const dist = Math.hypot(dx, dy) || 0.001;
+        const minDist = (aSize.width + bSize.width) / 2 + padding;
+
+        if (dist >= minDist) continue;
+
+        const overlap = minDist - dist;
+        const ux = dx / dist;
+        const uy = dy / dist;
+
+        if (a.node.id === 'root' && b.node.id !== 'root') {
+          b.x -= ux * overlap;
+          b.y -= uy * overlap;
+        } else if (b.node.id === 'root' && a.node.id !== 'root') {
+          a.x += ux * overlap;
+          a.y += uy * overlap;
+        } else {
+          const aWeight = Math.max(1, a.depth || 1);
+          const bWeight = Math.max(1, b.depth || 1);
+          const total = aWeight + bWeight;
+          const aMove = overlap * (bWeight / total);
+          const bMove = overlap * (aWeight / total);
+          a.x += ux * aMove;
+          a.y += uy * aMove;
+          b.x -= ux * bMove;
+          b.y -= uy * bMove;
+        }
+      }
+    }
+  }
+
+  entries.forEach(entry => {
+    const size = estimateMindmapNodeSize(entry.node, entry.depth || 0);
+    const halfW = size.width / 2 + 14;
+    const halfH = size.height / 2 + 14;
+    entry.x = Math.max(halfW, Math.min(width - halfW, entry.x));
+    entry.y = Math.max(halfH, Math.min(height - halfH, entry.y));
+    positions.set(entry.node.id, entry);
+  });
+
+  const root = positions.get('root');
+  if (root) {
+    root.x = width / 2;
+    root.y = height / 2;
+    positions.set('root', root);
+  }
+}
+
+function drawMindmapEdges(svg, node, positions) {
+  if (!node.children || node.children.length === 0) return;
+  const parentPos = positions.get(node.id);
+  node.children.forEach(child => {
+    const childPos = positions.get(child.id);
+    if (parentPos && childPos) {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const midX = (parentPos.x + childPos.x) / 2;
+      const midY = (parentPos.y + childPos.y) / 2;
+      const curve = 0.15;
+      const ctrlX = midX + (childPos.y - parentPos.y) * curve;
+      const ctrlY = midY - (childPos.x - parentPos.x) * curve;
+      path.setAttribute('d', `M ${parentPos.x} ${parentPos.y} Q ${ctrlX} ${ctrlY} ${childPos.x} ${childPos.y}`);
+      path.setAttribute('stroke', child.color || getThemeAccentColor());
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('fill', 'none');
+      svg.appendChild(path);
+    }
+    drawMindmapEdges(svg, child, positions);
+  });
+}
+
+function drawMindmapNodes(layer, positions) {
+  positions.forEach((value) => {
+    const node = value.node;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'en-mindmap-node radial' + (node.id === mindmapSelectedId ? ' selected' : '');
+    btn.textContent = node.title || 'Untitled';
+    btn.dataset.id = node.id;
+    btn.draggable = true;
+    btn.style.left = `${value.x}px`;
+    btn.style.top = `${value.y}px`;
+    btn.style.maxWidth = node.id === 'root' ? '210px' : '190px';
+    applyMindmapNodeColor(btn, node);
+    bindMindmapNodeEvents(btn, node);
+    layer.appendChild(btn);
+  });
+}
+
+function startEditMindmapNode(nodeId, nodeEl) {
+  const found = findMindmapNode(nodeId);
+  if (!found?.node || !nodeEl) return;
+
+  const input = document.createElement('input');
+  input.className = 'en-mindmap-input';
+  input.value = found.node.title || '';
+  nodeEl.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const commit = () => {
+    found.node.title = input.value.trim() || 'Untitled';
+    renderMindmap();
+  };
+
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') commit();
+    if (e.key === 'Escape') renderMindmap();
+  });
+}
+
+function addMindmapNode(type) {
+  ensureMindmapState();
+  const fallbackColor = getThemeAccentColor();
+  const newNode = createMindmapNode(type === 'sibling' ? 'New Sibling' : 'New Child', fallbackColor);
+  if (!mindmapSelectedId) {
+    mindmapState.tree.children.push(newNode);
+    mindmapSelectedId = newNode.id;
+    renderMindmap();
+    return;
+  }
+
+  const found = findMindmapNode(mindmapSelectedId);
+  if (!found?.node) return;
+
+  const baseColor = found.node.color || fallbackColor;
+  newNode.color = baseColor;
+
+  if (type === 'sibling') {
+    const parent = found.parent || mindmapState.tree;
+    parent.children = parent.children || [];
+    const index = parent.children.findIndex(n => n.id === found.node.id);
+    if (index >= 0) parent.children.splice(index + 1, 0, newNode);
+    else parent.children.push(newNode);
+  } else {
+    found.node.children = found.node.children || [];
+    found.node.children.push(newNode);
+  }
+
+  mindmapSelectedId = newNode.id;
+  renderMindmap();
+}
+
+function deleteSelectedMindmapNode() {
+  if (!mindmapSelectedId) return;
+  const found = findMindmapNode(mindmapSelectedId);
+  if (!found?.parent) return;
+  found.parent.children = found.parent.children.filter(n => n.id !== mindmapSelectedId);
+  mindmapSelectedId = found.parent.id !== 'root' ? found.parent.id : (found.parent.children[0]?.id || null);
+  renderMindmap();
+}
+
+function moveMindmapNode(nodeId, targetId) {
+  const nodeInfo = findMindmapNode(nodeId);
+  const targetInfo = findMindmapNode(targetId);
+  if (!nodeInfo?.node || !targetInfo?.node) return;
+  if (!nodeInfo.parent) return;
+
+  nodeInfo.parent.children = nodeInfo.parent.children.filter(n => n.id !== nodeId);
+  targetInfo.node.children = targetInfo.node.children || [];
+  targetInfo.node.children.push(nodeInfo.node);
+  delete nodeInfo.node.pos;
+  mindmapSelectedId = nodeId;
+  renderMindmap();
+}
+
+function isMindmapDescendant(nodeId, targetId) {
+  const nodeInfo = findMindmapNode(nodeId);
+  if (!nodeInfo?.node) return false;
+  return walkMindmap(nodeInfo.node, n => n.id === targetId);
+}
+
+function walkMindmap(node, predicate) {
+  if (predicate(node)) return true;
+  if (!node.children) return false;
+  return node.children.some(child => walkMindmap(child, predicate));
+}
+
+function findMindmapNode(id, node = null, parent = null) {
+  const root = node || mindmapState?.tree;
+  if (!root) return null;
+  if (root.id === id) return { node: root, parent };
+  if (!root.children) return null;
+  for (const child of root.children) {
+    const found = findMindmapNode(id, child, root);
+    if (found) return found;
+  }
+  return null;
+}
+
+function updateMindmapSelectedUI() {
+  const label = $('mindmap-selected');
+  const input = $('mindmap-title-input');
+  const saveBtn = $('mindmap-title-save');
+  const colorInput = $('mindmap-color-input');
+  const colorBtn = $('mindmap-color-apply');
+  if (!label) return;
+  if (!mindmapSelectedId) {
+    label.textContent = '(Chưa chọn)';
+    if (input) { input.value = ''; input.disabled = true; }
+    if (saveBtn) saveBtn.disabled = true;
+    if (colorInput) { colorInput.value = getThemeAccentColor(); colorInput.disabled = true; }
+    if (colorBtn) colorBtn.disabled = true;
+    return;
+  }
+  const found = findMindmapNode(mindmapSelectedId);
+  label.textContent = found?.node?.title || '(Chưa chọn)';
+  if (input) {
+    input.value = found?.node?.title || '';
+    input.disabled = false;
+  }
+  if (saveBtn) saveBtn.disabled = false;
+  if (colorInput) {
+    colorInput.value = found?.node?.color || getThemeAccentColor();
+    colorInput.disabled = false;
+  }
+  if (colorBtn) colorBtn.disabled = false;
+}
+
+function commitMindmapTitleEdit() {
+  const input = $('mindmap-title-input');
+  if (!input || !mindmapSelectedId) return;
+  const found = findMindmapNode(mindmapSelectedId);
+  if (!found?.node) return;
+  const nextTitle = input.value.trim();
+  if (!nextTitle) return;
+  found.node.title = nextTitle;
+  renderMindmap();
+}
+
+function commitMindmapColorEdit() {
+  const input = $('mindmap-color-input');
+  if (!input || !mindmapSelectedId) return;
+  const found = findMindmapNode(mindmapSelectedId);
+  if (!found?.node) return;
+  const nextColor = input.value.trim();
+  if (!nextColor) return;
+  found.node.color = nextColor;
+  renderMindmap();
+}
+
+function exportMindmapToIO() {
+  const io = $('mindmap-io');
+  if (!io) return;
+  const payload = JSON.stringify({ title: mindmapState?.title || 'English Mindmap', tree: mindmapState?.tree || {} }, null, 2);
+  io.value = payload;
+}
+
+function importMindmapFromIO() {
+  const io = $('mindmap-io');
+  if (!io) return;
+  try {
+    const parsed = JSON.parse(io.value || '{}');
+    let tree = null;
+    let title = 'English Mindmap';
+    if (parsed.tree) {
+      tree = parsed.tree;
+      title = parsed.title || title;
+    } else if (parsed.id && parsed.children) {
+      tree = parsed;
+    } else if (Array.isArray(parsed)) {
+      tree = { id: 'root', title, children: parsed };
+    }
+    if (!tree) throw new Error('Invalid JSON');
+    mindmapState = { title, tree };
+    mindmapSelectedId = tree.children?.[0]?.id || null;
+    renderMindmap();
+    if (window.globalUtils?.guToast) window.globalUtils.guToast('Đã nhập mindmap', 'success');
+  } catch (e) {
+    if (window.globalUtils?.guToast) window.globalUtils.guToast('JSON không hợp lệ', 'error');
+  }
+}
+
+async function copyMindmapIO() {
+  const io = $('mindmap-io');
+  if (!io) return;
+  if (!io.value) exportMindmapToIO();
+  try {
+    await navigator.clipboard.writeText(io.value);
+    if (window.globalUtils?.guToast) window.globalUtils.guToast('Đã copy JSON', 'success');
+  } catch {
+    io.select();
+    document.execCommand('copy');
+  }
+}
+
+function updateUnmasteredFilterUI() {
+  const btn = $('btn-toggle-unmastered');
+  if (!btn) return;
+  btn.textContent = vocabOnlyUnmastered ? 'Chưa thuộc: Bật' : 'Chưa thuộc: Tắt';
+  btn.classList.toggle('is-active', vocabOnlyUnmastered);
+}
+
+async function reviewUnmasteredWords() {
+  try {
+    const params = new URLSearchParams();
+    const search = $('vocab-search')?.value?.trim();
+    const level = $('vocab-level')?.value;
+    if (search) params.set('search', search);
+    if (level) params.set('level', level);
+    params.set('mastered', 'false');
+
+    const res = await fetch('/api/english/vocab?' + params.toString());
+    const words = await res.json();
+    if (!res.ok || !Array.isArray(words)) {
+      throw new Error('Không tải được danh sách từ chưa thuộc');
+    }
+    if (words.length === 0) {
+      alert('Không có từ chưa thuộc để ôn theo bộ lọc hiện tại.');
+      return;
+    }
+
+    fcBaseWords = pickFlashcardSessionWords(words);
+    fcWords = [...fcBaseWords];
+    if (fcBaseWords.length === 0) {
+      alert('Không có từ phù hợp với số lượng đã chọn.');
+      return;
+    }
+    const dueEl = $('fc-due-count');
+    if (dueEl) dueEl.textContent = String(fcBaseWords.length);
+
+    const flashTabBtn = document.querySelector('.en-tab[data-tab="flashcard"]');
+    if (flashTabBtn) flashTabBtn.click();
+
+    startFlashcard();
+  } catch (e) {
+    console.error('Review unmastered words error:', e);
+    alert('❌ ' + e.message);
+  }
+}
+
+function getSelectedVocabSource() {
+  return $('vocab-source')?.value || 'oxford';
+}
+
+function getSourceLabel(source) {
+  const labels = {
+    oxford: 'Oxford 3000',
+    google10000: 'Google Top 10k',
+    frequency50k: 'FrequencyWords 50k'
+  };
+  return labels[source] || source;
+}
+
+function toggleSourceModeUI() {
+  const source = getSelectedVocabSource();
+  const isOxford = source === 'oxford';
+  const quick = document.querySelector('.en-oxford-quick');
+
+  if (quick) quick.style.display = isOxford ? '' : 'none';
+
+  const level = $('oxford-level');
+  if (level) {
+    level.title = isOxford
+      ? 'Lọc theo CEFR từ nguồn Oxford'
+      : 'Lọc theo độ phổ biến tương ứng A1/A2/B1/B2';
+  }
+}
+
+function oxfordWordKey(word) {
+  return String(word || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function getVocabSourceBatchKey() {
+  const source = getSelectedVocabSource();
+  const level = $('oxford-level')?.value || '';
+  const limit = $('oxford-limit')?.value || '80';
+  return `${source}|${level}|${limit}`;
+}
+
+function resetVocabSourceBatchOffset() {
+  vocabSourceOffsets.clear();
+  vocabSourcePools.clear();
+}
+
+function sliceVocabSourcePool(items, offset = 0, limit = 80) {
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length) return [];
+
+  const safeLimit = Math.max(1, Math.min(parseInt(limit, 10) || 80, list.length));
+  const safeOffset = Math.max(0, parseInt(offset, 10) || 0) % list.length;
+  const end = safeOffset + safeLimit;
+
+  if (end <= list.length) return list.slice(safeOffset, end);
+  return list.slice(safeOffset).concat(list.slice(0, end - list.length));
+}
+
+function updateOxfordMeta(text) {
+  const meta = $('oxford-meta');
+  if (meta) meta.textContent = text;
+}
+
+function renderOxfordWords() {
+  const listEl = $('oxford-list');
+  if (!listEl) return;
+
+  if (!oxfordWords.length) {
+    listEl.innerHTML = '<div class="en-oxford-empty">Không có dữ liệu Oxford để hiển thị.</div>';
+    return;
+  }
+
+  listEl.innerHTML = oxfordWords.map((w, idx) => {
+    const key = oxfordWordKey(w.word);
+    const checked = oxfordSelectedWords.has(key) ? 'checked' : '';
+    return `
+      <label class="en-oxford-item">
+        <input type="checkbox" class="oxford-check" data-idx="${idx}" ${checked}>
+        <span class="en-oxford-word">${escapeHtml(w.word)}</span>
+        <span class="en-oxford-cefr">${escapeHtml(w.cefr || '-')}</span>
+      </label>`;
+  }).join('');
+
+  listEl.querySelectorAll('.oxford-check').forEach(input => {
+    input.addEventListener('change', () => {
+      const idx = parseInt(input.dataset.idx, 10);
+      const item = oxfordWords[idx];
+      if (!item) return;
+      const key = oxfordWordKey(item.word);
+
+      if (input.checked) oxfordSelectedWords.add(key);
+      else oxfordSelectedWords.delete(key);
+
+      updateOxfordMeta(`Đã tải ${oxfordWords.length} từ. Đã chọn ${oxfordSelectedWords.size} từ để add vào flashcard.`);
+    });
+  });
+}
+
+async function loadOxfordWords() {
+  const btn = $('btn-load-oxford');
+  const source = getSelectedVocabSource();
+  const level = $('oxford-level')?.value || '';
+  const limit = $('oxford-limit')?.value || '80';
+  const safeLimit = Math.max(1, parseInt(limit, 10) || 80);
+  const batchKey = getVocabSourceBatchKey();
+  const offset = vocabSourceOffsets.get(batchKey) || 0;
+  const sourceLabel = getSourceLabel(source);
+
+  updateOxfordMeta(`Đang tải danh sách từ vựng từ ${sourceLabel}...`);
+  if (btn) btn.disabled = true;
+
+  try {
+    let pool = vocabSourcePools.get(batchKey);
+
+    if (!Array.isArray(pool) || pool.length === 0) {
+      const params = new URLSearchParams();
+      params.set('source', source);
+      params.set('limit', String(Math.min(300, Math.max(safeLimit * 3, safeLimit))));
+      params.set('offset', String(offset));
+      if (level) params.set('level', level);
+
+      const res = await fetch('/api/english/vocab-source?' + params.toString());
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || `Không tải được nguồn ${sourceLabel}`);
+      }
+
+      pool = Array.isArray(data) ? data : [];
+      vocabSourcePools.set(batchKey, pool);
+    }
+
+    oxfordWords = sliceVocabSourcePool(pool, offset, safeLimit);
+    vocabSourceOffsets.set(batchKey, offset + oxfordWords.length);
+    oxfordSelectedWords = new Set(oxfordWords.map(w => oxfordWordKey(w.word)));
+    renderOxfordWords();
+    if (source === 'oxford') {
+      updateOxfordMeta(`Đã tải ${oxfordWords.length} từ từ ${sourceLabel}. Đã chọn sẵn tất cả, bạn có thể bỏ chọn trước khi add.`);
+    } else {
+      const lv = level || 'All';
+      updateOxfordMeta(`Đã tải ${oxfordWords.length} từ từ ${sourceLabel} (level ${lv} theo độ phổ biến). Đã chọn sẵn tất cả.`);
+    }
+  } catch (e) {
+    console.error('Load vocab source error:', e);
+    oxfordWords = [];
+    oxfordSelectedWords = new Set();
+    renderOxfordWords();
+    updateOxfordMeta(`Không tải được nguồn ${sourceLabel} lúc này. Bạn thử lại sau.`);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function importSelectedOxfordWords() {
+  const source = getSelectedVocabSource();
+  const sourceLabel = getSourceLabel(source);
+  if (!oxfordWords.length) {
+    alert('Chưa có danh sách từ vựng. Hãy bấm "Tải danh sách" trước.');
+    return;
+  }
+
+  const selected = oxfordWords.filter(item => oxfordSelectedWords.has(oxfordWordKey(item.word)));
+  if (!selected.length) {
+    alert('Bạn chưa chọn từ nào để add vào flashcard.');
+    return;
+  }
+
+  if (!confirm(`Add ${selected.length} từ từ nguồn ${sourceLabel} vào flashcard hiện có?`)) return;
+
+  const btn = $('btn-add-oxford-selected');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/english/vocab/import-oxford', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ words: selected })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      throw new Error(data.error || 'Lỗi import từ vựng theo nguồn');
+    }
+
+    alert(`✅ Đã add ${data.imported} từ vào flashcard${data.skipped ? ` (bỏ qua ${data.skipped} từ đã tồn tại)` : ''}${data.autoFilled !== undefined ? `\n🤖 Tự điền nghĩa + IPA: ${data.autoFilled} từ` : ''}.`);
+    updateOxfordMeta(`Import xong: ${data.imported} thêm mới, ${data.skipped || 0} đã tồn tại.`);
+    await loadVocab();
+    await loadFlashcardDue();
+  } catch (e) {
+    console.error('Import vocab source error:', e);
+    alert('❌ ' + e.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function quickAddOxfordByLevel(level) {
+  if (!level) return;
+
+  const btn = $(`btn-quick-oxford-${String(level).toLowerCase()}`);
+  if (btn) btn.disabled = true;
+
+  updateOxfordMeta(`Đang add nhanh 20 từ ${level} vào flashcard...`);
+
+  try {
+    const res = await fetch(`/api/english/oxford3000?level=${encodeURIComponent(level)}&limit=20`);
+    const words = await res.json();
+    if (!res.ok || words.error || !Array.isArray(words) || words.length === 0) {
+      throw new Error((words && words.error) || `Không lấy được danh sách ${level}`);
+    }
+
+    const importRes = await fetch('/api/english/vocab/import-oxford', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ words })
+    });
+    const data = await importRes.json();
+    if (!importRes.ok || data.error) {
+      throw new Error(data.error || 'Lỗi import Oxford 3000');
+    }
+
+    alert(`✅ ${level}: đã add ${data.imported} từ${data.skipped ? `, bỏ qua ${data.skipped} từ trùng` : ''}${data.autoFilled !== undefined ? `\n🤖 Tự điền nghĩa + IPA: ${data.autoFilled} từ` : ''}.`);
+    updateOxfordMeta(`Add nhanh ${level} xong: ${data.imported} thêm mới, ${data.skipped || 0} đã tồn tại.`);
+    await loadVocab();
+    await loadFlashcardDue();
+  } catch (e) {
+    console.error(`Quick add ${level} error:`, e);
+    alert('❌ ' + e.message);
+    updateOxfordMeta(`Add nhanh ${level} thất bại. Bạn thử lại sau.`);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 function openAddVocab() {
@@ -2265,36 +3213,183 @@ function escapeHtml(text) {
 let fcWords = [];
 let fcIndex = 0;
 let fcFlipped = false;
+let fcVoiceWarned = false;
+let fcBaseWords = [];
+let fcRound = 1;
+let fcMaxRounds = 1;
+let fcRepeatHard = false;
+let fcHardWords = [];
+let fcHardWordIds = new Set();
+let fcReviewedCount = 0;
+let fcHardPassDone = false;
 
 async function loadFlashcardDue() {
   try {
     const res = await fetch('/api/english/vocab/review');
     fcWords = await res.json();
+    fcBaseWords = Array.isArray(fcWords) ? [...fcWords] : [];
     const countEl = $('fc-due-count');
     if (countEl) countEl.textContent = fcWords.length;
   } catch (e) { console.error('Load due error:', e); }
 }
 
+function getFlashcardWordLimit() {
+  const raw = parseInt($('fc-word-limit')?.value || '0', 10);
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  return raw;
+}
+
+function pickFlashcardSessionWords(words) {
+  const source = Array.isArray(words) ? words : [];
+  const limit = getFlashcardWordLimit();
+  if (!limit || source.length <= limit) return [...source];
+
+  const shuffled = [...source].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, limit);
+}
+
+function resetFlashcardSessionConfig() {
+  fcRound = 1;
+  fcMaxRounds = Math.max(1, parseInt($('fc-round-count')?.value || '1', 10));
+  fcRepeatHard = !!$('fc-repeat-hard')?.checked;
+  fcHardWords = [];
+  fcHardWordIds = new Set();
+  fcReviewedCount = 0;
+  fcHardPassDone = false;
+}
+
 function startFlashcard() {
-  if (fcWords.length === 0) { alert('Không có từ cần ôn tập! Hãy thêm từ vựng mới.'); return; }
+  if (!Array.isArray(fcBaseWords) || fcBaseWords.length === 0) {
+    alert('Không có từ cần ôn theo lịch. Hãy chọn "Ôn từ chưa thuộc" để ôn tiếp.');
+    return;
+  }
+
+  resetFlashcardSessionConfig();
+  fcWords = pickFlashcardSessionWords(fcBaseWords);
+  if (fcWords.length === 0) {
+    alert('Không có từ phù hợp để bắt đầu phiên ôn tập.');
+    return;
+  }
+  fcBaseWords = [...fcWords];
   fcIndex = 0; fcFlipped = false;
   $('fc-area').style.display = 'block';
   $('fc-done').style.display = 'none';
   showFlashcard();
 }
 
+async function loadFlashcardUnmastered() {
+  const res = await fetch('/api/english/vocab?mastered=false');
+  const words = await res.json();
+  if (!res.ok || !Array.isArray(words)) {
+    throw new Error('Không tải được danh sách từ chưa thuộc');
+  }
+
+  fcBaseWords = [...words];
+  fcWords = [...words];
+  const dueEl = $('fc-due-count');
+  if (dueEl) dueEl.textContent = String(words.length);
+  return words;
+}
+
+async function startFlashcardUnmastered() {
+  try {
+    const words = await loadFlashcardUnmastered();
+    if (!words.length) {
+      alert('Không có từ chưa thuộc để ôn tiếp.');
+      return;
+    }
+    startFlashcard();
+  } catch (e) {
+    console.error('Start unmastered flashcard error:', e);
+    alert('❌ ' + e.message);
+  }
+}
+
+async function startFlashcardSmart() {
+  await loadFlashcardDue();
+  if (Array.isArray(fcBaseWords) && fcBaseWords.length > 0) {
+    startFlashcard();
+    return;
+  }
+
+  await startFlashcardUnmastered();
+}
+
 function showFlashcard() {
-  if (fcIndex >= fcWords.length) { finishFlashcard(); return; }
+  if (fcIndex >= fcWords.length) {
+    if (!advanceFlashcardRound()) {
+      finishFlashcard();
+    }
+    return;
+  }
+
   const w = fcWords[fcIndex];
   $('fc-word').textContent = w.word;
   $('fc-phonetic').textContent = w.phonetic || '';
   $('fc-meaning').textContent = w.meaning;
   $('fc-example').textContent = w.example || '';
-  $('fc-progress-text').textContent = `${fcIndex + 1}/${fcWords.length}`;
+  const progressLabel = fcHardPassDone
+    ? `${fcIndex + 1}/${fcWords.length} (Ôn từ khó)`
+    : `${fcIndex + 1}/${fcWords.length} (Vòng ${fcRound}/${fcMaxRounds})`;
+  $('fc-progress-text').textContent = progressLabel;
   $('fc-bar-fill').style.width = ((fcIndex + 1) / fcWords.length * 100) + '%';
   $('fc-card-inner').classList.remove('flipped');
   $('fc-rating').style.display = 'none';
   fcFlipped = false;
+
+  const autoSpeak = $('fc-auto-speak');
+  if (autoSpeak?.checked) {
+    setTimeout(() => speakFlashcardWord(), 180);
+  }
+}
+
+function advanceFlashcardRound() {
+  if (fcRound < fcMaxRounds) {
+    fcRound += 1;
+    fcIndex = 0;
+    fcWords = [...fcBaseWords];
+    return true;
+  }
+
+  if (fcRepeatHard && !fcHardPassDone && fcHardWords.length > 0) {
+    fcHardPassDone = true;
+    fcWords = [...fcHardWords];
+    fcIndex = 0;
+    return true;
+  }
+
+  return false;
+}
+
+function speakFlashcardWord() {
+  const current = fcWords[fcIndex];
+  const word = current?.word;
+  if (!word) return;
+
+  if (!('speechSynthesis' in window)) {
+    if (!fcVoiceWarned) {
+      alert('Thiết bị/trình duyệt chưa hỗ trợ phát âm tự động.');
+      fcVoiceWarned = true;
+    }
+    return;
+  }
+
+  try {
+    speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.88;
+    utterance.pitch = 1;
+
+    const voices = speechSynthesis.getVoices();
+    const preferred = voices.find(v => /en-US/i.test(v.lang))
+      || voices.find(v => /^en/i.test(v.lang));
+    if (preferred) utterance.voice = preferred;
+
+    speechSynthesis.speak(utterance);
+  } catch (e) {
+    console.error('Flashcard speak error:', e);
+  }
 }
 
 function flipCard() {
@@ -2314,6 +3409,16 @@ async function rateFlashcard(quality) {
       body: JSON.stringify({ quality })
     });
   } catch (e) { console.error('Rate error:', e); }
+
+  if (quality <= 3) {
+    const id = String(w.id || w._id || w.word);
+    if (!fcHardWordIds.has(id)) {
+      fcHardWordIds.add(id);
+      fcHardWords.push(w);
+    }
+  }
+
+  fcReviewedCount += 1;
   fcIndex++;
   showFlashcard();
 }
@@ -2321,27 +3426,237 @@ async function rateFlashcard(quality) {
 function finishFlashcard() {
   $('fc-area').style.display = 'none';
   $('fc-done').style.display = 'block';
-  $('fc-done-msg').textContent = `Bạn đã ôn tập ${fcWords.length} từ! Tiếp tục ôn tập mỗi ngày để ghi nhớ tốt hơn.`;
+  const hardPassText = fcHardPassDone ? ` + ôn lại ${fcHardWords.length} từ khó` : '';
+  $('fc-done-msg').textContent = `Bạn đã ôn ${fcReviewedCount} lượt thẻ (${fcMaxRounds} vòng${hardPassText}). Tiếp tục ôn tập mỗi ngày để ghi nhớ tốt hơn.`;
 }
 
 function setupFlashcard() {
   const startBtn = $('btn-start-flashcard');
   const restartBtn = $('btn-fc-restart');
+  const unmasteredBtn = $('btn-fc-unmastered');
+  const restartUnmasteredBtn = $('btn-fc-restart-unmastered');
   const card = $('fc-card');
-  if (startBtn) startBtn.onclick = startFlashcard;
-  if (restartBtn) restartBtn.onclick = () => { loadFlashcardDue().then(() => startFlashcard()); };
+  const speakBtn = $('btn-fc-speak');
+  if (startBtn) startBtn.onclick = startFlashcardSmart;
+  if (restartBtn) restartBtn.onclick = startFlashcardSmart;
+  if (unmasteredBtn) unmasteredBtn.onclick = startFlashcardUnmastered;
+  if (restartUnmasteredBtn) restartUnmasteredBtn.onclick = startFlashcardUnmastered;
   if (card) card.onclick = flipCard;
+  if (speakBtn) speakBtn.onclick = speakFlashcardWord;
   document.querySelectorAll('.en-fc-rbtn').forEach(btn => {
     btn.onclick = () => rateFlashcard(parseInt(btn.dataset.q));
   });
+
+  if ('speechSynthesis' in window) {
+    speechSynthesis.onvoiceschanged = () => {};
+  }
+
   loadFlashcardDue();
 }
 
 // ===== CONVERSATION PRACTICE =====
 let convSessionId = 'conv_' + Date.now();
+let convMarkedWords = new Set();
+const convWordLookupCache = new Map();
+
+function normalizeConversationWord(word) {
+  return String(word || '')
+    .toLowerCase()
+    .replace(/^[^a-zA-Z]+|[^a-zA-Z'-]+$/g, '')
+    .trim();
+}
+
+function updateConversationMarkedCount() {
+  const el = document.getElementById('conv-marked-count');
+  if (el) el.textContent = String(convMarkedWords.size);
+}
+
+function renderConversationWordMeaning(data, isLoading = false) {
+  const box = document.getElementById('conv-word-meaning');
+  if (!box) return;
+
+  if (isLoading) {
+    box.style.display = '';
+    box.className = 'conv-word-meaning loading';
+    box.textContent = `Đang tra nghĩa của "${data.word}"...`;
+    return;
+  }
+
+  if (!data) {
+    box.style.display = 'none';
+    box.className = 'conv-word-meaning';
+    box.innerHTML = '';
+    return;
+  }
+
+  box.style.display = '';
+  box.className = 'conv-word-meaning';
+  box.innerHTML = `
+    <div><span class="word">${escapeHtml(data.word || '')}</span>${data.phonetic ? `<span class="ipa">${escapeHtml(data.phonetic)}</span>` : ''}</div>
+    <div class="meaning">${escapeHtml(data.meaning || 'Chưa có nghĩa cho từ này')}</div>
+    ${data.example ? `<div class="example">"${escapeHtml(data.example)}"</div>` : ''}
+  `;
+}
+
+async function lookupConversationWordMeaning(word) {
+  const normalized = normalizeConversationWord(word);
+  if (!normalized) return;
+
+  if (convWordLookupCache.has(normalized)) {
+    renderConversationWordMeaning(convWordLookupCache.get(normalized));
+    return;
+  }
+
+  renderConversationWordMeaning({ word: normalized }, true);
+
+  async function lookupByPublicDictionary() {
+    try {
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(normalized)}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) return null;
+      const entry = data[0] || {};
+      const phonetic = entry.phonetic || (Array.isArray(entry.phonetics)
+        ? (entry.phonetics.find(p => p && p.text)?.text || '')
+        : '');
+      const meaning = Array.isArray(entry.meanings) && entry.meanings[0]?.definitions?.[0]?.definition
+        ? entry.meanings[0].definitions[0].definition
+        : '';
+      const example = Array.isArray(entry.meanings) && entry.meanings[0]?.definitions?.[0]?.example
+        ? entry.meanings[0].definitions[0].example
+        : '';
+      return { word: normalized, meaning, phonetic, example };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  try {
+    // 1) Preferred: dedicated quick-lookup endpoint
+    const res = await fetch('/api/english/vocab/quick-lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ word: normalized })
+    });
+    let data = null;
+    if (res.ok) {
+      data = await res.json();
+    }
+
+    // 2) Fallback: existing ai-lookup endpoint
+    if (!data || data.error || (!data.meaning && !data.phonetic)) {
+      const aiRes = await fetch('/api/english/vocab/ai-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word: normalized })
+      });
+      if (aiRes.ok) {
+        const aiData = await aiRes.json();
+        if (aiData && !aiData.error) data = aiData;
+      }
+    }
+
+    // 3) Fallback: public dictionary direct from browser
+    if (!data || data.error || (!data.meaning && !data.phonetic)) {
+      data = await lookupByPublicDictionary();
+    }
+
+    if (!data || (!data.meaning && !data.phonetic)) {
+      throw new Error('Không tra cứu được từ');
+    }
+
+    convWordLookupCache.set(normalized, data);
+    renderConversationWordMeaning(data);
+  } catch (e) {
+    console.error('Conversation quick lookup error:', e);
+    renderConversationWordMeaning({ word: normalized, meaning: 'Không tra được nghĩa lúc này.' });
+  }
+}
+
+function syncConversationMarkedWords(word) {
+  document.querySelectorAll('.conv-word').forEach(node => {
+    if (node.dataset.word === word) {
+      node.classList.toggle('marked', convMarkedWords.has(word));
+    }
+  });
+}
+
+function toggleConversationWordMark(word) {
+  const normalized = normalizeConversationWord(word);
+  if (!normalized) return;
+
+  if (convMarkedWords.has(normalized)) convMarkedWords.delete(normalized);
+  else convMarkedWords.add(normalized);
+
+  syncConversationMarkedWords(normalized);
+  updateConversationMarkedCount();
+}
+
+function renderConversationWordText(text) {
+  const lines = String(text || '').split('\n');
+  return lines.map(line => {
+    const escaped = escapeHtml(line);
+    return escaped.replace(/\b([A-Za-z][A-Za-z'-]{1,30})\b/g, (match) => {
+      const normalized = normalizeConversationWord(match);
+      if (!normalized) return match;
+      const marked = convMarkedWords.has(normalized) ? ' marked' : '';
+      return `<span class="conv-word${marked}" data-word="${normalized}">${match}</span>`;
+    });
+  }).join('<br>');
+}
+
+async function saveConversationMarkedWords() {
+  if (convMarkedWords.size === 0) {
+    alert('Chưa có từ nào được gạch chân.');
+    return;
+  }
+
+  const words = Array.from(convMarkedWords).map(word => ({
+    word,
+    category: 'conversation'
+  }));
+
+  const btn = document.getElementById('btn-conv-save-words');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/english/vocab/import-oxford', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ words })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      throw new Error(data.error || 'Lưu từ vựng thất bại');
+    }
+
+    alert(`✅ Đã lưu ${data.imported} từ vào danh sách từ vựng${data.skipped ? ` (bỏ qua ${data.skipped} từ đã có)` : ''}.`);
+    convMarkedWords.clear();
+    updateConversationMarkedCount();
+    document.querySelectorAll('.conv-word.marked').forEach(node => node.classList.remove('marked'));
+
+    await loadVocab();
+    await loadFlashcardDue();
+  } catch (e) {
+    console.error('Save conversation words error:', e);
+    alert('❌ ' + e.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function clearConversationMarkedWords() {
+  convMarkedWords.clear();
+  updateConversationMarkedCount();
+  document.querySelectorAll('.conv-word.marked').forEach(node => node.classList.remove('marked'));
+}
 
 function startConversation() {
   convSessionId = 'conv_' + Date.now();
+  convMarkedWords.clear();
+  convWordLookupCache.clear();
+  updateConversationMarkedCount();
+  renderConversationWordMeaning(null);
   const chatArea = document.getElementById('conv-chat');
   const messages = document.getElementById('conv-messages');
   if (chatArea) chatArea.style.display = 'block';
@@ -2393,7 +3708,21 @@ function addConvMessage(type, text) {
   const div = document.createElement('div');
   div.className = `conv-msg conv-msg-${type}`;
   const labels = { user: '🧑 Bạn', ai: '🤖 AI', system: '📌', feedback: '📝 Nhận xét' };
-  div.innerHTML = `<span class="conv-msg-label">${labels[type] || ''}</span><span class="conv-msg-text">${text.replace(/\n/g, '<br>')}</span>`;
+  const renderedText = (type === 'ai' || type === 'user')
+    ? renderConversationWordText(text)
+    : escapeHtml(text).replace(/\n/g, '<br>');
+  div.innerHTML = `<span class="conv-msg-label">${labels[type] || ''}</span><span class="conv-msg-text">${renderedText}</span>`;
+
+  if (type === 'ai' || type === 'user') {
+    div.querySelectorAll('.conv-word').forEach(node => {
+      node.addEventListener('click', () => {
+        const word = node.dataset.word || node.textContent || '';
+        toggleConversationWordMark(word);
+        lookupConversationWordMeaning(word);
+      });
+    });
+  }
+
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 }
@@ -2407,13 +3736,32 @@ document.getElementById('conv-input')?.addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); sendConvMessage(); }
 });
 
+document.getElementById('btn-conv-save-words')?.addEventListener('click', saveConversationMarkedWords);
+document.getElementById('btn-conv-clear-words')?.addEventListener('click', clearConversationMarkedWords);
+
 // ==================== QUIZ GAME ====================
 let qgState = null;
 let qgTimer = null;
 let qgHighScore = parseInt(localStorage.getItem('qg_highscore') || '0');
 document.getElementById('qg-highscore') && (document.getElementById('qg-highscore').textContent = qgHighScore);
 
-function startQuizGame(mode) {
+async function refreshVocabForQuiz() {
+  try {
+    const res = await fetch('/api/english/vocab');
+    if (!res.ok) return false;
+    const latest = await res.json();
+    if (!Array.isArray(latest)) return false;
+    vocabList = latest;
+    updateStats();
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function startQuizGame(mode) {
+  await refreshVocabForQuiz();
+
   if (vocabList.length < 4) {
     return alert('Cần ít nhất 4 từ vựng để chơi Quiz Game!');
   }
@@ -2430,10 +3778,10 @@ function startQuizGame(mode) {
   document.getElementById('qg-mode-select').style.display = 'none';
   document.getElementById('qg-result').style.display = 'none';
   document.getElementById('qg-play-area').style.display = '';
-  renderQuizQuestion();
+  renderQuizGameQuestion();
 }
 
-function renderQuizQuestion() {
+function renderQuizGameQuestion() {
   if (!qgState || qgState.current >= qgState.questions.length) return finishQuizGame();
   const q = qgState.questions[qgState.current];
   const v = q.vocab;
@@ -2496,9 +3844,61 @@ function renderQuizQuestion() {
 function speakWord(word) {
   if ('speechSynthesis' in window) {
     const u = new SpeechSynthesisUtterance(word);
-    u.lang = 'en-US'; u.rate = 0.9;
+    u.rate = 0.9;
+    applyEnglishVoice(u);
     speechSynthesis.speak(u);
   }
+}
+
+function getPreferredEnglishVoice() {
+  if (!('speechSynthesis' in window)) return null;
+  const voices = speechSynthesis.getVoices() || [];
+  if (!voices.length) return null;
+
+  const preferredNamePatterns = [
+    /Google US English/i,
+    /Microsoft Aria Online \(Natural\) - English \(United States\)/i,
+    /Microsoft Guy Online \(Natural\) - English \(United States\)/i,
+    /Samantha/i,
+    /Alex/i
+  ];
+
+  for (const pattern of preferredNamePatterns) {
+    const found = voices.find(v => pattern.test(v.name) && /^en/i.test(v.lang || ''));
+    if (found) return found;
+  }
+
+  return voices.find(v => /^en-US/i.test(v.lang || ''))
+    || voices.find(v => /^en-GB/i.test(v.lang || ''))
+    || voices.find(v => /^en/i.test(v.lang || ''))
+    || null;
+}
+
+function applyEnglishVoice(utterance) {
+  if (!utterance) return utterance;
+  utterance.lang = 'en-US';
+  const voice = getPreferredEnglishVoice();
+  if (voice) {
+    utterance.voice = voice;
+    utterance.lang = voice.lang || 'en-US';
+  }
+  return utterance;
+}
+
+function buildDailyChallengeListeningText(task) {
+  const fallback = String(task?.sentence || task?.question || '').trim();
+  if (!fallback) return '';
+
+  const answer = String(task?.answer || '').trim();
+  let text = fallback;
+
+  if (answer) {
+    text = text.replace(/_{2,}/g, answer).replace(/\[\s*_{2,}\s*\]/g, answer);
+  } else {
+    text = text.replace(/_{2,}/g, ' blank ');
+  }
+
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 function answerQuiz(index, correct) {
@@ -2529,7 +3929,7 @@ function answerQuiz(index, correct) {
 
   setTimeout(() => {
     qgState.current++;
-    renderQuizQuestion();
+    renderQuizGameQuestion();
   }, 1500);
 }
 
@@ -3002,8 +4402,8 @@ function speakListeningFromPosition(options = {}) {
   lstSpeech.basePosition = start;
 
   const utterance = new SpeechSynthesisUtterance(chunk);
-  utterance.lang = 'en-US';
   utterance.rate = getListeningRate();
+  applyEnglishVoice(utterance);
 
   utterance.onstart = () => {
     lstSpeech.isSpeaking = true;
@@ -3262,6 +4662,232 @@ function submitListening() {
 
 // ==================== READING COMPREHENSION ====================
 let rdgState = null;
+let rdgMarkedWords = new Set();
+
+function updateReadingMarkedCount() {
+  const el = document.getElementById('rdg-marked-count');
+  if (el) el.textContent = String(rdgMarkedWords.size);
+}
+
+function renderReadingWordMeaning(data, isLoading = false) {
+  const box = document.getElementById('rdg-word-meaning');
+  if (!box) return;
+
+  if (isLoading) {
+    box.style.display = '';
+    box.className = 'rdg-word-meaning loading';
+    box.textContent = `Đang tra nghĩa của "${data.word}"...`;
+    return;
+  }
+
+  if (!data) {
+    box.style.display = 'none';
+    box.className = 'rdg-word-meaning';
+    box.innerHTML = '';
+    return;
+  }
+
+  box.style.display = '';
+  box.className = 'rdg-word-meaning';
+  box.innerHTML = `
+    <div><span class="word">${escapeHtml(data.word || '')}</span>${data.phonetic ? `<span class="ipa">${escapeHtml(data.phonetic)}</span>` : ''}</div>
+    <div class="meaning">${escapeHtml(data.meaning || 'Chưa có nghĩa cho từ này')}</div>
+    ${data.example ? `<div class="example">"${escapeHtml(data.example)}"</div>` : ''}
+  `;
+}
+
+async function lookupReadingWordMeaning(word) {
+  const normalized = normalizeConversationWord(word);
+  if (!normalized) return;
+
+  if (convWordLookupCache.has(normalized)) {
+    renderReadingWordMeaning(convWordLookupCache.get(normalized));
+    return;
+  }
+
+  renderReadingWordMeaning({ word: normalized }, true);
+
+  async function lookupByPublicDictionary() {
+    try {
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(normalized)}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) return null;
+      const entry = data[0] || {};
+      const phonetic = entry.phonetic || (Array.isArray(entry.phonetics)
+        ? (entry.phonetics.find(p => p && p.text)?.text || '')
+        : '');
+      const meaning = Array.isArray(entry.meanings) && entry.meanings[0]?.definitions?.[0]?.definition
+        ? entry.meanings[0].definitions[0].definition
+        : '';
+      const example = Array.isArray(entry.meanings) && entry.meanings[0]?.definitions?.[0]?.example
+        ? entry.meanings[0].definitions[0].example
+        : '';
+      return { word: normalized, meaning, phonetic, example };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  try {
+    const res = await fetch('/api/english/vocab/quick-lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ word: normalized })
+    });
+    let data = null;
+    if (res.ok) {
+      data = await res.json();
+    }
+
+    if (!data || data.error || (!data.meaning && !data.phonetic)) {
+      const aiRes = await fetch('/api/english/vocab/ai-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word: normalized })
+      });
+      if (aiRes.ok) {
+        const aiData = await aiRes.json();
+        if (aiData && !aiData.error) data = aiData;
+      }
+    }
+
+    if (!data || data.error || (!data.meaning && !data.phonetic)) {
+      data = await lookupByPublicDictionary();
+    }
+
+    if (!data || (!data.meaning && !data.phonetic)) {
+      throw new Error('Không tra cứu được từ');
+    }
+
+    convWordLookupCache.set(normalized, data);
+    renderReadingWordMeaning(data);
+  } catch (e) {
+    console.error('Reading quick lookup error:', e);
+    renderReadingWordMeaning({ word: normalized, meaning: 'Không tra được nghĩa lúc này.' });
+  }
+}
+
+function syncReadingMarkedWords(word) {
+  document.querySelectorAll('.rdg-word').forEach(node => {
+    if (node.dataset.word === word) {
+      node.classList.toggle('marked', rdgMarkedWords.has(word));
+    }
+  });
+}
+
+function toggleReadingWordMark(word) {
+  const normalized = normalizeConversationWord(word);
+  if (!normalized) return;
+
+  if (rdgMarkedWords.has(normalized)) rdgMarkedWords.delete(normalized);
+  else rdgMarkedWords.add(normalized);
+
+  syncReadingMarkedWords(normalized);
+  updateReadingMarkedCount();
+}
+
+function renderReadingWordText(text) {
+  const lines = String(text || '').split('\n').filter(line => line.trim().length > 0);
+  const sourceLines = lines.length ? lines : [String(text || '')];
+
+  return sourceLines.map(line => {
+    const escaped = escapeHtml(line);
+    const withWords = escaped.replace(/\b([A-Za-z][A-Za-z'-]{1,30})\b/g, (match) => {
+      const normalized = normalizeConversationWord(match);
+      if (!normalized) return match;
+      const marked = rdgMarkedWords.has(normalized) ? ' marked' : '';
+      return `<span class="rdg-word${marked}" data-word="${normalized}">${match}</span>`;
+    });
+    return `<p>${withWords}</p>`;
+  }).join('');
+}
+
+function getReadingMarkedVocabWords() {
+  const words = new Map();
+  for (const word of rdgMarkedWords) {
+    const cached = convWordLookupCache.get(word) || {};
+    words.set(word, {
+      word,
+      meaning: cached.meaning || '',
+      phonetic: cached.phonetic || '',
+      example: cached.example || '',
+      category: 'reading',
+      level: cached.level || 'beginner'
+    });
+  }
+  return Array.from(words.values());
+}
+
+function attachReadingWordEvents() {
+  const passage = document.getElementById('rdg-passage-text');
+  if (!passage) return;
+  passage.querySelectorAll('.rdg-word').forEach(node => {
+    node.addEventListener('click', async () => {
+      const word = node.dataset.word || node.textContent || '';
+      toggleReadingWordMark(word);
+      if (rdgMarkedWords.has(normalizeConversationWord(word))) {
+        await lookupReadingWordMeaning(word);
+      }
+    });
+  });
+}
+
+async function saveReadingMarkedWords(options = {}) {
+  const { silent = false } = options;
+
+  if (rdgMarkedWords.size === 0) {
+    if (!silent) alert('Chưa có từ nào được gạch chân trong bài đọc.');
+    return false;
+  }
+
+  const words = getReadingMarkedVocabWords();
+
+  const btn = document.getElementById('btn-rdg-save-words');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/english/vocab/import-oxford', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ words })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) {
+      throw new Error(data.error || 'Lưu từ vựng thất bại');
+    }
+
+    if (!silent) {
+      alert(`✅ Đã lưu ${data.imported} từ vào danh sách từ vựng${data.skipped ? ` (bỏ qua ${data.skipped} từ đã có)` : ''}.`);
+    }
+    rdgMarkedWords.clear();
+    updateReadingMarkedCount();
+    document.querySelectorAll('.rdg-word.marked').forEach(node => node.classList.remove('marked'));
+    renderReadingWordMeaning(null);
+
+    await Promise.all([loadVocab(), loadFlashcardDue()]);
+    return true;
+  } catch (e) {
+    console.error('Save reading words error:', e);
+    if (!silent) {
+      alert('❌ ' + e.message);
+    } else if (window.globalUtils?.guToast) {
+      window.globalUtils.guToast(`Không lưu được từ đã gạch chân: ${e.message}`, 'error');
+    } else {
+      alert('❌ Không lưu được từ đã gạch chân: ' + e.message);
+    }
+    return false;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function clearReadingMarkedWords() {
+  rdgMarkedWords.clear();
+  updateReadingMarkedCount();
+  document.querySelectorAll('.rdg-word.marked').forEach(node => node.classList.remove('marked'));
+  renderReadingWordMeaning(null);
+}
 
 async function generateReading() {
   const level = document.getElementById('rdg-level')?.value || 'intermediate';
@@ -3280,6 +4906,10 @@ async function generateReading() {
     if (data.error) throw new Error(data.error);
     if (!data.passage || !data.questions) throw new Error('Không tạo được bài đọc');
 
+    rdgMarkedWords.clear();
+    updateReadingMarkedCount();
+    renderReadingWordMeaning(null);
+
     rdgState = { data, answers: {}, submitted: false };
     renderReading();
   } catch (e) {
@@ -3294,7 +4924,9 @@ function renderReading() {
   document.getElementById('rdg-area').style.display = '';
   document.getElementById('rdg-passage-title').textContent = data.title || 'Bài đọc';
   document.getElementById('rdg-passage-meta').textContent = `${data.wordCount || '?'} từ`;
-  document.getElementById('rdg-passage-text').innerHTML = `<p>${escapeHtml(data.passage).replace(/\n/g, '</p><p>')}</p>`;
+  document.getElementById('rdg-passage-text').innerHTML = renderReadingWordText(data.passage);
+  attachReadingWordEvents();
+  updateReadingMarkedCount();
   document.getElementById('rdg-result').style.display = 'none';
   document.getElementById('rdg-extras').style.display = submitted ? '' : 'none';
 
@@ -3343,8 +4975,17 @@ function renderReading() {
   document.getElementById('rdg-actions').style.display = submitted ? 'none' : '';
 }
 
-function submitReading() {
+document.getElementById('btn-rdg-save-words')?.addEventListener('click', saveReadingMarkedWords);
+document.getElementById('btn-rdg-clear-words')?.addEventListener('click', clearReadingMarkedWords);
+
+async function submitReading() {
   if (!rdgState) return;
+
+  if (rdgMarkedWords.size > 0) {
+    const saved = await saveReadingMarkedWords({ silent: true });
+    if (!saved) return;
+  }
+
   rdgState.submitted = true;
   let correct = 0;
   rdgState.data.questions.forEach((q, i) => {
@@ -3512,10 +5153,13 @@ function renderDailyChallenge() {
 function dcPlayAudio(taskIndex) {
   if (!dcState) return;
   const task = dcState.data.tasks[taskIndex];
-  if (task && task.sentence && 'speechSynthesis' in window) {
+  if (task && 'speechSynthesis' in window) {
+    const textToSpeak = buildDailyChallengeListeningText(task);
+    if (!textToSpeak) return;
     speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(task.sentence);
-    u.lang = 'en-US'; u.rate = 0.9;
+    const u = new SpeechSynthesisUtterance(textToSpeak);
+    u.rate = 0.9;
+    applyEnglishVoice(u);
     speechSynthesis.speak(u);
   }
 }

@@ -8,16 +8,17 @@
 function rateLimiter(maxReqs = 30, windowMs = 60000) {
   const hits = new Map();
 
-  // Cleanup every 5 minutes
-  setInterval(() => {
+  // Cleanup expired hits every 5 minutes (unref'd to prevent keeping event loop alive)
+  const timer = setInterval(() => {
     const now = Date.now();
     for (const [key, val] of hits) {
       if (now - val.start > windowMs) hits.delete(key);
     }
   }, 300000);
+  if (timer.unref) timer.unref();
 
   return (req, res, next) => {
-    const key = req.ip || req.connection.remoteAddress || 'unknown';
+    const key = req.ip || req.connection?.remoteAddress || 'unknown';
     const now = Date.now();
     const record = hits.get(key);
 
@@ -46,18 +47,17 @@ function securityHeaders(req, res, next) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
+
   // Security Headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
+
   // Handle OPTIONS requests
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
-  
+
   next();
 }
 

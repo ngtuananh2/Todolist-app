@@ -2,11 +2,11 @@
 :root {
   --st-bg: var(--bg, #f4f3f1);
   --st-card-bg: var(--surface, #ffffff);
-  --st-text: var(--text, #2c2825);
-  --st-text2: var(--text-2, #5c5650);
+  --st-text: var(--text, #000000);
+  --st-text2: var(--text-2, #1a1a1a);
   --st-border: var(--border, #e5e3e0);
-  --st-primary: var(--accent, #7c7268);
-  --st-primary-hover: var(--accent-dark, #5e554d);
+  --st-primary: var(--accent, #6366f1);
+  --st-primary-hover: var(--accent-dark, #4f46e5);
   --st-danger: #ef4444;
   --st-danger-hover: #dc2626;
   --st-warning: #f59e0b;
@@ -154,6 +154,22 @@ body {
 .st-divider {
   height: 1px;
   background: var(--st-border);
+}
+
+.st-update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  justify-content: flex-end;
+}
+
+.st-update-actions [hidden] {
+  display: none;
+}
+
+.st-update-actions .st-btn:disabled {
+  cursor: wait;
+  opacity: .6;
 }
 
 /* ── Toggle Switch ── */

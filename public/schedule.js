@@ -9,6 +9,7 @@
   const SCHEDULE_CHECK_KEY = 'dashboard_schedule_checks';
   let tasks = [];
   let scheduleData = null;
+  let scheduleSyncTimer = null;
   let currentMode = 'single';  // single | multi | weekly
   let selectedMultiDay = 0;     // index for multi-day nav
   let weeklyEditState = null;   // { day: 'Thứ 2', index: 0 } when editing
@@ -43,15 +44,19 @@
     'Chủ nhật': 'CN'
   };
 
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => {
+    init().catch(err => console.error('Schedule initialization failed:', err));
+  });
 
-  function init() {
+  async function init() {
     setupDate();
     setDefaultStartDate();
     setupRecurringDayPicker();
     initWeeklyEditor();
     loadTasks();
     loadSavedSchedule();
+    await loadScheduleFromServer();
+    setupScheduleFileIO();
     renderTasks();
     // Restore mode UI to match saved schedule
     if (scheduleData && scheduleData._mode && scheduleData._mode !== 'single') {
@@ -468,6 +473,7 @@
   window.switchMode = function(mode) {
     currentMode = mode;
     document.querySelectorAll('.sch-mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+    document.querySelector('.sch-layout')?.classList.toggle('weekly-mode', mode === 'weekly');
 
     const showDay = mode !== 'single';
     document.getElementById('sch-day-row').style.display = showDay ? '' : 'none';
@@ -511,6 +517,48 @@
         if (scheduleData._mode) currentMode = scheduleData._mode;
       }
     } catch { scheduleData = null; }
+  }
+
+  function saveScheduleData(data) {
+    if (data) localStorage.setItem(SCHEDULE_KEY, JSON.stringify(data));
+    else localStorage.removeItem(SCHEDULE_KEY);
+    if (scheduleSyncTimer) clearTimeout(scheduleSyncTimer);
+    const method = data ? 'PUT' : 'DELETE';
+    const body = data ? JSON.stringify({ schedule: data }) : undefined;
+    scheduleSyncTimer = setTimeout(() => {
+      fetch('/api/schedule', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body
+      }).catch(err => console.error('Schedule sync failed:', err));
+    }, 250);
+  }
+
+  async function loadScheduleFromServer() {
+    const statusEl = document.getElementById('sch-email-status');
+    try {
+      const response = await fetch('/api/schedule');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const result = await response.json();
+      if (statusEl) {
+        statusEl.textContent = result.emailConfigured
+          ? 'Email nhắc lịch đang bật, gửi tới ntuananh201205@gmail.com'
+          : 'Email chưa bật: cần cấu hình SMTP trong file .env';
+      }
+      if (result.schedule) {
+        scheduleData = result.schedule;
+        localStorage.setItem(SCHEDULE_KEY, JSON.stringify(scheduleData));
+      } else if (scheduleData) {
+        await fetch('/api/schedule', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ schedule: scheduleData })
+        });
+      }
+    } catch (err) {
+      if (statusEl) statusEl.textContent = 'Không kết nối được máy chủ lưu lịch; lịch trên thiết bị vẫn được giữ.';
+      console.error('Load schedule from server failed:', err);
+    }
   }
 
   window.addScheduleTask = function() {
@@ -749,6 +797,21 @@
     return result;
   }
 
+  function attachScheduleDates(data, options) {
+    if (!data) return;
+    if (data._mode === 'single' && Array.isArray(data.schedule)) {
+      data.scheduleDate = todayDateString();
+    }
+    if (data._mode === 'multi' && Array.isArray(data.days)) {
+      const start = options.startDate || todayDateString();
+      data.days.forEach((day, index) => {
+        const date = new Date(`${start}T12:00:00`);
+        date.setDate(date.getDate() + index);
+        day.dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      });
+    }
+  }
+
   window.generateAISchedule = async function() {
     if (tasks.length === 0) return alert('Vui lòng thêm ít nhất 1 công việc!');
 
@@ -782,14 +845,16 @@
       if (data.error) throw new Error(data.error);
 
       data._mode = currentMode;
+      attachScheduleDates(data, options);
       scheduleData = data;
-      localStorage.setItem(SCHEDULE_KEY, JSON.stringify(data));
+      saveScheduleData(data);
 
       restoreView(data);
     } catch(e) {
       const fallback = buildLocalFallbackSchedule(preferences, options, e);
+      attachScheduleDates(fallback, options);
       scheduleData = fallback;
-      localStorage.setItem(SCHEDULE_KEY, JSON.stringify(fallback));
+      saveScheduleData(fallback);
       restoreView(fallback);
       showScheduleNotification('⚠️ AI tạm thời lỗi, đã tạo lịch dự phòng trên thiết bị của bạn.');
     }
@@ -935,11 +1000,13 @@
     html += '<div class="wk-cards">';
     dayNames.forEach((day, i) => {
       const items = data.weekly[day] || [];
-      if (items.length === 0) return;
       const isWeekend = i >= 5;
       html += `<div class="wk-card ${isWeekend ? 'wk-card-weekend' : ''}">
-        <div class="wk-card-header">${dayShort[i]} — ${day}</div>
+        <div class="wk-card-header">${dayShort[i]} — ${day}<span class="wk-card-header-count">${items.length} hoạt động</span></div>
         <div class="wk-card-body">`;
+      if (items.length === 0) {
+        html += '<div class="wk-card-empty">Chưa có hoạt động</div>';
+      }
       items.forEach((item, idx) => {
         const t = resolveType(item.type);
         const cls = typeClasses[t] || 'wk-task';
@@ -1325,7 +1392,7 @@
   function persistAndRefreshWeekly() {
     if (!scheduleData) return;
     scheduleData._mode = 'weekly';
-    localStorage.setItem(SCHEDULE_KEY, JSON.stringify(scheduleData));
+    saveScheduleData(scheduleData);
     renderWeeklyTimetable(scheduleData);
     showTipsSummary(scheduleData);
   }
@@ -1405,7 +1472,7 @@
     } else if (scheduleData.schedule && scheduleData.schedule[index]) {
       scheduleData.schedule[index].done = !scheduleData.schedule[index].done;
     }
-    localStorage.setItem(SCHEDULE_KEY, JSON.stringify(scheduleData));
+    saveScheduleData(scheduleData);
   };
 
   // ===== CLEAR & EXPORT =====
@@ -1416,7 +1483,7 @@
     weeklyEditState = null;
     weeklySelection.clear();
     localStorage.removeItem(TASKS_KEY);
-    localStorage.removeItem(SCHEDULE_KEY);
+    saveScheduleData(null);
     renderTasks();
     document.getElementById('sch-timeline').innerHTML = '<div class="sch-timeline-empty"><div class="sch-empty-icon">📅</div><p>Thêm công việc và nhấn "AI Lên lịch" để tạo lịch trình</p></div>';
     document.getElementById('sch-timeline-multi').innerHTML = '<div class="sch-timeline-empty"><div class="sch-empty-icon">📆</div><p>Thêm công việc và nhấn "AI Lên lịch" để tạo lịch nhiều ngày</p></div>';
@@ -1430,48 +1497,93 @@
 
   window.exportSchedule = function() {
     if (!scheduleData) return alert('Chưa có lịch trình để xuất!');
-    let text = '';
-    const sep = '='.repeat(50);
-
-    if (scheduleData._mode === 'weekly' && scheduleData.weekly) {
-      text = `🗓️ THỜI KHÓA BIỂU TUẦN\n${sep}\n\n`;
-      const dayNames = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
-      dayNames.forEach(day => {
-        const items = scheduleData.weekly[day];
-        if (!items || items.length === 0) return;
-        text += `\n📌 ${day}\n${'-'.repeat(30)}\n`;
-        items.forEach(item => {
-          text += `  ${item.time}${item.endTime ? '-' + item.endTime : ''} | ${item.title}${item.note ? ' (' + item.note + ')' : ''}\n`;
-        });
-      });
-    } else if (scheduleData._mode === 'multi' && scheduleData.days) {
-      text = `📆 LỊCH TRÌNH NHIỀU NGÀY\n${sep}\n`;
-      scheduleData.days.forEach(day => {
-        text += `\n📌 ${day.date}\n${'-'.repeat(30)}\n`;
-        (day.schedule || []).forEach(item => {
-          const check = item.done ? '✅' : '⬜';
-          text += `  ${check} ${item.time}${item.endTime ? '-' + item.endTime : ''} | ${item.title}${item.note ? ' (' + item.note + ')' : ''}\n`;
-        });
-      });
-    } else if (scheduleData.schedule) {
-      text = `📅 LỊCH TRÌNH - ${new Date().toLocaleDateString('vi-VN')}\n${sep}\n\n`;
-      scheduleData.schedule.forEach(item => {
-        const check = item.done ? '✅' : '⬜';
-        text += `${check} ${item.time}${item.endTime ? ' - ' + item.endTime : ''} | ${item.title}`;
-        if (item.note) text += ` (${item.note})`;
-        text += '\n';
-      });
-    }
-
-    if (scheduleData.tips) text += `\n💡 MẸO:\n${scheduleData.tips.map(t => '- ' + t).join('\n')}`;
-    if (scheduleData.summary) text += `\n\n📊 ${scheduleData.summary}`;
-
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const payload = {
+      version: '1.0',
+      module: 'schedule',
+      exportedAt: new Date().toISOString(),
+      data: { schedule: scheduleData, tasks }
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `schedule-${currentMode}-${new Date().toISOString().split('T')[0]}.txt`;
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = `schedule-${currentMode}-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
+
+  function setupScheduleFileIO() {
+    const input = document.getElementById('schedule-import-file');
+    input?.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      try {
+        if (file.size > 5 * 1024 * 1024) throw new Error('File vượt quá giới hạn 5 MB');
+        const payload = JSON.parse(await file.text());
+        const importedSchedule = payload?.data?.schedule;
+        const importedTasks = payload?.data?.tasks;
+        const isScheduleItem = item =>
+          item && typeof item === 'object' && typeof item.title === 'string' && typeof item.time === 'string';
+        if (payload?.module !== 'schedule' || !importedSchedule || !Array.isArray(importedTasks)) {
+          throw new Error('File không đúng định dạng xuất thời khóa biểu của TaskFlow');
+        }
+        if (!['single', 'multi', 'weekly'].includes(importedSchedule._mode)) {
+          throw new Error('Chế độ thời khóa biểu trong file không hợp lệ');
+        }
+        if (
+          importedSchedule._mode === 'weekly' &&
+          (!importedSchedule.weekly || typeof importedSchedule.weekly !== 'object' ||
+            Array.isArray(importedSchedule.weekly) ||
+            Object.values(importedSchedule.weekly).some(items =>
+              !Array.isArray(items) || items.some(item => !isScheduleItem(item))))
+        ) {
+          throw new Error('Dữ liệu thời khóa biểu tuần không hợp lệ');
+        }
+        if (
+          importedSchedule._mode === 'multi' &&
+          (!Array.isArray(importedSchedule.days) || importedSchedule.days.some(day =>
+            !day || typeof day.date !== 'string' || !Array.isArray(day.schedule) ||
+            day.schedule.some(item => !isScheduleItem(item))))
+        ) {
+          throw new Error('Dữ liệu lịch nhiều ngày không hợp lệ');
+        }
+        if (
+          importedSchedule._mode === 'single' &&
+          (!Array.isArray(importedSchedule.schedule) || importedSchedule.schedule.some(item => !isScheduleItem(item)))
+        ) {
+          throw new Error('Dữ liệu lịch một ngày không hợp lệ');
+        }
+        if (importedTasks.some(task => !task || typeof task.title !== 'string')) {
+          throw new Error('Danh sách công việc trong file không hợp lệ');
+        }
+        if (!confirm('Nhập file sẽ thay thế thời khóa biểu và danh sách công việc đang lưu. Tiếp tục?')) return;
+
+        if (scheduleSyncTimer) clearTimeout(scheduleSyncTimer);
+        const response = await fetch('/api/schedule', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ schedule: importedSchedule })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || `Không thể nhập thời khóa biểu (HTTP ${response.status})`);
+
+        tasks = importedTasks;
+        scheduleData = importedSchedule;
+        currentMode = importedSchedule._mode;
+        localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+        localStorage.setItem(SCHEDULE_KEY, JSON.stringify(scheduleData));
+        renderTasks();
+        switchMode(currentMode);
+        restoreView(scheduleData);
+        window.globalUtils?.guToast('Đã nhập thời khóa biểu và danh sách công việc.', 'success');
+      } catch (error) {
+        alert(error.message || 'Không thể nhập file thời khóa biểu');
+      } finally {
+        input.value = '';
+      }
+    });
+  }
 
   // ===== HELPERS =====
   function escapeHtml(s) {
@@ -1649,7 +1761,7 @@
               renderMultiDay(scheduleData);
             }
           }
-          localStorage.setItem(SCHEDULE_KEY, JSON.stringify(scheduleData));
+          saveScheduleData(scheduleData);
           log.push('📌 Chèn: ' + newItem.title + ' lúc ' + newItem.time);
           changed = true;
           break;
@@ -1674,7 +1786,7 @@
               targetArr[action.index][key] = changes[key];
             });
             targetArr.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-            localStorage.setItem(SCHEDULE_KEY, JSON.stringify(scheduleData));
+            saveScheduleData(scheduleData);
             restoreView(scheduleData);
             log.push('✏️ Sửa mục #' + action.index);
             changed = true;
@@ -1698,7 +1810,7 @@
           if (arr && action.index != null && arr[action.index]) {
             const delTitle = arr[action.index].title;
             arr.splice(action.index, 1);
-            localStorage.setItem(SCHEDULE_KEY, JSON.stringify(scheduleData));
+            saveScheduleData(scheduleData);
             restoreView(scheduleData);
             log.push('❌ Xoá: ' + delTitle);
             changed = true;
@@ -1727,7 +1839,7 @@
             const end1 = swapArr[action.index1].endTime;
             swapArr[action.index1] = { ...swapArr[action.index2], time: time1, endTime: end1 };
             swapArr[action.index2] = { ...temp, time: swapArr[action.index2].time, endTime: swapArr[action.index2].endTime };
-            localStorage.setItem(SCHEDULE_KEY, JSON.stringify(scheduleData));
+            saveScheduleData(scheduleData);
             restoreView(scheduleData);
             log.push('🔀 Hoán đổi mục #' + action.index1 + ' ↔ #' + action.index2);
             changed = true;

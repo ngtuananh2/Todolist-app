@@ -137,6 +137,20 @@ router.post('/summarize-note', async (req, res) => {
   }
 });
 
+// POST /api/ai/format-note — format pasted text into structured Markdown
+router.post('/format-note', async (req, res) => {
+  try {
+    const { text, title } = req.body || {};
+    const normalized = String(text || '').trim();
+    if (!normalized) return res.status(400).json({ error: 'Văn bản không được để trống' });
+    const result = await aiService.formatNote(title || '', normalized);
+    res.json(result);
+  } catch (err) {
+    console.error('AI Format Note Error:', err);
+    sendAIError(res, err, 'Lỗi format ghi chú');
+  }
+});
+
 // POST /api/ai/grammar-check
 router.post('/grammar-check', async (req, res) => {
   try {

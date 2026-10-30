@@ -4,6 +4,7 @@
 
   const API = '/api/trading';
   let allTrades = [];
+  let rawTrades = [];
   let stats = null;
   let currentRating = 0;
   let deleteTradeId = null;
@@ -173,8 +174,15 @@
   function setupFilters() {
     const debounce = (fn, ms = 300) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
     document.getElementById('filter-search')?.addEventListener('input', debounce(() => loadTrades()));
-    ['filter-status', 'filter-market', 'filter-strategy', 'filter-start-date', 'filter-end-date'].forEach(id => {
+    ['filter-status', 'filter-market', 'filter-strategy', 'filter-type', 'filter-timeframe', 'filter-session', 'filter-start-date', 'filter-end-date'].forEach(id => {
       document.getElementById(id)?.addEventListener('change', () => loadTrades());
+    });
+    document.getElementById('btn-clear-trade-filters')?.addEventListener('click', () => {
+      ['filter-search', 'filter-status', 'filter-market', 'filter-strategy', 'filter-type', 'filter-timeframe', 'filter-session', 'filter-start-date', 'filter-end-date'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      loadTrades();
     });
     document.getElementById('btn-journal-refresh')?.addEventListener('click', renderJournal);
   }
@@ -214,8 +222,13 @@
 
     try {
       const res = await fetch(`${API}?${params}`);
-      allTrades = await res.json();
+      rawTrades = await res.json();
+      allTrades = applyClientFilters(rawTrades);
+      loadStrategyFilter();
       renderTradesTable();
+      renderDashboard();
+      if (document.getElementById('tab-analytics')?.classList.contains('active')) renderAnalytics();
+      if (document.getElementById('tab-journal')?.classList.contains('active')) renderJournal();
     } catch (e) {
       toast('Lỗi tải dữ liệu giao dịch', 'error');
     }
@@ -251,6 +264,26 @@
         dl.innerHTML += `<option value="${escapeHtml(name)}">`;
       });
     }
+
+    const tf = document.getElementById('filter-timeframe');
+    if (tf) {
+      const currentTf = tf.value;
+      const timeframes = [...new Set((rawTrades.length ? rawTrades : allTrades).map(t => t.timeframe).filter(Boolean))].sort(sortTimeframes);
+      tf.innerHTML = '<option value="">Tất cả TF</option>' + timeframes.map(v => `<option value="${escapeHtml(v)}" ${v === currentTf ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+    }
+  }
+
+  function applyClientFilters(trades) {
+    const type = document.getElementById('filter-type')?.value;
+    const timeframe = document.getElementById('filter-timeframe')?.value;
+    const session = document.getElementById('filter-session')?.value;
+
+    return trades.filter(t => {
+      if (type && t.type !== type) return false;
+      if (timeframe && t.timeframe !== timeframe) return false;
+      if (session && getTradeSession(t.entryDate) !== session) return false;
+      return true;
+    });
   }
 
   // ===== Dashboard =====
@@ -260,15 +293,83 @@
 
     setText('kpi-total', o.total);
     setText('kpi-pnl', formatMoney(o.totalPnl), o.totalPnl >= 0 ? 'positive' : 'negative');
-    setText('kpi-winrate', `${o.winRate}%`);
-    setText('kpi-pf', o.profitFactor === Infinity ? '∞' : o.profitFactor);
+    setText('kpi-winrate', `${o.winRate}%`, o.winRate >= 50 ? 'positive' : 'negative');
+    setText('kpi-pf', o.profitFactor === Infinity ? '∞' : o.profitFactor, o.profitFactor >= 1 ? 'positive' : 'negative');
+    setText('kpi-rr', o.avgRiskReward === null ? '—' : o.avgRiskReward.toFixed(2), o.avgRiskReward >= 1.5 ? 'positive' : 'negative');
+    setText('kpi-streak', o.maxWinStreak > 0 ? `${o.maxWinStreak}W / ${o.maxLossStreak}L` : '0/0');
     setText('kpi-open', o.open);
+    setText('kpi-risk', `${o.openWithoutStopLoss + o.openWithoutTakeProfit}`);
     setText('kpi-dd', formatMoney(-o.maxDrawdown), 'negative');
 
+    renderOverviewSummary();
     renderDailyPnlChart();
     renderWinLossChart();
+    renderTradingCalendar();
+    renderRMultipleChart();
+    renderEdgeMap();
     renderOpenPositions();
     renderRecentTrades();
+  }
+
+  function renderOverviewSummary() {
+    const o = stats?.overview;
+    if (!o) return;
+
+    const summaryEl = document.getElementById('overview-summary');
+    const pillEl = document.getElementById('overview-pill');
+    const subtextEl = document.getElementById('overview-subtext');
+    const riskEl = document.getElementById('risk-summary');
+    const insightEl = document.getElementById('insight-summary');
+
+    if (!summaryEl || !pillEl || !subtextEl || !riskEl || !insightEl) return;
+
+    let tone = 'positive';
+    let pillText = 'Kỷ luật đang tốt';
+    let description = `Bạn đã đóng ${o.closed} lệnh với win rate ${o.winRate}% và P&L ròng ${formatMoney(o.netPnl)}.`;
+
+    if (o.openWithoutStopLoss + o.openWithoutTakeProfit > 0) {
+      tone = 'negative';
+      pillText = 'Cần chú ý rủi ro';
+      description = `Có ${o.openWithoutStopLoss + o.openWithoutTakeProfit} lệnh đang mở chưa có đầy đủ SL/TP. Hãy kiểm tra trước khi tiếp tục.`;
+    } else if (o.winRate < 45 || o.maxDrawdown > 0) {
+      tone = 'negative';
+      pillText = 'Cần điều chỉnh chiến lược';
+      description = `Max drawdown đang là ${formatMoney(-o.maxDrawdown)}. Hãy review setup và quản lý rủi ro chặt hơn.`;
+    } else if (o.winRate >= 55 && o.totalPnl > 0) {
+      pillText = 'Xu hướng tốt';
+      description = `Bạn đang có hiệu suất tốt. Giữ kỷ luật và đừng đổi chiến lược vì một vài lệnh ngắn hạn.`;
+    }
+
+    pillEl.className = `hero-badge ${tone}`;
+    pillEl.textContent = pillText;
+    summaryEl.textContent = description;
+    subtextEl.textContent = `RR trung bình ${o.avgRiskReward === null ? 'chưa đủ dữ liệu' : o.avgRiskReward.toFixed(2)} · Chuỗi thắng dài nhất ${o.maxWinStreak}`;
+
+    const riskItems = [
+      { label: 'Lệnh đang mở chưa có SL', value: `${o.openWithoutStopLoss}`, tone: o.openWithoutStopLoss > 0 ? 'negative' : 'positive' },
+      { label: 'Lệnh đang mở chưa có TP', value: `${o.openWithoutTakeProfit}`, tone: o.openWithoutTakeProfit > 0 ? 'negative' : 'positive' },
+      { label: 'RR trung bình', value: o.avgRiskReward === null ? '—' : o.avgRiskReward.toFixed(2), tone: o.avgRiskReward !== null && o.avgRiskReward >= 1.5 ? 'positive' : 'negative' }
+    ];
+
+    riskEl.innerHTML = riskItems.map(item => `
+      <div class="risk-item ${item.tone}">
+        <span class="risk-label">${item.label}</span>
+        <span class="risk-value">${item.value}</span>
+      </div>
+    `).join('');
+
+    const insightItems = [
+      { text: `Bạn đã đóng ${o.closed} lệnh. Nếu win rate ổn định trên 50% thì lợi nhuận dài hạn thường tốt hơn.` },
+      { text: `Profit factor ${o.profitFactor === Infinity ? '∞' : o.profitFactor.toFixed(2)} cho thấy hiệu quả lợi nhuận so với thua lỗ.` },
+      { text: `Max drawdown ${formatMoney(-o.maxDrawdown)} là dấu hiệu cần kiểm tra mức dừng lỗ và quy mô vị thế.` }
+    ];
+
+    insightEl.innerHTML = insightItems.map(item => `
+      <div class="insight-item">
+        <span class="insight-dot"></span>
+        <span class="insight-text">${item.text}</span>
+      </div>
+    `).join('');
   }
 
   function renderDailyPnlChart() {
@@ -319,6 +420,122 @@
         <div class="donut-legend-item"><span class="donut-legend-dot" style="background:var(--red)"></span> Loss: ${o.losses}</div>
         <div class="donut-legend-item"><span class="donut-legend-dot" style="background:var(--text-muted)"></span> BE: ${o.breakeven}</div>
       </div>`;
+  }
+
+  function renderTradingCalendar() {
+    const container = document.getElementById('chart-trading-calendar');
+    if (!container) return;
+
+    const closed = getClosedTrades();
+    if (closed.length === 0) {
+      container.innerHTML = '<p class="empty-text">Chưa có dữ liệu</p>';
+      return;
+    }
+
+    const monthKey = getLatestTradeMonth(closed);
+    const [year, month] = monthKey.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const firstWeekday = new Date(year, month - 1, 1).getDay();
+    const byDay = {};
+
+    closed.forEach(t => {
+      const day = (t.exitDate || t.entryDate || '').substring(0, 10);
+      if (!day.startsWith(monthKey)) return;
+      if (!byDay[day]) byDay[day] = { pnl: 0, trades: 0, wins: 0 };
+      byDay[day].pnl += Number(t.pnl || 0);
+      byDay[day].trades++;
+      if ((t.pnl || 0) > 0) byDay[day].wins++;
+    });
+
+    let cells = '';
+    for (let i = 0; i < firstWeekday; i++) cells += '<div class="calendar-cell muted"></div>';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const day = `${monthKey}-${String(d).padStart(2, '0')}`;
+      const info = byDay[day];
+      const tone = !info ? 'muted' : info.pnl > 0 ? 'positive' : info.pnl < 0 ? 'negative' : 'neutral';
+      cells += `<div class="calendar-cell ${tone}" title="${day}${info ? ` · ${info.trades} lệnh · ${formatMoney(info.pnl)}` : ''}">
+        <span class="calendar-day">${d}</span>
+        ${info ? `<strong>${formatMoney(info.pnl)}</strong><small>${info.trades} lệnh</small>` : ''}
+      </div>`;
+    }
+
+    container.innerHTML = `
+      <div class="calendar-head">
+        <strong>${monthKey}</strong>
+        <span>${Object.values(byDay).length} ngày giao dịch</span>
+      </div>
+      <div class="calendar-weekdays"><span>CN</span><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span></div>
+      <div class="trading-calendar-grid">${cells}</div>
+    `;
+  }
+
+  function renderRMultipleChart() {
+    const container = document.getElementById('chart-r-multiple');
+    if (!container) return;
+
+    const values = getClosedTrades().map(calculateRMultiple).filter(v => Number.isFinite(v));
+    if (values.length === 0) {
+      container.innerHTML = '<p class="empty-text">Cần lệnh đóng có Entry + SL để tính R</p>';
+      return;
+    }
+
+    const buckets = [
+      { label: '< -2R', min: -Infinity, max: -2 },
+      { label: '-2R', min: -2, max: -1 },
+      { label: '-1R', min: -1, max: 0 },
+      { label: '0R', min: 0, max: 0.5 },
+      { label: '0.5R', min: 0.5, max: 1 },
+      { label: '1R', min: 1, max: 2 },
+      { label: '2R+', min: 2, max: Infinity }
+    ].map(b => ({ ...b, count: values.filter(v => v >= b.min && v < b.max).length }));
+
+    const max = Math.max(...buckets.map(b => b.count), 1);
+    const avg = values.reduce((s, v) => s + v, 0) / values.length;
+
+    container.innerHTML = `
+      <div class="r-summary">
+        <span>Avg R <strong class="${avg >= 0 ? 'positive' : 'negative'}">${avg.toFixed(2)}R</strong></span>
+        <span>${values.length} lệnh hợp lệ</span>
+      </div>
+      <div class="r-bars">
+        ${buckets.map(b => `<div class="r-bar-item">
+          <div class="r-bar ${b.min >= 0 ? 'positive' : 'negative'}" style="height:${Math.max((b.count / max) * 100, b.count ? 8 : 0)}%"><span>${b.count}</span></div>
+          <small>${b.label}</small>
+        </div>`).join('')}
+      </div>
+    `;
+  }
+
+  function renderEdgeMap() {
+    const container = document.getElementById('edge-map');
+    if (!container) return;
+
+    const closed = getClosedTrades();
+    if (closed.length === 0) {
+      container.innerHTML = '<p class="empty-text">Chưa có dữ liệu</p>';
+      return;
+    }
+
+    const dimensions = [
+      { title: 'Theo cặp tiền', data: groupTradeStats(closed, t => t.symbol || 'Không rõ') },
+      { title: 'Theo setup', data: groupTradeStats(closed, t => t.strategy || firstLine(t.setup) || 'Không có') },
+      { title: 'Theo phiên', data: groupTradeStats(closed, t => getTradeSession(t.entryDate)) },
+      { title: 'Theo TF', data: groupTradeStats(closed, t => t.timeframe || 'Không rõ') }
+    ];
+
+    container.innerHTML = dimensions.map(dim => `
+      <div class="edge-card">
+        <div class="edge-title">${dim.title}</div>
+        ${Object.entries(dim.data).sort((a, b) => b[1].pnl - a[1].pnl).slice(0, 5).map(([name, d]) => {
+          const wr = d.total ? Math.round(d.wins / d.total * 100) : 0;
+          return `<div class="edge-row">
+            <span>${escapeHtml(name)}</span>
+            <strong class="${d.pnl >= 0 ? 'positive' : 'negative'}">${formatMoney(d.pnl)}</strong>
+            <small>${d.total} lệnh · WR ${wr}%</small>
+          </div>`;
+        }).join('')}
+      </div>
+    `).join('');
   }
 
   function renderOpenPositions() {
@@ -415,7 +632,11 @@
     renderAnalyticsList('analytics-by-symbol', stats.bySymbol);
     renderAnalyticsList('analytics-by-strategy', stats.byStrategy);
     renderAnalyticsList('analytics-by-market', stats.byMarket);
+    renderAnalyticsList('analytics-by-timeframe', groupTradeStats(getClosedTrades(), t => t.timeframe || 'Không rõ'));
+    renderAnalyticsList('analytics-by-session', groupTradeStats(getClosedTrades(), t => getTradeSession(t.entryDate)));
     renderEmotionAnalytics();
+    renderAnalyticsHeatmap();
+    renderLeaderboard();
   }
 
   function renderPerfGrid() {
@@ -432,6 +653,7 @@
       { label: 'P&L ròng', value: formatMoney(o.netPnl), cls: o.netPnl >= 0 ? 'positive' : 'negative' },
       { label: 'Tổng phí', value: formatMoney(o.totalFees), cls: 'negative' },
       { label: 'Profit Factor', value: o.profitFactor === Infinity ? '∞' : o.profitFactor },
+      { label: 'RR TB', value: o.avgRiskReward === null ? '—' : o.avgRiskReward.toFixed(2), cls: o.avgRiskReward !== null && o.avgRiskReward >= 1.5 ? 'positive' : 'negative' },
       { label: 'Expectancy', value: formatMoney(o.expectancy), cls: o.expectancy >= 0 ? 'positive' : 'negative' },
       { label: 'Avg Win', value: formatMoney(o.avgWin), cls: 'positive' },
       { label: 'Avg Loss', value: formatMoney(o.avgLoss), cls: 'negative' },
@@ -441,6 +663,7 @@
       { label: 'Max Loss Streak', value: o.maxLossStreak },
       { label: 'Max Drawdown', value: formatMoney(-o.maxDrawdown), cls: 'negative' },
       { label: 'Avg Hold Time', value: formatDuration(o.avgHoldTimeMs) },
+      { label: 'SL/TP chưa đặt', value: `${o.openWithoutStopLoss + o.openWithoutTakeProfit}`, cls: 'negative' },
       { label: 'Open Value', value: formatMoney(o.openPositionsValue) },
     ];
 
@@ -529,6 +752,86 @@
         </div>
       </div>`;
     }).join('');
+  }
+
+  function renderAnalyticsHeatmap() {
+    const container = document.getElementById('analytics-heatmap');
+    if (!container) return;
+    const closed = getClosedTrades();
+    if (closed.length === 0) {
+      container.innerHTML = '<p class="empty-text">Chưa có dữ liệu</p>';
+      return;
+    }
+
+    const months = [...new Set(closed.map(t => (t.exitDate || '').substring(0, 7)).filter(Boolean))].sort().slice(-12);
+    const weekdays = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    const byCell = {};
+    closed.forEach(t => {
+      if (!t.exitDate) return;
+      const m = t.exitDate.substring(0, 7);
+      if (!months.includes(m)) return;
+      const wd = new Date(t.exitDate).getDay();
+      const key = `${m}|${wd}`;
+      if (!byCell[key]) byCell[key] = { pnl: 0, trades: 0 };
+      byCell[key].pnl += Number(t.pnl || 0);
+      byCell[key].trades++;
+    });
+
+    container.innerHTML = `
+      <div class="heatmap-table">
+        <div class="heatmap-corner"></div>
+        ${weekdays.map(w => `<div class="heatmap-head">${w}</div>`).join('')}
+        ${months.map(m => `
+          <div class="heatmap-month">${m}</div>
+          ${weekdays.map((_, wd) => {
+            const item = byCell[`${m}|${wd}`];
+            const tone = !item ? 'empty' : item.pnl > 0 ? 'positive' : item.pnl < 0 ? 'negative' : 'neutral';
+            return `<div class="heatmap-cell ${tone}" title="${m} ${weekdays[wd]}${item ? ` · ${item.trades} lệnh · ${formatMoney(item.pnl)}` : ''}">
+              ${item ? `<strong>${formatMoney(item.pnl)}</strong><small>${item.trades}</small>` : ''}
+            </div>`;
+          }).join('')}
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function renderLeaderboard() {
+    const container = document.getElementById('analytics-leaderboard');
+    if (!container) return;
+    const closed = getClosedTrades();
+    if (closed.length === 0) {
+      container.innerHTML = '<p class="empty-text">Chưa có dữ liệu</p>';
+      return;
+    }
+
+    const groups = {
+      'Top setup': groupTradeStats(closed, t => t.strategy || firstLine(t.setup) || 'Không có'),
+      'Setup cần tránh': groupTradeStats(closed, t => t.strategy || firstLine(t.setup) || 'Không có'),
+      'Cặp tiền tốt': groupTradeStats(closed, t => t.symbol || 'Không rõ'),
+      'Cặp tiền yếu': groupTradeStats(closed, t => t.symbol || 'Không rõ')
+    };
+
+    const renderList = (title, data, asc = false) => {
+      const rows = Object.entries(data)
+        .filter(([, d]) => d.total > 0)
+        .sort((a, b) => asc ? a[1].pnl - b[1].pnl : b[1].pnl - a[1].pnl)
+        .slice(0, 5);
+      return `<div class="leaderboard-card">
+        <div class="leaderboard-title">${title}</div>
+        ${rows.map(([name, d], i) => `<div class="leaderboard-row">
+          <span class="leaderboard-rank">${i + 1}</span>
+          <span class="leaderboard-name">${escapeHtml(name)}</span>
+          <strong class="${d.pnl >= 0 ? 'positive' : 'negative'}">${formatMoney(d.pnl)}</strong>
+        </div>`).join('') || '<p class="empty-text">Chưa đủ dữ liệu</p>'}
+      </div>`;
+    };
+
+    container.innerHTML = [
+      renderList('Top 5 setup tốt nhất', groups['Top setup']),
+      renderList('Top 5 setup kém nhất', groups['Setup cần tránh'], true),
+      renderList('Top 5 cặp tiền tốt nhất', groups['Cặp tiền tốt']),
+      renderList('Top 5 cặp tiền kém nhất', groups['Cặp tiền yếu'], true)
+    ].join('');
   }
 
   // ===== Journal =====
@@ -843,6 +1146,63 @@
   }
 
   // ===== Helpers =====
+  function getClosedTrades() {
+    return allTrades.filter(t => t.status === 'closed' && Number.isFinite(Number(t.pnl)));
+  }
+
+  function groupTradeStats(trades, getKey) {
+    const grouped = {};
+    trades.forEach(t => {
+      const key = String(getKey(t) || 'Không rõ').trim() || 'Không rõ';
+      if (!grouped[key]) grouped[key] = { total: 0, wins: 0, losses: 0, pnl: 0 };
+      grouped[key].total++;
+      if ((t.pnl || 0) > 0) grouped[key].wins++;
+      if ((t.pnl || 0) < 0) grouped[key].losses++;
+      grouped[key].pnl += Number(t.pnl || 0);
+    });
+    Object.values(grouped).forEach(d => { d.pnl = Math.round(d.pnl * 100) / 100; });
+    return grouped;
+  }
+
+  function calculateRMultiple(trade) {
+    const entry = Number(trade.entryPrice);
+    const sl = Number(trade.stopLoss);
+    const exit = Number(trade.exitPrice);
+    if (!entry || !sl || !exit || entry === sl) return null;
+    const riskPerUnit = Math.abs(entry - sl);
+    const direction = (trade.type === 'sell' || trade.type === 'short') ? -1 : 1;
+    const rewardPerUnit = (exit - entry) * direction;
+    return Math.round((rewardPerUnit / riskPerUnit) * 100) / 100;
+  }
+
+  function getTradeSession(dateValue) {
+    if (!dateValue) return 'Không rõ';
+    const hour = new Date(dateValue).getHours();
+    if (hour >= 19 && hour < 23) return 'Overlap';
+    if (hour >= 13 && hour < 19) return 'London';
+    if (hour >= 20 || hour < 4) return 'New York';
+    return 'Asia';
+  }
+
+  function getLatestTradeMonth(trades) {
+    const latest = [...trades].sort((a, b) => new Date(b.exitDate || b.entryDate) - new Date(a.exitDate || a.entryDate))[0];
+    return (latest?.exitDate || latest?.entryDate || new Date().toISOString()).substring(0, 7);
+  }
+
+  function firstLine(text) {
+    return String(text || '').split('\n')[0].trim().slice(0, 42);
+  }
+
+  function sortTimeframes(a, b) {
+    const weight = tf => {
+      const m = String(tf).match(/^(\d+)(m|h|d|w)$/i);
+      if (!m) return Number.MAX_SAFE_INTEGER;
+      const n = Number(m[1]);
+      return n * ({ m: 1, h: 60, d: 1440, w: 10080 }[m[2].toLowerCase()] || 1);
+    };
+    return weight(a) - weight(b);
+  }
+
   function showModal(id) { document.getElementById(id).style.display = 'flex'; }
   function hideModal(id) { document.getElementById(id).style.display = 'none'; }
 

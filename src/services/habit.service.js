@@ -6,7 +6,8 @@ const { Habit, HabitLog } = require('../config/database');
  * Get all active habits
  */
 async function getAllHabits() {
-  return Habit.find({ archived: false }).sort({ order: 1, createdAt: -1 });
+  const habits = await Habit.find({ archived: false }).sort({ order: 1, createdAt: -1 }).lean();
+  return habits.map(h => ({ ...h, id: h._id.toString() }));
 }
 
 /**
@@ -107,7 +108,7 @@ async function getStats() {
   const logs = await HabitLog.find({
     date: { $gte: d30Str, $lte: todayStr },
     done: true
-  }).lean();
+  }).select('habitId date').lean();
 
   // Build log map: { habitId: Set<date> }
   const logMap = {};
@@ -124,9 +125,12 @@ async function getStats() {
     // Completion rate (last 30 days)
     const rate = Math.round((dates.size / 30) * 100);
 
-    // Current streak
+    // Current streak (if today is not logged yet, count from yesterday)
     let streak = 0;
     const checkDate = new Date(today);
+    if (!dates.has(todayStr)) {
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
     while (true) {
       const dateStr = formatDate(checkDate);
       if (dates.has(dateStr)) {

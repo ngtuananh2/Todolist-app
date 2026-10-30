@@ -165,7 +165,7 @@ async function createCompletionWithFallback(params) {
   if (isGroqConfigured && groq) {
     try {
       return await groq.chat.completions.create({
-        model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+        model: process.env.GROQ_MODEL || 'qwen/qwen3.8-27b',
         messages: params.messages,
         temperature: params.temperature,
         max_tokens: params.max_tokens
@@ -240,8 +240,8 @@ const aiGateway = {
   }
 };
 
-// Model: llama-3.3-70b-versatile (free tier: 30 req/min, 14400 req/day)
-const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+// Default to a currently available Groq chat model.
+const GROQ_MODEL = process.env.GROQ_MODEL || 'qwen/qwen3.8-27b';
 
 module.exports = {
   groq: aiGateway,
