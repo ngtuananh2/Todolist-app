@@ -1,6 +1,6 @@
 {
   "name": "taskflow",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "main": "electron.js",
   "description": "TaskFlow — Ứng dụng quản lý công việc thông minh",
   "author": "TaskFlow",

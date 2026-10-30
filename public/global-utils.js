@@ -419,8 +419,9 @@
         setOpen(false);
         toggle.focus();
       }
+    });
 
-      async function injectAccountControls() {
+    async function injectAccountControls() {
         const navRight = document.querySelector('.nav-right');
         if (!navRight || document.getElementById('taskflow-account')) return;
 
@@ -478,7 +479,6 @@
           console.error('[auth] Không thể tải trạng thái tài khoản:', error);
         }
       }
-    });
   }
 
   async function loadNotifications() {
