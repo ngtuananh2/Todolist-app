@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { User } = require('../config/database');
+const { User, Todo, Schedule, Tag, Habit, HabitLog, Note, NoteVersion, EnglishProgress, Vocab, EnglishMindmap, Trade, TradingAccount } = require('../config/database');
 
 const SESSION_COOKIE = 'taskflow_session';
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
@@ -60,6 +60,22 @@ async function register(email, password) {
   if (existing) throw new Error('Email này đã được đăng ký');
   const { passwordHash, passwordSalt } = hashPassword(password);
   const user = await User.create({ email: normalizedEmail, passwordHash, passwordSalt });
+  if (await User.countDocuments() === 1) {
+    await Promise.all([
+      Todo.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+      Schedule.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+      Tag.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+      Habit.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+      HabitLog.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+      Note.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+      NoteVersion.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+      EnglishProgress.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+      Vocab.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+      EnglishMindmap.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+      Trade.updateMany({ ownerId: null }, { $set: { ownerId: user._id } }),
+      TradingAccount.updateMany({ ownerId: null }, { $set: { ownerId: user._id } })
+    ]);
+  }
   return { id: user.id, email: user.email };
 }
 

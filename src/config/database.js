@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { ownershipPlugin } = require('../middleware/ownership');
 
 // ==================== MONGODB CONFIG ====================
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/TaskFlowDB';
@@ -26,6 +27,7 @@ function getSafeMongoTarget(uri) {
 async function connectDB() {
   try {
     await mongoose.connect(MONGO_URI);
+    await Schedule.syncIndexes();
     console.log(`✅ Đã kết nối MongoDB: ${getSafeMongoTarget(MONGO_URI)}`);
   } catch (err) {
     console.error('❌ Lỗi kết nối MongoDB:', err.message);
@@ -55,7 +57,7 @@ const todoSchema = new mongoose.Schema({
 });
 
 const scheduleSchema = new mongoose.Schema({
-  key: { type: String, required: true, unique: true, default: 'main' },
+  key: { type: String, required: true, default: 'main' },
   data: { type: mongoose.Schema.Types.Mixed, default: null },
   sentOccurrences: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
   updatedAt: { type: Date, default: Date.now }
@@ -329,13 +331,6 @@ tradingAccountSchema.set('toJSON', {
   }
 });
 
-const Todo = mongoose.model('Todo', todoSchema);
-const Schedule = mongoose.model('Schedule', scheduleSchema);
-const Tag  = mongoose.model('Tag', tagSchema);
-const Habit = mongoose.model('Habit', habitSchema);
-const HabitLog = mongoose.model('HabitLog', habitLogSchema);
-const Note = mongoose.model('Note', noteSchema);
-
 // ==================== NOTE VERSION ====================
 const noteVersionSchema = new mongoose.Schema({
   noteId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Note', required: true },
@@ -350,6 +345,22 @@ noteVersionSchema.index({ noteId: 1, savedAt: -1 });
 noteVersionSchema.set('toJSON', {
   virtuals: true, transform: (_, ret) => { ret.id = ret._id.toString(); delete ret._id; delete ret.__v; return ret; }
 });
+
+for (const schema of [
+  todoSchema, scheduleSchema, tagSchema, habitSchema, habitLogSchema, noteSchema,
+  noteVersionSchema, englishProgressSchema, vocabSchema, englishMindmapSchema,
+  tradeSchema, tradingAccountSchema
+]) {
+  schema.plugin(ownershipPlugin);
+}
+scheduleSchema.index({ ownerId: 1, key: 1 }, { unique: true });
+
+const Todo = mongoose.model('Todo', todoSchema);
+const Schedule = mongoose.model('Schedule', scheduleSchema);
+const Tag  = mongoose.model('Tag', tagSchema);
+const Habit = mongoose.model('Habit', habitSchema);
+const HabitLog = mongoose.model('HabitLog', habitLogSchema);
+const Note = mongoose.model('Note', noteSchema);
 const NoteVersion = mongoose.model('NoteVersion', noteVersionSchema);
 
 const EnglishProgress = mongoose.model('EnglishProgress', englishProgressSchema);

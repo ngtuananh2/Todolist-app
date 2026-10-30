@@ -1,4 +1,5 @@
 const { SESSION_COOKIE, verifySession } = require('../services/auth.service');
+const { runWithOwner } = require('./ownership');
 
 function parseCookies(header = '') {
   return Object.fromEntries(header.split(';').map(part => {
@@ -13,4 +14,10 @@ function attachUser(req, _res, next) {
   next();
 }
 
-module.exports = { attachUser, parseCookies };
+function requireAuth(req, res, next) {
+  if (process.env.NODE_ENV !== 'production') return next();
+  if (!req.user) return res.status(401).json({ error: 'Bạn cần đăng nhập để sử dụng TaskFlow' });
+  return runWithOwner(req.user.id, next);
+}
+
+module.exports = { attachUser, parseCookies, requireAuth };

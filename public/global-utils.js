@@ -782,6 +782,11 @@
 
   // ===== Init =====
   function initGlobalUtils() {
+    if (location.pathname !== '/auth.html' && location.pathname !== '/offline.html') {
+      fetch('/api/auth/me', { credentials: 'same-origin' }).then(response => {
+        if (response.status === 401) location.replace('/auth.html');
+      }).catch(() => {});
+    }
     initTheme();
     initNetworkStatus();
     if ('serviceWorker' in navigator) {
