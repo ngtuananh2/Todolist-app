@@ -1857,3 +1857,14 @@ form[aria-busy="true"] [type="submit"] {
     transition-duration: 0.01ms !important;
   }
 }
+#taskflow-network-status {
+  background: #f59e0b;
+  bottom: 16px;
+  color: #1c1917;
+  font-size: 12px;
+  font-weight: 700;
+  left: 16px;
+  padding: 10px 14px;
+  position: fixed;
+  z-index: 10000;
+}

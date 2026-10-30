@@ -26,6 +26,26 @@
     todo: '/', note: '/brain.html', vocab: '/english.html', trade: '/trading.html', habit: '/habit.html'
   };
 
+  function initNetworkStatus() {
+    const update = () => {
+      document.documentElement.dataset.network = navigator.onLine ? 'online' : 'offline';
+      const existing = document.getElementById('taskflow-network-status');
+      if (navigator.onLine) {
+        existing?.remove();
+        return;
+      }
+      if (existing) return;
+      const status = document.createElement('div');
+      status.id = 'taskflow-network-status';
+      status.setAttribute('role', 'status');
+      status.textContent = 'Đang ngoại tuyến — thay đổi sẽ được đồng bộ khi có mạng.';
+      document.body.appendChild(status);
+    };
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    update();
+  }
+
   // ==================== THEME (centralized) ====================
   function initTheme() {
     const saved = localStorage.getItem('theme') || 'dark';
@@ -763,6 +783,12 @@
   // ===== Init =====
   function initGlobalUtils() {
     initTheme();
+    initNetworkStatus();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(error => {
+        console.error('[pwa] Không thể đăng ký service worker:', error);
+      });
+    }
     startNavDateTimeClock();
     injectCompactNavigation();
     injectUI();
