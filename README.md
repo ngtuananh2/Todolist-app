@@ -13,6 +13,19 @@ GROQ_MODEL=qwen/qwen3.8-27b
 
 If `GROQ_API_KEY` is missing, the app still starts normally but AI endpoints return `503 AI chưa được cấu hình`.
 
+## Triển khai PWA miễn phí cho cá nhân
+
+Repository có sẵn [render.yaml](./render.yaml) cho Render Free. Cách triển khai:
+
+1. Tạo tài khoản Render miễn phí và liên kết GitHub.
+2. Tạo database MongoDB Atlas Free, lấy chuỗi kết nối và cho phép kết nối từ Render.
+3. Trong Render chọn **New → Blueprint**, chọn repository này.
+4. Nhập `MONGO_URI`; các API key AI có thể để trống nếu không dùng AI.
+5. Sau khi deploy, Render cấp địa chỉ dạng `https://taskflow-personal.onrender.com`.
+6. Mở địa chỉ đó trên điện thoại bằng Chrome rồi chọn **Thêm vào màn hình chính**.
+
+Gói Free có thể tạm dừng khi không có truy cập, nên lần mở đầu có thể chậm. Không đưa ứng dụng lên Internet trước khi bật đăng nhập/phân quyền; bản hiện tại vẫn là bản cá nhân chưa có lớp bảo vệ tài khoản đầy đủ.
+
 ## Email nhắc lịch
 
 Email nhắc được gửi tới `EMAIL_TO` cho deadline của Todo và mục loại `task` trong lịch một ngày, nhiều ngày hoặc thời khóa biểu tuần. Worker kiểm tra mỗi 15 giây và chỉ nhắc một lần cho mỗi deadline/lần xuất hiện lịch; server cần đang chạy khi đến giờ (có tối đa 15 phút trễ để khôi phục sau gián đoạn). Với Gmail, bật xác minh 2 bước và tạo App Password; không dùng mật khẩu đăng nhập Gmail thông thường. Điền cấu hình `SMTP_*` trong file `.env` dựa trên `.env.example`, sau đó khởi động lại ứng dụng. Email chỉ được gửi sau khi SMTP được cấu hình hợp lệ.
