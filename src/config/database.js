@@ -3,13 +3,22 @@ const mongoose = require('mongoose');
 // ==================== MONGODB CONFIG ====================
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/TaskFlowDB';
 
+function getSafeMongoTarget(uri) {
+  try {
+    const parsed = new URL(uri);
+    return `${parsed.protocol}//${parsed.hostname}${parsed.pathname}`;
+  } catch {
+    return 'configured MongoDB URI';
+  }
+}
+
 /**
  * Connect to MongoDB
  */
 async function connectDB() {
   try {
     await mongoose.connect(MONGO_URI);
-    console.log(`✅ Đã kết nối MongoDB: ${MONGO_URI}`);
+    console.log(`✅ Đã kết nối MongoDB: ${getSafeMongoTarget(MONGO_URI)}`);
   } catch (err) {
     console.error('❌ Lỗi kết nối MongoDB:', err.message);
     throw err;
@@ -342,4 +351,3 @@ const Trade = mongoose.model('Trade', tradeSchema);
 const TradingAccount = mongoose.model('TradingAccount', tradingAccountSchema);
 
 module.exports = { connectDB, Todo, Schedule, Tag, Habit, HabitLog, Note, NoteVersion, EnglishProgress, Vocab, EnglishMindmap, Trade, TradingAccount, mongoose };
-
