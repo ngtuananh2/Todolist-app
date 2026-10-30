@@ -4,6 +4,105 @@
 (function () {
   'use strict';
 
+  const nativeFetch = window.fetch.bind(window);
+  const OFFLINE_QUEUE_KEY = 'taskflow_offline_queue_v1';
+  let replayingOfflineQueue = false;
+
+  function isQueueableRequest(input, init = {}) {
+    const request = new Request(input, init);
+    const method = request.method.toUpperCase();
+    const url = new URL(request.url, location.origin);
+    return url.origin === location.origin
+      && url.pathname.startsWith('/api/')
+      && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
+      && !/^\/api\/(auth|ai|dashboard\/(?:backup|restore|import)|app-settings)/.test(url.pathname);
+  }
+
+  function readOfflineQueue() {
+    try {
+      const value = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+      return Array.isArray(value) ? value : [];
+    } catch (error) {
+      console.error('[offline] Không thể đọc hàng đợi:', error);
+      return [];
+    }
+  }
+
+  function writeOfflineQueue(queue) {
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+    updateOfflineQueueStatus(queue.length);
+  }
+
+  function updateOfflineQueueStatus(count = readOfflineQueue().length) {
+    const status = document.getElementById('taskflow-network-status');
+    if (!status || navigator.onLine) return;
+    status.textContent = count
+      ? `Đang ngoại tuyến — ${count} thay đổi sẽ được đồng bộ khi có mạng.`
+      : 'Đang ngoại tuyến — thay đổi sẽ được đồng bộ khi có mạng.';
+  }
+
+  function serializeRequest(input, init = {}) {
+    const request = new Request(input, init);
+    return request.clone().text().then(body => ({
+      url: request.url,
+      method: request.method,
+      headers: [...request.headers.entries()],
+      body
+    }));
+  }
+
+  async function queueRequest(input, init) {
+    const queue = readOfflineQueue();
+    queue.push(await serializeRequest(input, init));
+    writeOfflineQueue(queue);
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        if ('sync' in registration) registration.sync.register('taskflow-offline-sync').catch(() => {});
+      }).catch(() => {});
+    }
+    return new Response(JSON.stringify({ queued: true, pending: queue.length }), {
+      status: 202,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  async function replayOfflineQueue() {
+    if (replayingOfflineQueue || !navigator.onLine) return;
+    replayingOfflineQueue = true;
+    try {
+      const queue = readOfflineQueue();
+      const remaining = [];
+      for (const item of queue) {
+        try {
+          const response = await nativeFetch(item.url, {
+            method: item.method,
+            headers: item.headers,
+            body: item.method === 'DELETE' ? undefined : item.body,
+            credentials: 'same-origin'
+          });
+          if (!response.ok && response.status !== 409) remaining.push(item);
+        } catch {
+          remaining.push(item);
+          break;
+        }
+      }
+      writeOfflineQueue(remaining);
+      if (queue.length && !remaining.length) window.globalUtils?.guToast?.('Đã đồng bộ các thay đổi đang chờ', 'success');
+    } finally {
+      replayingOfflineQueue = false;
+    }
+  }
+
+  window.fetch = async function taskflowFetch(input, init = {}) {
+    if (!isQueueableRequest(input, init)) return nativeFetch(input, init);
+    if (!navigator.onLine) return queueRequest(input, init);
+    try {
+      return await nativeFetch(input, init);
+    } catch (error) {
+      return queueRequest(input, init).catch(() => { throw error; });
+    }
+  };
+
   const SEARCH_API = '/api/dashboard/search';
   const BACKUP_API = '/api/dashboard/backup';
   const RESTORE_API = '/api/dashboard/restore';
@@ -32,6 +131,7 @@
       const existing = document.getElementById('taskflow-network-status');
       if (navigator.onLine) {
         existing?.remove();
+        replayOfflineQueue();
         return;
       }
       if (existing) return;
@@ -40,6 +140,7 @@
       status.setAttribute('role', 'status');
       status.textContent = 'Đang ngoại tuyến — thay đổi sẽ được đồng bộ khi có mạng.';
       document.body.appendChild(status);
+      updateOfflineQueueStatus();
     };
     window.addEventListener('online', update);
     window.addEventListener('offline', update);

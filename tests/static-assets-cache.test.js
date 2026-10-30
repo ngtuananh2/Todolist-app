@@ -9,7 +9,7 @@ test('revalidates HTML, CSS, and JavaScript assets after app updates', async () 
     await new Promise(resolve => server.once('listening', resolve));
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
-    for (const asset of ['/schedule.html', '/schedule.css', '/schedule.js']) {
+    for (const asset of ['/schedule.html', '/schedule.css', '/schedule.js', '/global-utils.js', '/sw.js']) {
       const response = await fetch(`${baseUrl}${asset}`);
       assert.equal(response.status, 200);
       assert.equal(response.headers.get('cache-control'), 'no-cache');

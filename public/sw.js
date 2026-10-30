@@ -33,6 +33,12 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
+self.addEventListener('sync', event => {
+  if (event.tag === 'taskflow-offline-sync') {
+    event.waitUntil(self.clients.matchAll().then(clients => clients.forEach(client => client.postMessage({ type: 'taskflow-sync' }))));
+  }
+});
+
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) return;
 
