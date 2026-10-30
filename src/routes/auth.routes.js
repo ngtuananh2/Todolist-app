@@ -1,11 +1,22 @@
 const { Router } = require('express');
+const { User } = require('../config/database');
 const { SESSION_COOKIE, getSessionCookieOptions, login, register } = require('../services/auth.service');
 const { attachUser } = require('../middleware/auth');
 
 const router = Router();
 
-router.get('/me', attachUser, (req, res) => {
-  res.json({ authenticated: Boolean(req.user), user: req.user });
+router.get('/me', attachUser, async (req, res, next) => {
+  try {
+    if (!req.user) return res.json({ authenticated: false, user: null });
+    const user = await User.findById(req.user.id).select('_id email').lean();
+    if (!user) return res.json({ authenticated: false, user: null });
+    res.json({
+      authenticated: true,
+      user: { id: user._id.toString(), email: user.email }
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.post('/register', async (req, res, next) => {
