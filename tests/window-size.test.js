@@ -26,6 +26,11 @@ test('returns only supported window sizes', () => {
   ]);
 });
 
+test('keeps fullscreen disabled by default in app settings', () => {
+  const { DEFAULT_APP_SETTINGS } = require('../src/config/app-settings');
+  assert.equal(DEFAULT_APP_SETTINGS.fullscreen, false);
+});
+
 test('fits selected size and minimum constraints within the available work area', () => {
   assert.deepEqual(getWindowBounds('1920x1080', { width: 1366, height: 768 }), {
     width: 1366,

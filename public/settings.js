@@ -37,7 +37,7 @@
     const res = await fetch('/api/app-settings');
     if (!res.ok) throw new Error(`Không thể tải cài đặt ứng dụng (HTTP ${res.status})`);
     const data = await res.json();
-    return { launchOnStartup: false, windowSize: '1200x780', ...data };
+    return { launchOnStartup: false, windowSize: '1200x780', fullscreen: false, ...data };
   }
 
   async function saveAppSettings(patch) {
@@ -150,6 +150,15 @@
         }));
       }
       windowSize.value = settings.windowSize || '1200x780';
+    }
+
+    const fullscreenToggle = document.getElementById('setting-fullscreen');
+    if (fullscreenToggle) {
+      const supported = settings.desktopCapabilities?.fullscreen !== false;
+      fullscreenToggle.checked = supported && settings.fullscreen === true;
+      fullscreenToggle.disabled = !supported;
+      const status = document.getElementById('setting-fullscreen-status');
+      if (status && !supported) status.textContent = 'Chỉ khả dụng trong ứng dụng desktop Electron.';
     }
 
     // Dark mode toggle
@@ -316,6 +325,24 @@
         showToast(err.message || 'Không thể lưu kích thước cửa sổ', 'error');
       } finally {
         select.disabled = false;
+      }
+    });
+
+    document.getElementById('setting-fullscreen')?.addEventListener('change', async function () {
+      const toggle = this;
+      const previousValue = !toggle.checked;
+      toggle.disabled = true;
+      try {
+        const result = await saveAppSettings({ fullscreen: toggle.checked });
+        if (result.fullscreenApplied === false) {
+          throw new Error('Không thể thay đổi chế độ toàn màn hình');
+        }
+        showToast(toggle.checked ? 'Đã bật chế độ toàn màn hình' : 'Đã tắt chế độ toàn màn hình');
+      } catch (err) {
+        toggle.checked = previousValue;
+        showToast(err.message || 'Không thể lưu chế độ toàn màn hình', 'error');
+      } finally {
+        toggle.disabled = false;
       }
     });
 
@@ -553,7 +580,7 @@
     try {
       appSettings = await loadAppSettings();
     } catch (error) {
-      appSettings = { launchOnStartup: false, windowSize: '1200x780' };
+      appSettings = { launchOnStartup: false, windowSize: '1200x780', fullscreen: false };
       try {
         const saved = JSON.parse(localStorage.getItem(APP_SETTINGS_KEY) || '{}');
         appSettings = { ...appSettings, ...saved };

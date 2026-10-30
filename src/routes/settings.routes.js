@@ -23,10 +23,20 @@ function applyWindowSize(windowSize) {
   const bounds = getWindowBounds(windowSize, workArea);
   if (!bounds) return false;
 
+  if (mainWindow.isFullScreen()) mainWindow.setFullScreen(false);
+  if (mainWindow.isMaximized()) mainWindow.unmaximize();
   mainWindow.setMinimumSize(bounds.minWidth, bounds.minHeight);
-  mainWindow.setSize(bounds.width, bounds.height);
+  mainWindow.setBounds(bounds);
   mainWindow.center();
   return true;
+}
+
+function applyFullscreen(fullscreen) {
+  if (!electronBrowserWindow) return false;
+  const mainWindow = electronBrowserWindow.getAllWindows()[0];
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+  mainWindow.setFullScreen(Boolean(fullscreen));
+  return mainWindow.isFullScreen() === Boolean(fullscreen);
 }
 
 router.get('/', async (req, res, next) => {
@@ -35,7 +45,7 @@ router.get('/', async (req, res, next) => {
     res.json({
       ...settings,
       windowSizeOptions: getWindowSizeOptions(),
-      desktopCapabilities: { launchOnStartup: isAutoStartSupported(electronApp) }
+      desktopCapabilities: { launchOnStartup: isAutoStartSupported(electronApp), fullscreen: Boolean(electronBrowserWindow) }
     });
   } catch (err) {
     next(err);
@@ -49,7 +59,7 @@ router.put('/', async (req, res, next) => {
       return res.status(400).json({ error: 'Cài đặt không hợp lệ' });
     }
 
-    const allowedKeys = ['launchOnStartup', 'windowSize'];
+    const allowedKeys = ['launchOnStartup', 'windowSize', 'fullscreen'];
     const unknownKeys = Object.keys(patch).filter(key => !allowedKeys.includes(key));
     if (unknownKeys.length || !Object.keys(patch).length) {
       return res.status(400).json({ error: 'Cài đặt không hợp lệ' });
@@ -61,13 +71,24 @@ router.put('/', async (req, res, next) => {
     if (Object.hasOwn(patch, 'windowSize') && !getWindowSize(patch.windowSize)) {
       return res.status(400).json({ error: 'Kích thước cửa sổ không được hỗ trợ' });
     }
+    if (Object.hasOwn(patch, 'fullscreen') && typeof patch.fullscreen !== 'boolean') {
+      return res.status(400).json({ error: 'fullscreen phải là true hoặc false' });
+    }
 
     if (Object.hasOwn(patch, 'launchOnStartup')) {
       applyLoginItemSettings(electronApp, patch.launchOnStartup);
     }
     const settings = await writeAppSettings(patch);
     const windowSizeApplied = Object.hasOwn(patch, 'windowSize') ? applyWindowSize(settings.windowSize) : undefined;
-    res.json({ ...settings, windowSizeOptions: getWindowSizeOptions(), ...(windowSizeApplied !== undefined ? { windowSizeApplied } : {}) });
+    const fullscreenApplied = Object.hasOwn(patch, 'fullscreen')
+      ? applyFullscreen(settings.fullscreen)
+      : (Object.hasOwn(patch, 'windowSize') && settings.fullscreen ? applyFullscreen(true) : undefined);
+    res.json({
+      ...settings,
+      windowSizeOptions: getWindowSizeOptions(),
+      ...(windowSizeApplied !== undefined ? { windowSizeApplied } : {}),
+      ...(fullscreenApplied !== undefined ? { fullscreenApplied } : {})
+    });
   } catch (err) {
     next(err);
   }

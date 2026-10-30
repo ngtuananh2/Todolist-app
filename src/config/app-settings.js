@@ -4,7 +4,8 @@ const { DEFAULT_WINDOW_SIZE, getWindowSize } = require('./window-size');
 
 const DEFAULT_APP_SETTINGS = {
   launchOnStartup: false,
-  windowSize: DEFAULT_WINDOW_SIZE
+  windowSize: DEFAULT_WINDOW_SIZE,
+  fullscreen: false
 };
 
 function getAppSettingsFilePath() {
@@ -22,7 +23,8 @@ async function readAppSettings() {
       ...DEFAULT_APP_SETTINGS,
       ...stored,
       launchOnStartup: Boolean(stored.launchOnStartup),
-      windowSize: getWindowSize(stored.windowSize) ? stored.windowSize : DEFAULT_WINDOW_SIZE
+      windowSize: getWindowSize(stored.windowSize) ? stored.windowSize : DEFAULT_WINDOW_SIZE,
+      fullscreen: Boolean(stored.fullscreen)
     };
   } catch (err) {
     if (err?.code === 'ENOENT') {

@@ -61,7 +61,7 @@ async function startBackendAndLoadApp() {
   }
 }
 
-function createWindow(windowSizePreference = DEFAULT_WINDOW_SIZE, { startupSplash = false } = {}) {
+function createWindow(windowSizePreference = DEFAULT_WINDOW_SIZE, { startupSplash = false, fullscreen = false } = {}) {
   const { workArea } = screen.getPrimaryDisplay();
   const bounds = getWindowBounds(windowSizePreference, workArea)
     || getWindowBounds(DEFAULT_WINDOW_SIZE, workArea);
@@ -82,6 +82,7 @@ function createWindow(windowSizePreference = DEFAULT_WINDOW_SIZE, { startupSplas
     autoHideMenuBar: true,
     show: false,
     frame: true,
+    fullscreen,
     titleBarStyle: 'default',
     backgroundThrottling: true
   });
@@ -244,12 +245,12 @@ app.whenReady().then(async () => {
 
   console.log('🖥️  Electron app starting...');
 
-  createWindow(appSettings.windowSize, { startupSplash: true });
+  createWindow(appSettings.windowSize, { startupSplash: true, fullscreen: appSettings.fullscreen });
   createTray();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      readAppSettings().then(settings => createWindow(settings.windowSize)).catch(err => {
+      readAppSettings().then(settings => createWindow(settings.windowSize, { fullscreen: settings.fullscreen })).catch(err => {
         console.error('❌ Không thể tải cài đặt cửa sổ:', err.message);
         createWindow();
       });
