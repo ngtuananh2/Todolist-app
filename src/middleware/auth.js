@@ -10,7 +10,7 @@ function parseCookies(header = '') {
 
 function attachUser(req, _res, next) {
   const session = verifySession(parseCookies(req.headers.cookie || '')[SESSION_COOKIE]);
-  req.user = session ? { id: session.userId } : null;
+  req.user = session ? { id: session.userId, email: session.email || null } : null;
   next();
 }
 

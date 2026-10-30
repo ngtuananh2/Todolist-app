@@ -26,9 +26,10 @@ function verifyPassword(password, salt, expectedHash) {
   return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
 }
 
-function signSession(userId) {
+function signSession(userId, email = null) {
   const payload = Buffer.from(JSON.stringify({
     userId: String(userId),
+    ...(email ? { email: normalizeEmail(email) } : {}),
     expiresAt: Date.now() + SESSION_TTL_SECONDS * 1000
   })).toString('base64url');
   const secret = getSessionSecret();
@@ -88,7 +89,7 @@ async function login(email, password) {
     throw new Error('Email hoặc mật khẩu không đúng');
   }
   await claimLegacyData(user);
-  return { token: signSession(user.id), user: { id: user.id, email: user.email } };
+  return { token: signSession(user.id, user.email), user: { id: user.id, email: user.email } };
 }
 
 function getSessionCookieOptions() {
