@@ -13,22 +13,19 @@ function getOwnerId() {
 function ownershipPlugin(schema) {
   schema.add({ ownerId: { type: schema.base.Types.ObjectId, ref: 'User', index: true, default: null } });
 
-  schema.pre('save', function (next) {
+  schema.pre('save', function () {
     const ownerId = getOwnerId();
     if (ownerId && !this.ownerId) this.ownerId = ownerId;
-    next();
   });
 
-  schema.pre(/^find/, function (next) {
+  schema.pre(/^find/, function () {
     const ownerId = getOwnerId();
     if (ownerId) this.where({ ownerId });
-    next();
   });
 
-  schema.pre(/^(update|delete|replace)/, function (next) {
+  schema.pre(/^(update|delete|replace)/, function () {
     const ownerId = getOwnerId();
     if (ownerId) this.where({ ownerId });
-    next();
   });
 }
 
