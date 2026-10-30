@@ -62,6 +62,98 @@ button, input, select, textarea, a {
   --nav-btn-icon-size: 16px;
 }
 
+.taskflow-account {
+  margin-left: 8px;
+  position: relative;
+}
+
+.taskflow-account-login,
+.taskflow-account-toggle {
+  align-items: center;
+  background: var(--accent-soft, #e0e7ff);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--accent-dark, #4f46e5);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+  max-width: 220px;
+  padding: 7px 10px;
+  text-decoration: none;
+}
+
+.taskflow-account-toggle {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.taskflow-account-avatar {
+  align-items: center;
+  background: var(--accent, #6366f1);
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  height: 22px;
+  justify-content: center;
+  width: 22px;
+}
+
+.taskflow-account-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskflow-account-menu {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  box-shadow: var(--card-shadow, 0 8px 24px rgba(0, 0, 0, .15));
+  min-width: 210px;
+  padding: 8px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 300;
+}
+
+.taskflow-account-menu-email {
+  border-bottom: 1px solid var(--border-lt, #f1f5f9);
+  color: var(--text-3, #64748b);
+  font-size: 12px;
+  overflow: hidden;
+  padding: 6px 8px 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskflow-account-logout {
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: var(--danger, #ef4444);
+  cursor: pointer;
+  display: block;
+  font: inherit;
+  font-size: 13px;
+  margin-top: 5px;
+  padding: 9px 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.taskflow-account-logout:hover,
+.taskflow-account-login:hover,
+.taskflow-account-toggle:hover {
+  filter: brightness(.97);
+}
+
+@media (max-width: 700px) {
+  .taskflow-account-email { display: none; }
+  .taskflow-account-menu { position: fixed; right: 12px; top: 62px; }
+}
+
 .navbar {
   position: sticky;
   top: 0;

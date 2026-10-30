@@ -419,6 +419,65 @@
         setOpen(false);
         toggle.focus();
       }
+
+      async function injectAccountControls() {
+        const navRight = document.querySelector('.nav-right');
+        if (!navRight || document.getElementById('taskflow-account')) return;
+
+        const account = document.createElement('div');
+        account.className = 'taskflow-account';
+        account.id = 'taskflow-account';
+        account.innerHTML = '<a class="taskflow-account-login" href="/auth.html">Đăng nhập</a>';
+        navRight.appendChild(account);
+
+        try {
+          const response = await nativeFetch('/api/auth/me', { credentials: 'same-origin' });
+          if (!response.ok) return;
+          const result = await response.json();
+          if (!result.authenticated || !result.user?.email) return;
+
+          account.innerHTML = `
+            <button class="taskflow-account-toggle" type="button" aria-expanded="false" aria-controls="taskflow-account-menu">
+              <span class="taskflow-account-avatar" aria-hidden="true">${escHtml(result.user.email.slice(0, 1).toUpperCase())}</span>
+              <span class="taskflow-account-email">${escHtml(result.user.email)}</span>
+              <span aria-hidden="true">⌄</span>
+            </button>
+            <div class="taskflow-account-menu" id="taskflow-account-menu" hidden>
+              <div class="taskflow-account-menu-email">${escHtml(result.user.email)}</div>
+              <button type="button" class="taskflow-account-logout">Đăng xuất</button>
+            </div>`;
+
+          const toggle = account.querySelector('.taskflow-account-toggle');
+          const menu = account.querySelector('.taskflow-account-menu');
+          toggle.addEventListener('click', event => {
+            event.stopPropagation();
+            const open = menu.hidden;
+            menu.hidden = !open;
+            toggle.setAttribute('aria-expanded', String(open));
+          });
+          account.querySelector('.taskflow-account-logout').addEventListener('click', async () => {
+            const logoutButton = account.querySelector('.taskflow-account-logout');
+            logoutButton.disabled = true;
+            try {
+              const logoutResponse = await nativeFetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+              if (!logoutResponse.ok) throw new Error('Không thể đăng xuất');
+              window.location.replace('/auth.html');
+            } catch (error) {
+              console.error('[auth] Logout failed:', error);
+              logoutButton.disabled = false;
+              guToast('Không thể đăng xuất. Vui lòng thử lại.', 'error');
+            }
+          });
+          document.addEventListener('click', event => {
+            if (!account.contains(event.target)) {
+              menu.hidden = true;
+              toggle.setAttribute('aria-expanded', 'false');
+            }
+          });
+        } catch (error) {
+          console.error('[auth] Không thể tải trạng thái tài khoản:', error);
+        }
+      }
     });
   }
 
@@ -890,6 +949,7 @@
     }
     initTheme();
     initNetworkStatus();
+    injectAccountControls();
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(error => {
         console.error('[pwa] Không thể đăng ký service worker:', error);
