@@ -2,6 +2,7 @@ const {
   Todo, Tag, Habit, HabitLog, Note, NoteVersion, EnglishProgress,
   EnglishMindmap, Vocab, Trade, TradingAccount, Schedule
 } = require('../config/database');
+const { getOwnerId } = require('../middleware/ownership');
 const { validateBackupPayload, validateModulePayload } = require('./backup-payload');
 
 class DashboardService {
@@ -260,6 +261,12 @@ class DashboardService {
       schedules: Schedule
     };
     const plans = [];
+    const ownerId = getOwnerId();
+    if (!ownerId) {
+      const error = new Error('Không xác định được tài khoản khôi phục');
+      error.status = 401;
+      throw error;
+    }
 
     for (const [key, Model] of Object.entries(collections)) {
       const records = data[key];
@@ -274,13 +281,17 @@ class DashboardService {
         }
       });
 
-      let recordsToImport = records;
+      const ownedRecords = records.map(record => ({
+        ...record,
+        ownerId
+      }));
+      let recordsToImport = ownedRecords;
       if (mode === 'merge' && records.length) {
         const existingIds = await Model.distinct('_id', {
-          _id: { $in: records.map(record => record._id) }
+          _id: { $in: ownedRecords.map(record => record._id) }
         });
         const existingIdSet = new Set(existingIds.map(id => id.toString()));
-        recordsToImport = records.filter(record => !existingIdSet.has(record._id));
+        recordsToImport = ownedRecords.filter(record => !existingIdSet.has(record._id));
         await this._assertNoMergeUniqueConflicts(key, Model, recordsToImport);
       }
       plans.push({ key, Model, recordsToImport, total: records.length });
@@ -289,7 +300,17 @@ class DashboardService {
     const imported = {};
     const skipped = {};
     for (const { key, Model, recordsToImport, total } of plans) {
-      if (mode === 'replace') await Model.deleteMany({});
+      if (mode === 'replace') {
+        const recordIds = recordsToImport.map(record => new Model(record)._id);
+        await Model.collection.deleteMany({
+          ownerId,
+          _id: { $in: recordIds }
+        });
+        await Model.collection.deleteMany({
+          $or: [{ ownerId: null }, { ownerId: { $exists: false } }],
+          _id: { $in: recordIds }
+        });
+      }
       if (recordsToImport.length) await Model.insertMany(recordsToImport);
       imported[key] = recordsToImport.length;
       if (mode === 'merge') skipped[key] = total - recordsToImport.length;
