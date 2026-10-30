@@ -66,7 +66,8 @@ async function register(email, password) {
 }
 
 async function claimLegacyData(user) {
-  if (await User.countDocuments() !== 1) return;
+  const firstUser = await User.findOne().sort({ createdAt: 1, _id: 1 }).select('_id').lean();
+  if (!firstUser || firstUser._id.toString() !== user._id.toString()) return;
   const legacyFilter = { $or: [{ ownerId: null }, { ownerId: { $exists: false } }] };
   const ownerUpdate = { $set: { ownerId: user._id } };
   const models = [

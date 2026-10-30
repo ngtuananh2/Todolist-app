@@ -67,7 +67,10 @@ async function fetchNotes(params = {}) {
   try {
     const qs = new URLSearchParams(params).toString();
     const res = await fetch(`${API}?${qs}`);
-    return await res.json();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Không thể tải tài liệu (HTTP ${res.status})`);
+    if (!Array.isArray(data)) throw new Error('Dữ liệu tài liệu trả về không hợp lệ');
+    return data;
   } catch (e) { _toast('Lỗi tải ghi chú', 'error'); console.error(e); return []; }
 }
 
@@ -81,14 +84,18 @@ async function fetchNoteById(id) {
 async function fetchCategories() {
   try {
     const res = await fetch(`${API}/categories`);
-    return await res.json();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Không thể tải danh mục (HTTP ${res.status})`);
+    return Array.isArray(data) ? data : [];
   } catch (e) { _toast('Lỗi tải danh mục', 'error'); console.error(e); return []; }
 }
 
 async function fetchTags() {
   try {
     const res = await fetch(`${API}/tags`);
-    return await res.json();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Không thể tải nhãn (HTTP ${res.status})`);
+    return Array.isArray(data) ? data : [];
   } catch (e) { _toast('Lỗi tải tags', 'error'); console.error(e); return []; }
 }
 
