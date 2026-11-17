@@ -43,7 +43,7 @@ router.post('/login', async (req, res, next) => {
 });
 
 router.post('/logout', (_req, res) => {
-  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`);
+  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`);
   res.status(204).end();
 });
 

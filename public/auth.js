@@ -6,6 +6,19 @@
   const error = document.getElementById('auth-error');
   let registering = false;
 
+  async function redirectIfAuthenticated() {
+    try {
+      const response = await fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' });
+      if (!response.ok) return;
+      const result = await response.json();
+      if (result.authenticated && result.user?.email) {
+        window.location.replace('/dashboard.html');
+      }
+    } catch (requestError) {
+      console.warn('[auth] Không thể khôi phục phiên đăng nhập:', requestError);
+    }
+  }
+
   switchButton.addEventListener('click', () => {
     registering = !registering;
     submit.textContent = registering ? 'Tạo tài khoản' : 'Đăng nhập';
@@ -36,4 +49,6 @@
       submit.disabled = false;
     }
   });
+
+  redirectIfAuthenticated();
 })();

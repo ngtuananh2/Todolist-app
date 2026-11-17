@@ -87,7 +87,8 @@ async function login(email, password) {
 }
 
 function getSessionCookieOptions() {
-  return `HttpOnly; Path=/; Max-Age=${SESSION_TTL_SECONDS}; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`;
+  const expires = new Date(Date.now() + SESSION_TTL_SECONDS * 1000).toUTCString();
+  return `HttpOnly; Path=/; Max-Age=${SESSION_TTL_SECONDS}; Expires=${expires}; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`;
 }
 
 module.exports = { SESSION_COOKIE, getSessionCookieOptions, login, normalizeEmail, register, signSession, verifySession };

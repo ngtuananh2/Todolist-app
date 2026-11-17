@@ -34,6 +34,9 @@
   }
 
   async function loadAppSettings() {
+    if (window.taskflowDesktopSettings) {
+      return window.taskflowDesktopSettings.get();
+    }
     const res = await fetch('/api/app-settings');
     if (!res.ok) throw new Error(`Không thể tải cài đặt ứng dụng (HTTP ${res.status})`);
     const data = await res.json();
@@ -42,6 +45,16 @@
 
   async function saveAppSettings(patch) {
     const current = await loadAppSettings();
+    if (window.taskflowDesktopSettings) {
+      const result = await window.taskflowDesktopSettings.set(patch);
+      const next = { ...current, ...result, ...patch };
+      localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(next));
+      return {
+        settings: next,
+        windowSizeApplied: result.windowSizeApplied,
+        fullscreenApplied: result.fullscreenApplied
+      };
+    }
     const res = await fetch('/api/app-settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

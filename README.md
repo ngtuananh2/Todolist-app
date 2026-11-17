@@ -21,7 +21,7 @@ Repository có sẵn [render.yaml](./render.yaml) cho Render Free. Cách triển
 2. Tạo database MongoDB Atlas Free, lấy chuỗi kết nối và cho phép kết nối từ Render.
 3. Trong Render chọn **New → Blueprint**, chọn repository này.
 4. Nhập `MONGO_URI`; các API key AI có thể để trống nếu không dùng AI.
-5. Sau khi deploy, Render cấp địa chỉ dạng `https://taskflow-personal.onrender.com`.
+5. Sau khi deploy, Render cấp địa chỉ dạng `https://todolist-app-t9nj.onrender.com`.
 6. Mở địa chỉ đó trên điện thoại bằng Chrome rồi chọn **Thêm vào màn hình chính**.
 
 ### Đăng nhập cá nhân
@@ -53,10 +53,12 @@ Trong Cài đặt, chọn một kích thước cửa sổ TaskFlow có sẵn. Tu
 
 ## Khởi động ứng dụng desktop
 
-Electron mở cửa sổ giao diện ngay khi web server sẵn sàng, đồng thời kết nối MongoDB ở nền. Dữ liệu sẽ hiện khi kết nối hoàn tất; nếu kết nối thất bại, TaskFlow báo lỗi thay vì để cửa sổ khởi động bị treo. Nhấn biểu tượng TaskFlow trong khay hệ thống một lần hoặc chọn “Mở TaskFlow” để hiện lại cửa sổ; đóng cửa sổ sẽ thu nhỏ ứng dụng xuống khay.
+Electron mở trực tiếp ứng dụng web đã triển khai tại `https://todolist-app-t9nj.onrender.com`; có thể đổi địa chỉ mặc định khi chạy Electron bằng biến môi trường `TASKFLOW_WEB_URL`. Bản desktop và web dùng chung đăng nhập, API và dữ liệu cloud; cần có Internet để sử dụng. Không cấu hình URI MongoDB cloud trong ứng dụng desktop. Cài đặt cửa sổ và khởi động cùng Windows vẫn được lưu riêng trên máy tính.
+
+Khi chuyển từ bản desktop cũ, hãy xuất backup trong **Cài đặt → Dữ liệu** trước khi cài bản mới. Sau đó đăng nhập cùng tài khoản trên bản web/desktop mới và nhập backup vào đó. Việc chuyển backend không tự chuyển dữ liệu cũ trên MongoDB local. Nhấn biểu tượng TaskFlow trong khay hệ thống hoặc chọn “Mở TaskFlow” để hiện lại cửa sổ; đóng cửa sổ sẽ thu nhỏ ứng dụng xuống khay.
 
 ## Cập nhật ứng dụng desktop
 
 Bản desktop cài bằng NSIS tự kiểm tra GitHub Releases khi khởi động, tải bản mới ở nền và cho phép cài đặt trong **Cài đặt → Cập nhật ứng dụng**. Đóng/mở lại app hoặc chọn khởi động lại để cài bản đã tải. Bản portable và bản chạy trên trình duyệt không hỗ trợ cập nhật tự động.
 
-Release Windows được build và phát hành từ GitHub Actions khi push tag có cùng phiên bản với `package.json` (ví dụ `v1.0.2`). Lần đầu chuyển từ bản portable/cũ cần cài một lần bản NSIS; hiện phiên bản ứng dụng là `1.0.2`. Updater chỉ hoạt động sau khi workflow phát hành đã được đưa lên GitHub và có ít nhất một GitHub Release; nếu chưa có release, Cài đặt sẽ báo trạng thái này.
+Release Windows được build và phát hành từ GitHub Actions khi push tag có cùng phiên bản với `package.json` (ví dụ `v1.0.17`). Lần đầu chuyển từ bản portable/cũ cần cài một lần bản NSIS; phiên bản ứng dụng hiện tại là `1.0.17`. Updater chỉ hoạt động sau khi workflow phát hành đã được đưa lên GitHub và có ít nhất một GitHub Release; nếu chưa có release, Cài đặt sẽ báo trạng thái này.

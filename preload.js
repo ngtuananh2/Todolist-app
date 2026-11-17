@@ -34,3 +34,12 @@ contextBridge.exposeInMainWorld('taskflowUpdates', {
     return () => ipcRenderer.removeListener('taskflow-updates:status', listener);
   }
 });
+
+contextBridge.exposeInMainWorld('taskflowDesktopSettings', {
+  get() {
+    return ipcRenderer.invoke('taskflow-settings:get');
+  },
+  set(patch) {
+    return ipcRenderer.invoke('taskflow-settings:set', patch);
+  }
+});

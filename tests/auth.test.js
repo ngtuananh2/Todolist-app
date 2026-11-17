@@ -2,7 +2,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.AUTH_SESSION_SECRET = 'test-secret-that-is-long-enough';
-const { signSession, verifySession } = require('../src/services/auth.service');
+const { getSessionCookieOptions, signSession, verifySession } = require('../src/services/auth.service');
+
+test('sets a persistent session cookie for desktop sign-in', () => {
+  const options = getSessionCookieOptions();
+  assert.match(options, /HttpOnly; Path=\/; Max-Age=2592000; Expires=.* GMT; SameSite=Lax/);
+});
 
 test('signs and verifies expiring sessions', () => {
   const token = signSession('user-123');

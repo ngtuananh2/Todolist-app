@@ -1,16 +1,16 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, screen, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, screen, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
-const { readAppSettings } = require('./src/config/app-settings');
-const { DEFAULT_WINDOW_SIZE, getWindowBounds } = require('./src/config/window-size');
-const { applyLoginItemSettings } = require('./src/config/desktop-settings');
+const { readAppSettings, writeAppSettings } = require('./src/config/app-settings');
+const { DEFAULT_WINDOW_SIZE, getWindowBounds, getWindowSize, getWindowSizeOptions } = require('./src/config/window-size');
+const { applyLoginItemSettings, isAutoStartSupported } = require('./src/config/desktop-settings');
 
 let mainWindow;
 let tray;
-let server;
-let PORT = 3000;
 let updateStatus = { status: 'idle' };
 let updateCheckStarted = false;
+const TASKFLOW_WEB_URL = process.env.TASKFLOW_WEB_URL || 'https://todolist-app-t9nj.onrender.com/';
+const TASKFLOW_WEB_ORIGIN = new URL(TASKFLOW_WEB_URL).origin;
 
 // Hardware acceleration and memory optimization switches
 app.commandLine.appendSwitch('enable-gpu-rasterization');
@@ -42,26 +42,21 @@ function createStartupPage(message, errorMessage = '') {
     </html>`;
 }
 
-async function startBackendAndLoadApp() {
+async function loadTaskFlowWebApp() {
   try {
-    const { startServer, PORT: serverPort } = require('./server');
-    PORT = serverPort;
-    server = await startServer({ deferDatabaseConnection: true });
-
     if (mainWindow && !mainWindow.isDestroyed()) {
-      await mainWindow.loadURL(`http://localhost:${PORT}`);
+      await mainWindow.loadURL(TASKFLOW_WEB_URL);
       checkForUpdates();
     }
   } catch (error) {
-    console.error('❌ Không thể khởi động dịch vụ TaskFlow:', error);
+    console.error('❌ Không thể kết nối TaskFlow:', error);
     if (mainWindow && !mainWindow.isDestroyed()) {
-      await mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(createStartupPage('Không thể khởi động TaskFlow', error.message))}`);
-      dialog.showErrorBox('TaskFlow', `Không thể khởi động dịch vụ ứng dụng.\n\n${error.message}`);
+      await mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(createStartupPage('Không thể kết nối TaskFlow', error.message))}`);
     }
   }
 }
 
-function createWindow(windowSizePreference = DEFAULT_WINDOW_SIZE, { startupSplash = false, fullscreen = false } = {}) {
+function createWindow(windowSizePreference = DEFAULT_WINDOW_SIZE, { startupSplash = true, fullscreen = false } = {}) {
   const { workArea } = screen.getPrimaryDisplay();
   const bounds = getWindowBounds(windowSizePreference, workArea)
     || getWindowBounds(DEFAULT_WINDOW_SIZE, workArea);
@@ -90,7 +85,7 @@ function createWindow(windowSizePreference = DEFAULT_WINDOW_SIZE, { startupSplas
 
   const initialPage = startupSplash
     ? `data:text/html;charset=utf-8,${encodeURIComponent(createStartupPage('TaskFlow đang khởi động'))}`
-    : `http://localhost:${PORT}`;
+    : TASKFLOW_WEB_URL;
   mainWindow.loadURL(initialPage).catch(error => {
     console.error('❌ Không thể tải giao diện TaskFlow:', error);
   });
@@ -98,7 +93,14 @@ function createWindow(windowSizePreference = DEFAULT_WINDOW_SIZE, { startupSplas
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     if (startupSplash) {
-      startBackendAndLoadApp();
+      loadTaskFlowWebApp();
+    }
+  });
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('data:text/html')) return;
+    if (new URL(url).origin !== TASKFLOW_WEB_ORIGIN) {
+      event.preventDefault();
     }
   });
 
@@ -227,6 +229,66 @@ function setupAutoUpdater() {
   });
 }
 
+function setupDesktopSettings() {
+  ipcMain.handle('taskflow-settings:get', async () => ({
+    ...await readAppSettings(),
+    windowSizeOptions: getWindowSizeOptions(),
+    desktopCapabilities: { launchOnStartup: isAutoStartSupported(app), fullscreen: true }
+  }));
+
+  ipcMain.handle('taskflow-settings:set', async (_event, patch) => {
+    if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
+      throw new Error('Cài đặt không hợp lệ');
+    }
+
+    const allowedKeys = ['launchOnStartup', 'windowSize', 'fullscreen'];
+    const keys = Object.keys(patch);
+    if (!keys.length || keys.some(key => !allowedKeys.includes(key))) {
+      throw new Error('Cài đặt không hợp lệ');
+    }
+    if (Object.hasOwn(patch, 'launchOnStartup') && typeof patch.launchOnStartup !== 'boolean') {
+      throw new Error('launchOnStartup phải là true hoặc false');
+    }
+    if (Object.hasOwn(patch, 'windowSize') && !getWindowSize(patch.windowSize)) {
+      throw new Error('Kích thước cửa sổ không được hỗ trợ');
+    }
+    if (Object.hasOwn(patch, 'fullscreen') && typeof patch.fullscreen !== 'boolean') {
+      throw new Error('fullscreen phải là true hoặc false');
+    }
+
+    if (Object.hasOwn(patch, 'launchOnStartup')) {
+      applyLoginItemSettings(app, patch.launchOnStartup);
+    }
+    const settings = await writeAppSettings(patch);
+    let windowSizeApplied;
+    if (Object.hasOwn(patch, 'windowSize') && mainWindow && !mainWindow.isDestroyed()) {
+      const { workArea } = screen.getDisplayMatching(mainWindow.getBounds());
+      const nextBounds = getWindowBounds(settings.windowSize, workArea);
+      if (nextBounds) {
+        if (mainWindow.isFullScreen()) mainWindow.setFullScreen(false);
+        if (mainWindow.isMaximized()) mainWindow.unmaximize();
+        mainWindow.setMinimumSize(nextBounds.minWidth, nextBounds.minHeight);
+        mainWindow.setBounds(nextBounds);
+        mainWindow.center();
+        windowSizeApplied = true;
+      } else {
+        windowSizeApplied = false;
+      }
+    }
+    let fullscreenApplied;
+    if (Object.hasOwn(patch, 'fullscreen') && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setFullScreen(settings.fullscreen);
+      fullscreenApplied = mainWindow.isFullScreen() === settings.fullscreen;
+    }
+    return {
+      ...settings,
+      windowSizeOptions: getWindowSizeOptions(),
+      ...(windowSizeApplied !== undefined ? { windowSizeApplied } : {}),
+      ...(fullscreenApplied !== undefined ? { fullscreenApplied } : {})
+    };
+  });
+}
+
 function checkForUpdates() {
   if (!isAutoUpdateSupported() || updateCheckStarted) return;
   updateCheckStarted = true;
@@ -240,12 +302,13 @@ app.whenReady().then(async () => {
   process.env.TASKFLOW_USER_DATA_PATH = app.getPath('userData');
 
   setupAutoUpdater();
+  setupDesktopSettings();
   const appSettings = await readAppSettings();
   applyLoginItemSettings(app, appSettings.launchOnStartup);
 
   console.log('🖥️  Electron app starting...');
 
-  createWindow(appSettings.windowSize, { startupSplash: true, fullscreen: appSettings.fullscreen });
+  createWindow(appSettings.windowSize, { fullscreen: appSettings.fullscreen });
   createTray();
 
   app.on('activate', () => {
@@ -266,7 +329,4 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   app.isQuitting = true;
-  if (server) {
-    server.close();
-  }
 });
