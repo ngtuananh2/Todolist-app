@@ -10,6 +10,7 @@ let tray;
 let updateStatus = { status: 'idle' };
 let updateCheckStarted = false;
 const TASKFLOW_WEB_URL = process.env.TASKFLOW_WEB_URL || 'https://todolist-app-t9nj.onrender.com/';
+const TASKFLOW_LOGIN_URL = new URL('/auth.html', TASKFLOW_WEB_URL).toString();
 const TASKFLOW_WEB_ORIGIN = new URL(TASKFLOW_WEB_URL).origin;
 
 // Hardware acceleration and memory optimization switches
@@ -45,7 +46,7 @@ function createStartupPage(message, errorMessage = '') {
 async function loadTaskFlowWebApp() {
   try {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      await mainWindow.loadURL(TASKFLOW_WEB_URL);
+      await mainWindow.loadURL(TASKFLOW_LOGIN_URL);
       checkForUpdates();
     }
   } catch (error) {
@@ -85,7 +86,7 @@ function createWindow(windowSizePreference = DEFAULT_WINDOW_SIZE, { startupSplas
 
   const initialPage = startupSplash
     ? `data:text/html;charset=utf-8,${encodeURIComponent(createStartupPage('TaskFlow đang khởi động'))}`
-    : TASKFLOW_WEB_URL;
+    : TASKFLOW_LOGIN_URL;
   mainWindow.loadURL(initialPage).catch(error => {
     console.error('❌ Không thể tải giao diện TaskFlow:', error);
   });

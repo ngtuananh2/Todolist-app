@@ -8,6 +8,19 @@
   const OFFLINE_QUEUE_KEY = 'taskflow_offline_queue_v1';
   let replayingOfflineQueue = false;
 
+  function redirectToLoginOnUnauthorized(response, input) {
+    if (response.status !== 401 || location.pathname === '/auth.html') return response;
+
+    const requestUrl = input instanceof Request ? input.url : input;
+    const url = new URL(requestUrl, location.href);
+    if (url.origin === location.origin
+      && url.pathname.startsWith('/api/')
+      && !url.pathname.startsWith('/api/auth/')) {
+      window.location.replace('/auth.html');
+    }
+    return response;
+  }
+
   function isQueueableRequest(input, init = {}) {
     const request = new Request(input, init);
     const method = request.method.toUpperCase();
@@ -94,10 +107,12 @@
   }
 
   window.fetch = async function taskflowFetch(input, init = {}) {
-    if (!isQueueableRequest(input, init)) return nativeFetch(input, init);
+    if (!isQueueableRequest(input, init)) {
+      return redirectToLoginOnUnauthorized(await nativeFetch(input, init), input);
+    }
     if (!navigator.onLine) return queueRequest(input, init);
     try {
-      return await nativeFetch(input, init);
+      return redirectToLoginOnUnauthorized(await nativeFetch(input, init), input);
     } catch (error) {
       return queueRequest(input, init).catch(() => { throw error; });
     }

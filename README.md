@@ -53,7 +53,7 @@ Trong Cài đặt, chọn một kích thước cửa sổ TaskFlow có sẵn. Tu
 
 ## Khởi động ứng dụng desktop
 
-Electron mở trực tiếp ứng dụng web đã triển khai tại `https://todolist-app-t9nj.onrender.com`; có thể đổi địa chỉ mặc định khi chạy Electron bằng biến môi trường `TASKFLOW_WEB_URL`. Bản desktop và web dùng chung đăng nhập, API và dữ liệu cloud; cần có Internet để sử dụng. Không cấu hình URI MongoDB cloud trong ứng dụng desktop. Cài đặt cửa sổ và khởi động cùng Windows vẫn được lưu riêng trên máy tính.
+Electron mở trang đăng nhập của ứng dụng web đã triển khai tại `https://todolist-app-t9nj.onrender.com`; đăng nhập một lần trong app desktop để lưu phiên trên máy đó. Phiên đăng nhập trên trình duyệt không tự được chia sẻ với Electron. Có thể đổi địa chỉ mặc định khi chạy Electron bằng biến môi trường `TASKFLOW_WEB_URL`. Bản desktop và web dùng chung API và dữ liệu cloud; cần có Internet để sử dụng. Không cấu hình URI MongoDB cloud trong ứng dụng desktop. Cài đặt cửa sổ và khởi động cùng Windows vẫn được lưu riêng trên máy tính.
 
 Khi chuyển từ bản desktop cũ, hãy xuất backup trong **Cài đặt → Dữ liệu** trước khi cài bản mới. Sau đó đăng nhập cùng tài khoản trên bản web/desktop mới và nhập backup vào đó. Việc chuyển backend không tự chuyển dữ liệu cũ trên MongoDB local. Nhấn biểu tượng TaskFlow trong khay hệ thống hoặc chọn “Mở TaskFlow” để hiện lại cửa sổ; đóng cửa sổ sẽ thu nhỏ ứng dụng xuống khay.
 
