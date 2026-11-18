@@ -61,4 +61,4 @@ Khi chuyển từ bản desktop cũ, hãy xuất backup trong **Cài đặt → 
 
 Bản desktop cài bằng NSIS tự kiểm tra GitHub Releases khi khởi động, tải bản mới ở nền và cho phép cài đặt trong **Cài đặt → Cập nhật ứng dụng**. Đóng/mở lại app hoặc chọn khởi động lại để cài bản đã tải. Bản portable và bản chạy trên trình duyệt không hỗ trợ cập nhật tự động.
 
-Release Windows được build và phát hành từ GitHub Actions khi push tag có cùng phiên bản với `package.json` (ví dụ `v1.0.17`). Lần đầu chuyển từ bản portable/cũ cần cài một lần bản NSIS; phiên bản ứng dụng hiện tại là `1.0.17`. Updater chỉ hoạt động sau khi workflow phát hành đã được đưa lên GitHub và có ít nhất một GitHub Release; nếu chưa có release, Cài đặt sẽ báo trạng thái này.
+Release Windows được build và phát hành từ GitHub Actions khi push tag có cùng phiên bản với `package.json` (ví dụ `v1.0.18`). Lần đầu chuyển từ bản portable/cũ cần cài một lần bản NSIS; phiên bản ứng dụng hiện tại là `1.0.18`. Updater chỉ hoạt động sau khi workflow phát hành đã được đưa lên GitHub và có ít nhất một GitHub Release; nếu chưa có release, Cài đặt sẽ báo trạng thái này.

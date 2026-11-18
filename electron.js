@@ -71,6 +71,7 @@ function createWindow(windowSizePreference = DEFAULT_WINDOW_SIZE, { startupSplas
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      partition: 'persist:taskflow',
       preload: path.join(__dirname, 'preload.js'),
       spellcheck: false,
       disableBlinkFeatures: 'AutomationControlled'
