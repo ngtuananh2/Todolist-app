@@ -983,14 +983,19 @@ function saveEdit(id) {
 
 // ==================== SEARCH ====================
 let searchTimeout;
-searchInput.addEventListener('input', () => {
-  const val = searchInput.value.trim();
-  searchClear.style.display = val ? 'flex' : 'none';
+const scheduleTodoSearch = () => {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
-    searchQuery = val;
+    searchQuery = searchInput.value.trim();
     fetchTodos().catch(error => reportTodoActionError(error, 'Không thể tìm kiếm công việc'));
   }, 300);
+};
+searchInput.addEventListener('compositionstart', () => clearTimeout(searchTimeout));
+searchInput.addEventListener('compositionend', scheduleTodoSearch);
+searchInput.addEventListener('input', event => {
+  const val = searchInput.value.trim();
+  searchClear.style.display = val ? 'flex' : 'none';
+  if (!event.isComposing) scheduleTodoSearch();
 });
 
 searchClear.addEventListener('click', () => {

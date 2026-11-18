@@ -693,10 +693,16 @@ function bindEvents() {
 
   // Search
   let searchTimeout;
-  document.getElementById('sb-search-input').addEventListener('input', () => {
+  const searchInput = document.getElementById('sb-search-input');
+  const scheduleNoteSearch = () => {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(loadNotes, 300);
-    document.getElementById('sb-search-clear').hidden = !document.getElementById('sb-search-input').value.trim();
+  };
+  searchInput.addEventListener('compositionstart', () => clearTimeout(searchTimeout));
+  searchInput.addEventListener('compositionend', scheduleNoteSearch);
+  searchInput.addEventListener('input', event => {
+    if (!event.isComposing) scheduleNoteSearch();
+    document.getElementById('sb-search-clear').hidden = !searchInput.value.trim();
   });
   document.getElementById('sb-search-clear').addEventListener('click', () => {
     const searchInput = document.getElementById('sb-search-input');
@@ -739,6 +745,7 @@ function bindEvents() {
 
   // Keyboard
   document.addEventListener('keydown', (e) => {
+    if (e.isComposing || e.keyCode === 229) return;
     const targetTag = e.target.tagName?.toLowerCase();
     if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey
       && !['input', 'textarea', 'select'].includes(targetTag) && !e.target.isContentEditable) {
@@ -815,6 +822,7 @@ function setupMarkdownEditor() {
   // Keyboard shortcuts in textarea
   const textarea = document.getElementById('note-input-content');
   textarea?.addEventListener('keydown', e => {
+    if (e.isComposing || e.keyCode === 229) return;
     if (e.ctrlKey && e.key === 'b') { e.preventDefault(); applyMarkdown('bold'); }
     if (e.ctrlKey && e.key === 'i') { e.preventDefault(); applyMarkdown('italic'); }
     if (e.ctrlKey && e.key === 'k') { e.preventDefault(); applyMarkdown('link'); }

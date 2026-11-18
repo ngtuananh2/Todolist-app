@@ -885,7 +885,12 @@
     });
 
     // Search input
-    document.getElementById('gs-input')?.addEventListener('input', handleSearchInput);
+    const searchInput = document.getElementById('gs-input');
+    searchInput?.addEventListener('compositionstart', () => clearTimeout(searchTimeout));
+    searchInput?.addEventListener('compositionend', handleSearchInput);
+    searchInput?.addEventListener('input', event => {
+      if (!event.isComposing) handleSearchInput();
+    });
 
     // Shortcuts close
     document.getElementById('ks-close')?.addEventListener('click', closeShortcuts);
@@ -895,6 +900,7 @@
 
     // Global keyboard
     document.addEventListener('keydown', e => {
+      if (e.isComposing || e.keyCode === 229) return;
       const tag = (e.target.tagName || '').toLowerCase();
       const isInput = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable;
 
