@@ -14,6 +14,7 @@ const hasSingleInstanceLock = app.requestSingleInstanceLock();
 const TASKFLOW_WEB_URL = process.env.TASKFLOW_WEB_URL || 'https://todolist-app-t9nj.onrender.com/';
 const TASKFLOW_LOGIN_URL = new URL('/auth.html', TASKFLOW_WEB_URL).toString();
 const TASKFLOW_WEB_ORIGIN = new URL(TASKFLOW_WEB_URL).origin;
+const FORUMFLASH_STUDY_ORIGIN = 'https://www.forumflashstudy.com';
 
 // Hardware acceleration and memory optimization switches
 app.commandLine.appendSwitch('enable-gpu-rasterization');
@@ -111,7 +112,42 @@ function createWindow(windowSizePreference = DEFAULT_WINDOW_SIZE, { startupSplas
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     try {
       const target = new URL(url);
-      if (target.protocol === 'https:' && target.origin !== TASKFLOW_WEB_ORIGIN) {
+      if (target.origin === FORUMFLASH_STUDY_ORIGIN) {
+        const studyWindow = new BrowserWindow({
+          parent: mainWindow,
+          width: 1200,
+          height: 850,
+          minWidth: 760,
+          minHeight: 560,
+          title: 'ForumFlash — Học tiếng Anh',
+          autoHideMenuBar: true,
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: true
+          }
+        });
+        studyWindow.loadURL(target.toString()).catch(error => {
+          console.error('❌ Không thể mở ForumFlash trong TaskFlow:', error);
+        });
+        studyWindow.webContents.setWindowOpenHandler(({ url: popupUrl }) => {
+          try {
+            const popupTarget = new URL(popupUrl);
+            if (popupTarget.origin === FORUMFLASH_STUDY_ORIGIN) {
+              studyWindow.loadURL(popupTarget.toString()).catch(error => {
+                console.error('❌ Không thể mở trang ForumFlash:', error);
+              });
+            } else if (popupTarget.protocol === 'https:') {
+              shell.openExternal(popupTarget.toString()).catch(error => {
+                console.error('❌ Không thể mở liên kết ngoài:', error);
+              });
+            }
+          } catch (error) {
+            console.error('❌ Liên kết mở ngoài không hợp lệ:', error);
+          }
+          return { action: 'deny' };
+        });
+      } else if (target.protocol === 'https:' && target.origin !== TASKFLOW_WEB_ORIGIN) {
         shell.openExternal(target.toString()).catch(error => {
           console.error('❌ Không thể mở liên kết ngoài:', error);
         });
