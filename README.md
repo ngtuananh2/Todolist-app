@@ -55,10 +55,10 @@ Trong Cài đặt, chọn một kích thước cửa sổ TaskFlow có sẵn. Tu
 
 Electron mở trang đăng nhập của ứng dụng web đã triển khai tại `https://todolist-app-t9nj.onrender.com`; đăng nhập một lần trong app desktop để lưu phiên trên máy đó. Phiên đăng nhập trên trình duyệt không tự được chia sẻ với Electron. Có thể đổi địa chỉ mặc định khi chạy Electron bằng biến môi trường `TASKFLOW_WEB_URL`. Bản desktop và web dùng chung API và dữ liệu cloud; cần có Internet để sử dụng. Không cấu hình URI MongoDB cloud trong ứng dụng desktop. Cài đặt cửa sổ và khởi động cùng Windows vẫn được lưu riêng trên máy tính.
 
-Khi chuyển từ bản desktop cũ, hãy xuất backup trong **Cài đặt → Dữ liệu** trước khi cài bản mới. Sau đó đăng nhập cùng tài khoản trên bản web/desktop mới và nhập backup vào đó. Việc chuyển backend không tự chuyển dữ liệu cũ trên MongoDB local. Nhấn biểu tượng TaskFlow trong khay hệ thống hoặc chọn “Mở TaskFlow” để hiện lại cửa sổ; đóng cửa sổ sẽ thu nhỏ ứng dụng xuống khay.
+Khi chuyển từ bản desktop cũ, hãy xuất backup trong **Cài đặt → Dữ liệu** trước khi cài bản mới. Sau đó đăng nhập cùng tài khoản trên bản web/desktop mới và nhập backup vào đó. Việc chuyển backend không tự chuyển dữ liệu cũ trên MongoDB local. Đóng cửa sổ sẽ thu nhỏ ứng dụng xuống khay; mở TaskFlow lần nữa sẽ đưa cửa sổ đang chạy lên trước. Muốn thoát hẳn, chọn **Thoát** trong menu biểu tượng khay.
 
 ## Cập nhật ứng dụng desktop
 
 Bản desktop cài bằng NSIS tự kiểm tra GitHub Releases khi khởi động, tải bản mới ở nền và cho phép cài đặt trong **Cài đặt → Cập nhật ứng dụng**. Đóng/mở lại app hoặc chọn khởi động lại để cài bản đã tải. Bản portable và bản chạy trên trình duyệt không hỗ trợ cập nhật tự động.
 
-Release Windows được build và phát hành từ GitHub Actions khi push tag có cùng phiên bản với `package.json` (ví dụ `v1.0.18`). Lần đầu chuyển từ bản portable/cũ cần cài một lần bản NSIS; phiên bản ứng dụng hiện tại là `1.0.18`. Updater chỉ hoạt động sau khi workflow phát hành đã được đưa lên GitHub và có ít nhất một GitHub Release; nếu chưa có release, Cài đặt sẽ báo trạng thái này.
+Release Windows được build và phát hành từ GitHub Actions khi push tag có cùng phiên bản với `package.json` (ví dụ `v1.0.19`). Lần đầu chuyển từ bản portable/cũ cần cài một lần bản NSIS; phiên bản ứng dụng hiện tại là `1.0.19`. Updater chỉ hoạt động sau khi workflow phát hành đã được đưa lên GitHub và có ít nhất một GitHub Release; nếu chưa có release, Cài đặt sẽ báo trạng thái này.

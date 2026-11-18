@@ -7,8 +7,10 @@ const { applyLoginItemSettings, isAutoStartSupported } = require('./src/config/d
 
 let mainWindow;
 let tray;
+let focusWindowOnReady = false;
 let updateStatus = { status: 'idle' };
 let updateCheckStarted = false;
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
 const TASKFLOW_WEB_URL = process.env.TASKFLOW_WEB_URL || 'https://todolist-app-t9nj.onrender.com/';
 const TASKFLOW_LOGIN_URL = new URL('/auth.html', TASKFLOW_WEB_URL).toString();
 const TASKFLOW_WEB_ORIGIN = new URL(TASKFLOW_WEB_URL).origin;
@@ -124,6 +126,18 @@ function showMainWindow() {
   if (mainWindow.isMinimized()) mainWindow.restore();
   mainWindow.show();
   mainWindow.focus();
+}
+
+if (hasSingleInstanceLock) {
+  app.on('second-instance', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      showMainWindow();
+    } else {
+      focusWindowOnReady = true;
+    }
+  });
+} else {
+  app.quit();
 }
 
 function createTray() {
@@ -300,28 +314,31 @@ function checkForUpdates() {
   });
 }
 
-app.whenReady().then(async () => {
-  process.env.TASKFLOW_USER_DATA_PATH = app.getPath('userData');
+if (hasSingleInstanceLock) {
+  app.whenReady().then(async () => {
+    process.env.TASKFLOW_USER_DATA_PATH = app.getPath('userData');
 
-  setupAutoUpdater();
-  setupDesktopSettings();
-  const appSettings = await readAppSettings();
-  applyLoginItemSettings(app, appSettings.launchOnStartup);
+    setupAutoUpdater();
+    setupDesktopSettings();
+    const appSettings = await readAppSettings();
+    applyLoginItemSettings(app, appSettings.launchOnStartup);
 
-  console.log('🖥️  Electron app starting...');
+    console.log('🖥️  Electron app starting...');
 
-  createWindow(appSettings.windowSize, { fullscreen: appSettings.fullscreen });
-  createTray();
+    createWindow(appSettings.windowSize, { fullscreen: appSettings.fullscreen });
+    createTray();
+    if (focusWindowOnReady) showMainWindow();
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      readAppSettings().then(settings => createWindow(settings.windowSize, { fullscreen: settings.fullscreen })).catch(err => {
-        console.error('❌ Không thể tải cài đặt cửa sổ:', err.message);
-        createWindow();
-      });
-    }
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        readAppSettings().then(settings => createWindow(settings.windowSize, { fullscreen: settings.fullscreen })).catch(err => {
+          console.error('❌ Không thể tải cài đặt cửa sổ:', err.message);
+          createWindow();
+        });
+      }
+    });
   });
-});
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
