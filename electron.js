@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, screen, ipcMain } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, screen, ipcMain, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const { readAppSettings, writeAppSettings } = require('./src/config/app-settings');
@@ -106,6 +106,20 @@ function createWindow(windowSizePreference = DEFAULT_WINDOW_SIZE, { startupSplas
     if (new URL(url).origin !== TASKFLOW_WEB_ORIGIN) {
       event.preventDefault();
     }
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      const target = new URL(url);
+      if (target.protocol === 'https:' && target.origin !== TASKFLOW_WEB_ORIGIN) {
+        shell.openExternal(target.toString()).catch(error => {
+          console.error('❌ Không thể mở liên kết ngoài:', error);
+        });
+      }
+    } catch (error) {
+      console.error('❌ Liên kết mở ngoài không hợp lệ:', error);
+    }
+    return { action: 'deny' };
   });
 
   // Minimize to tray instead of closing
