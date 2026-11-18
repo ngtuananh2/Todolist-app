@@ -987,7 +987,7 @@ body {
 /* ==================== MARKDOWN EDITOR ==================== */
 .md-hint {
   font-weight: 400;
-  color: var(--text-muted);
+  color: var(--text-3);
   margin-left: 6px;
 }
 
@@ -995,7 +995,7 @@ body {
   display: flex;
   gap: 2px;
   padding: 6px 8px;
-  background: var(--bg-hover, #f5f5f4);
+  background: var(--hover);
   border: 1px solid var(--border);
   border-bottom: none;
   border-radius: var(--radius-sm, 6px) var(--radius-sm, 6px) 0 0;
@@ -1006,7 +1006,7 @@ body {
   padding: 4px 8px;
   border: none;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--text-2);
   border-radius: 4px;
   font-size: 0.78rem;
   font-weight: 600;
@@ -1015,13 +1015,14 @@ body {
   font-family: inherit;
   line-height: 1;
 }
-.md-btn:hover { background: var(--border); color: var(--text); }
-.md-btn.active { background: var(--text); color: var(--bg, #fff); }
+.md-btn:hover { background: var(--hover); color: var(--text); }
+.md-btn.active { background: var(--accent); color: #fff; }
 .md-toolbar-spacer { flex: 1; }
 .md-btn-preview {
   font-weight: 500;
   border: 1px solid var(--border);
-  background: var(--card-bg, #fff);
+  background: var(--card-bg);
+  color: var(--text-2);
 }
 
 /* When toolbar is present, remove top border-radius of textarea */
