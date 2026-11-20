@@ -1,4 +1,4 @@
-const CACHE_NAME = 'taskflow-shell-v2';
+const CACHE_NAME = 'taskflow-shell-v3';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -7,10 +7,13 @@ const APP_SHELL = [
   '/brain.html',
   '/english.html',
   '/schedule.html',
+  '/journal.html',
   '/settings.html',
   '/auth.html',
   '/auth.js',
   '/style.css',
+  '/journal.css',
+  '/journal.js',
   '/global-utils.css',
   '/global-utils.js',
   '/pwa.js',

@@ -336,6 +336,66 @@ tradingAccountSchema.set('toJSON', {
   }
 });
 
+// ==================== PERSONAL JOURNAL ====================
+const journalEntrySchema = new mongoose.Schema({
+  type: {
+    type: String,
+    required: true,
+    enum: ['weight', 'memory', 'wishlist']
+  },
+  date: {
+    type: String,
+    default: '',
+    validate: {
+      validator(value) {
+        if (this.type === 'wishlist' && !value) return true;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+        const parsed = new Date(`${value}T00:00:00.000Z`);
+        return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+      },
+      message: 'Ngày ghi chép không hợp lệ'
+    }
+  },
+  weight: {
+    type: Number,
+    min: 1,
+    max: 500,
+    required() { return this.type === 'weight'; }
+  },
+  title: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 160,
+    required() { return this.type !== 'weight'; }
+  },
+  content: { type: String, default: '', maxlength: 5000 },
+  status: {
+    type: String,
+    default: 'want',
+    enum: ['want', 'in-progress', 'done']
+  },
+  category: { type: String, default: '', trim: true, maxlength: 60 },
+  createdAt: { type: String, required: true },
+  updatedAt: { type: String, required: true }
+});
+
+journalEntrySchema.index({ ownerId: 1, type: 1, date: -1 });
+journalEntrySchema.index(
+  { ownerId: 1, type: 1, date: 1 },
+  { unique: true, partialFilterExpression: { type: 'weight' } }
+);
+journalEntrySchema.set('toJSON', {
+  virtuals: true,
+  transform: (doc, ret) => {
+    ret.id = ret._id.toString();
+    delete ret._id;
+    delete ret.__v;
+    delete ret.ownerId;
+    return ret;
+  }
+});
+
 // ==================== NOTE VERSION ====================
 const noteVersionSchema = new mongoose.Schema({
   noteId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Note', required: true },
@@ -354,7 +414,7 @@ noteVersionSchema.set('toJSON', {
 for (const schema of [
   todoSchema, scheduleSchema, tagSchema, habitSchema, habitLogSchema, noteSchema,
   noteVersionSchema, englishProgressSchema, vocabSchema, englishMindmapSchema,
-  tradeSchema, tradingAccountSchema
+  tradeSchema, tradingAccountSchema, journalEntrySchema
 ]) {
   schema.plugin(ownershipPlugin);
 }
@@ -373,6 +433,11 @@ const Vocab = mongoose.model('Vocab', vocabSchema);
 const EnglishMindmap = mongoose.model('EnglishMindmap', englishMindmapSchema);
 const Trade = mongoose.model('Trade', tradeSchema);
 const TradingAccount = mongoose.model('TradingAccount', tradingAccountSchema);
+const JournalEntry = mongoose.model('JournalEntry', journalEntrySchema);
 const User = mongoose.model('User', userSchema);
 
-module.exports = { connectDB, Todo, Schedule, Tag, Habit, HabitLog, Note, NoteVersion, EnglishProgress, Vocab, EnglishMindmap, Trade, TradingAccount, User, mongoose };
+module.exports = {
+  connectDB, Todo, Schedule, Tag, Habit, HabitLog, Note, NoteVersion,
+  EnglishProgress, Vocab, EnglishMindmap, Trade, TradingAccount, JournalEntry,
+  User, mongoose
+};

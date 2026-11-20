@@ -18,6 +18,7 @@ const ROUTE_DOMAINS = {
   '/api/notes': ['/api/notes', '/api/dashboard'],
   '/api/english': ['/api/english', '/api/dashboard'],
   '/api/trading': ['/api/trading', '/api/dashboard'],
+  '/api/journal': ['/api/journal'],
   '/api/schedule': ['/api/schedule', '/api/dashboard'],
   '/api/dashboard': ['/api/dashboard']
 };

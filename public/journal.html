@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/pwa-icon.svg">
+  <script>
+    (function () {
+      try {
+        const theme = localStorage.getItem('theme') || 'dark';
+        const palette = ['midnight', 'forest', 'lagoon', 'terracotta'].includes(localStorage.getItem('theme_palette'))
+          ? localStorage.getItem('theme_palette')
+          : 'midnight';
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.setAttribute('data-palette', palette);
+        document.documentElement.style.colorScheme = theme;
+      } catch (_) {}
+    })();
+  </script>
+  <title>TaskFlow — Nhật ký</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"></noscript>
+  <link rel="stylesheet" href="journal.css">
+  <link rel="stylesheet" href="ai-chat.css">
+  <link rel="stylesheet" href="global-utils.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/dashboard.html" class="logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>TaskFlow</span>
+      </a>
+      <div class="nav-center">
+        <a href="/dashboard.html" class="nav-link">Tổng quan</a>
+        <a href="/journal.html" class="nav-link active" aria-current="page">Nhật ký</a>
+      </div>
+      <div class="nav-right">
+        <button class="nav-btn" id="btn-theme" title="Đổi giao diện" aria-label="Đổi giao diện">
+          <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+          <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <a class="nav-btn" href="/settings.html" title="Cài đặt" aria-label="Cài đặt">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </a>
+        <span class="nav-date" id="nav-date"></span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="journal-main app-main-shell">
+    <div class="journal-container app-content-shell">
+      <header class="journal-heading">
+        <div>
+          <p class="journal-kicker">PERSONAL ARCHIVE</p>
+          <h1>Nhật ký của bạn</h1>
+          <p class="journal-intro">Theo dõi những thay đổi nhỏ và giữ lại những điều không muốn quên.</p>
+        </div>
+        <div class="journal-heading-actions">
+          <button class="journal-button journal-button-quiet" type="button" data-import-module="journal">Nhập dữ liệu</button>
+          <input type="file" accept=".json,application/json" data-import-module-file="journal" hidden>
+          <button class="journal-button journal-button-quiet" type="button" id="journal-export">Xuất dữ liệu</button>
+        </div>
+      </header>
+
+      <section class="journal-month-bar" aria-label="Chọn tháng">
+        <div class="journal-month-title">
+          <span class="journal-month-mark" aria-hidden="true">✳</span>
+          <div>
+            <span class="journal-overline">ĐANG XEM</span>
+            <strong id="journal-month-label"></strong>
+          </div>
+        </div>
+        <div class="journal-month-control">
+          <button type="button" class="journal-icon-button" id="journal-month-prev" aria-label="Tháng trước">‹</button>
+          <input type="month" id="journal-month" aria-label="Chọn tháng">
+          <button type="button" class="journal-icon-button" id="journal-month-next" aria-label="Tháng sau">›</button>
+        </div>
+      </section>
+
+      <div class="journal-tabs" role="tablist" aria-label="Các mục nhật ký">
+        <button type="button" class="journal-tab active" role="tab" id="tab-weight" aria-selected="true" aria-controls="panel-weight" data-tab="weight">
+          <span aria-hidden="true">◉</span> Cân nặng
+        </button>
+        <button type="button" class="journal-tab" role="tab" id="tab-memory" aria-selected="false" aria-controls="panel-memory" data-tab="memory">
+          <span aria-hidden="true">✧</span> Điều đáng nhớ
+        </button>
+        <button type="button" class="journal-tab" role="tab" id="tab-wishlist" aria-selected="false" aria-controls="panel-wishlist" data-tab="wishlist">
+          <span aria-hidden="true">♡</span> Wishlist
+        </button>
+      </div>
+
+      <section class="journal-panel" id="panel-weight" role="tabpanel" aria-labelledby="tab-weight" data-panel="weight">
+        <div class="weight-summary">
+          <article class="journal-card weight-feature">
+            <div class="weight-feature-top">
+              <div>
+                <span class="journal-overline">LẦN CÂN GẦN NHẤT TRONG THÁNG</span>
+                <div class="weight-latest-line"><strong id="weight-latest">—</strong><span>kg</span></div>
+              </div>
+              <span class="weight-icon" aria-hidden="true">↗</span>
+            </div>
+            <div class="weight-chart-wrap" id="weight-chart-wrap">
+              <div class="journal-empty-chart" id="weight-chart-empty">Ghi lại vài lần cân để thấy nhịp thay đổi.</div>
+              <svg class="weight-chart" id="weight-chart" viewBox="0 0 560 150" role="img" aria-label="Biểu đồ cân nặng trong tháng"></svg>
+            </div>
+            <div class="weight-feature-foot">
+              <span id="weight-count">Chưa có lần cân nào trong tháng</span>
+              <span class="weight-delta" id="weight-delta">—</span>
+            </div>
+          </article>
+          <form class="journal-card journal-form weight-form" id="weight-form">
+            <div class="journal-card-heading">
+              <span class="journal-overline">MỘT CON SỐ, MỘT KHOẢNH KHẮC</span>
+              <h2>Ghi cân nặng</h2>
+            </div>
+            <label class="journal-field">
+              <span>Ngày</span>
+              <input type="date" name="date" id="weight-date" required>
+            </label>
+            <label class="journal-field">
+              <span>Cân nặng <small>(kg)</small></span>
+              <div class="journal-input-suffix">
+                <input type="number" name="weight" id="weight-value" min="1" max="500" step="0.1" placeholder="Ví dụ 62.4" required>
+                <span>kg</span>
+              </div>
+            </label>
+            <label class="journal-field">
+              <span>Ghi chú <small>(không bắt buộc)</small></span>
+              <input type="text" name="content" id="weight-note" maxlength="500" placeholder="Năng lượng, giấc ngủ, cảm nhận...">
+            </label>
+            <button type="submit" class="journal-button journal-button-primary" id="weight-save">Lưu lần cân</button>
+          </form>
+        </div>
+        <section class="journal-card journal-list-card">
+          <div class="journal-list-heading">
+            <div><span class="journal-overline">LỊCH SỬ</span><h2>Những lần cân</h2></div>
+            <span class="journal-count" id="weight-list-count">0</span>
+          </div>
+          <div class="weight-list" id="weight-list"></div>
+        </section>
+      </section>
+
+      <section class="journal-panel" id="panel-memory" role="tabpanel" aria-labelledby="tab-memory" data-panel="memory" hidden>
+        <div class="memory-layout">
+          <form class="journal-card journal-form memory-form" id="memory-form">
+            <div class="journal-card-heading">
+              <span class="journal-overline" id="memory-form-eyebrow">GIỮ LẠI ĐIỀU ĐÁNG NHỚ</span>
+              <h2 id="memory-form-title">Một điều của tháng này</h2>
+            </div>
+            <label class="journal-field">
+              <span>Ngày</span>
+              <input type="date" name="date" id="memory-date" required>
+            </label>
+            <label class="journal-field">
+              <span>Tiêu đề</span>
+              <input type="text" name="title" id="memory-title" maxlength="160" placeholder="Chuyến đi đầu tiên của năm..." required>
+            </label>
+            <label class="journal-field">
+              <span>Câu chuyện phía sau</span>
+              <textarea name="content" id="memory-content" maxlength="5000" rows="5" placeholder="Viết vài dòng để sau này đọc lại..."></textarea>
+            </label>
+            <div class="journal-form-actions">
+              <button type="submit" class="journal-button journal-button-primary" id="memory-save">Lưu kỷ niệm</button>
+              <button type="button" class="journal-button journal-button-quiet" id="memory-cancel" hidden>Hủy sửa</button>
+            </div>
+          </form>
+          <section class="journal-card journal-list-card memory-entries">
+            <div class="journal-list-heading">
+              <div><span class="journal-overline">DẤU MỐC</span><h2>Tháng này của bạn</h2></div>
+              <span class="journal-count" id="memory-list-count">0</span>
+            </div>
+            <div class="memory-list" id="memory-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="journal-panel" id="panel-wishlist" role="tabpanel" aria-labelledby="tab-wishlist" data-panel="wishlist" hidden>
+        <section class="journal-card wishlist-compose">
+          <form class="journal-form wishlist-form" id="wishlist-form">
+            <div class="journal-card-heading">
+              <span class="journal-overline" id="wishlist-form-eyebrow">ĐIỀU BẠN MUỐN LÀM, CÓ THỂ LÀM ĐƯỢC</span>
+              <h2 id="wishlist-form-title">Thêm vào wishlist</h2>
+            </div>
+            <label class="journal-field">
+              <span>Điều bạn muốn</span>
+              <input type="text" name="title" id="wishlist-title" maxlength="160" placeholder="Học lặn biển, mua một chiếc máy ảnh..." required>
+            </label>
+            <label class="journal-field">
+              <span>Nhóm <small>(không bắt buộc)</small></span>
+              <input type="text" name="category" id="wishlist-category" list="wishlist-categories" maxlength="60" placeholder="Trải nghiệm, học tập...">
+              <datalist id="wishlist-categories">
+                <option value="Trải nghiệm"><option value="Sức khỏe"><option value="Học tập">
+                <option value="Đồ muốn mua"><option value="Khác">
+              </datalist>
+            </label>
+            <label class="journal-field wishlist-note-field">
+              <span>Ghi chú</span>
+              <input type="text" name="content" id="wishlist-content" maxlength="5000" placeholder="Vì sao điều này quan trọng với bạn?">
+            </label>
+            <div class="journal-form-actions">
+              <button type="submit" class="journal-button journal-button-primary" id="wishlist-save">Thêm mong muốn</button>
+              <button type="button" class="journal-button journal-button-quiet" id="wishlist-cancel" hidden>Hủy sửa</button>
+            </div>
+          </form>
+        </section>
+        <section class="wishlist-board">
+          <div class="journal-list-heading wishlist-heading">
+            <div><span class="journal-overline">NHỮNG ĐIỀU BẠN ĐANG HƯỚNG TỚI</span><h2>Wishlist</h2></div>
+            <span class="journal-count" id="wishlist-list-count">0</span>
+          </div>
+          <div class="wishlist-filters" role="group" aria-label="Lọc wishlist">
+            <button type="button" class="wishlist-filter active" data-filter="all">Tất cả</button>
+            <button type="button" class="wishlist-filter" data-filter="want">Đang muốn</button>
+            <button type="button" class="wishlist-filter" data-filter="in-progress">Đang thực hiện</button>
+            <button type="button" class="wishlist-filter" data-filter="done">Đã hoàn thành</button>
+          </div>
+          <div class="wishlist-list" id="wishlist-list"></div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <script src="global-utils.js"></script>
+  <script src="journal.js"></script>
+</body>
+</html>

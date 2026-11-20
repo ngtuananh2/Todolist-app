@@ -19,6 +19,7 @@ const tradingRoutes = require('./routes/trading.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const scheduleRoutes = require('./routes/schedule.routes');
+const journalRoutes = require('./routes/journal.routes');
 const authRoutes = require('./routes/auth.routes');
 const { attachUser, requireAuth } = require('./middleware/auth');
 
@@ -71,6 +72,7 @@ function createApp({ databaseReady } = {}) {
   app.use('/api/dashboard', dashboardRoutes); // Global dashboard service
   app.use('/api/app-settings', settingsRoutes); // App preferences shared with Electron
   app.use('/api/schedule', scheduleRoutes);
+  app.use('/api/journal', journalRoutes);
 
   // ---- Error handling ----
   app.use('/api/:path', notFoundHandler);

@@ -1,6 +1,6 @@
 const {
   Todo, Tag, Habit, HabitLog, Note, NoteVersion, EnglishProgress,
-  EnglishMindmap, Vocab, Trade, TradingAccount, Schedule
+  EnglishMindmap, Vocab, Trade, TradingAccount, Schedule, JournalEntry
 } = require('../config/database');
 const { getOwnerId } = require('../middleware/ownership');
 const { validateBackupPayload, validateModulePayload } = require('./backup-payload');
@@ -128,11 +128,12 @@ class DashboardService {
 
   /* ─────── Backup: export ALL data ─────── */
   async exportAll() {
-    const [todos, tags, habits, habitLogs, notes, noteVersions, progress, mindmaps, vocab, trades, accounts, schedules] = await Promise.all([
+    const [todos, tags, habits, habitLogs, notes, noteVersions, progress, mindmaps, vocab, trades, accounts, schedules, journalEntries] = await Promise.all([
       Todo.find().lean(), Tag.find().lean(), Habit.find().lean(),
       HabitLog.find().lean(), Note.find().lean(), NoteVersion.find().lean(),
       EnglishProgress.find().lean(), EnglishMindmap.find().lean(),
-      Vocab.find().lean(), Trade.find().lean(), TradingAccount.find().lean(), Schedule.find().lean()
+      Vocab.find().lean(), Trade.find().lean(), TradingAccount.find().lean(), Schedule.find().lean(),
+      JournalEntry.find().lean()
     ]);
     return {
       version: '2.0',
@@ -140,7 +141,7 @@ class DashboardService {
       data: {
         todos, tags, habits, habitLogs, notes, noteVersions,
         englishProgress: progress, englishMindmaps: mindmaps, vocab,
-        trades, tradingAccounts: accounts, schedules
+        trades, tradingAccounts: accounts, schedules, journalEntries
       }
     };
   }
@@ -178,6 +179,11 @@ class DashboardService {
         data = { trades, tradingAccounts: accounts };
         break;
       }
+      case 'journal': {
+        const journalEntries = await JournalEntry.find().lean();
+        data = { journalEntries };
+        break;
+      }
       default:
         throw new Error('Invalid module: ' + moduleName);
     }
@@ -191,7 +197,8 @@ class DashboardService {
       habit: { habits: Habit, habitLogs: HabitLog },
       brain: { notes: Note, noteVersions: NoteVersion },
       english: { englishProgress: EnglishProgress, englishMindmaps: EnglishMindmap, vocab: Vocab },
-      trading: { trades: Trade, tradingAccounts: TradingAccount }
+      trading: { trades: Trade, tradingAccounts: TradingAccount },
+      journal: { journalEntries: JournalEntry }
     };
     const imported = {};
     const skipped = {};
@@ -258,7 +265,8 @@ class DashboardService {
       vocab: Vocab,
       trades: Trade,
       tradingAccounts: TradingAccount,
-      schedules: Schedule
+      schedules: Schedule,
+      journalEntries: JournalEntry
     };
     const plans = [];
     const ownerId = getOwnerId();
@@ -344,6 +352,23 @@ class DashboardService {
       const existingKeys = new Set(existing.map(record => `${record.habitId}:${record.date}`));
       if (records.some(record => existingKeys.has(`${record.habitId}:${record.date}`))) {
         const error = new Error('Không thể gộp habitLogs: đã tồn tại lịch sử thói quen trùng. Hãy chọn thay thế hoặc xử lý dữ liệu trùng trước.');
+        error.status = 409;
+        throw error;
+      }
+    }
+
+    if (key === 'journalEntries' && records.length) {
+      const dates = [...new Set(records
+        .filter(record => record.type === 'weight')
+        .map(record => record.date)
+        .filter(Boolean))];
+      if (!dates.length) return;
+      const existing = await JournalEntry.find({ type: 'weight', date: { $in: dates } })
+        .select('_id date')
+        .lean();
+      const existingDates = new Set(existing.map(record => record.date));
+      if (dates.some(date => existingDates.has(date))) {
+        const error = new Error('Không thể gộp journalEntries: đã có cân nặng cho cùng ngày.');
         error.status = 409;
         throw error;
       }

@@ -10,22 +10,25 @@ const REQUIRED_COLLECTIONS = [
   'tradingAccounts'
 ];
 
-const OPTIONAL_COLLECTIONS = ['noteVersions', 'englishMindmaps', 'schedules'];
+const OPTIONAL_COLLECTIONS = ['noteVersions', 'englishMindmaps', 'schedules', 'journalEntries'];
 const UNIQUE_KEYS = {
   tags: record => record.name,
   habitLogs: record => `${record.habitId}:${record.date}`,
   englishProgress: record => record.lessonId,
-  schedules: record => record.key
+  schedules: record => record.key,
+  journalEntries: record => record.type === 'weight' && record.date ? `weight:${record.date}` : null
 };
 const MODULE_COLLECTIONS = {
   habit: ['habits', 'habitLogs'],
   brain: ['notes', 'noteVersions'],
   english: ['englishProgress', 'englishMindmaps', 'vocab'],
-  trading: ['trades', 'tradingAccounts']
+  trading: ['trades', 'tradingAccounts'],
+  journal: ['journalEntries']
 };
 const MODULE_UNIQUE_KEYS = {
   habitLogs: UNIQUE_KEYS.habitLogs,
-  englishProgress: UNIQUE_KEYS.englishProgress
+  englishProgress: UNIQUE_KEYS.englishProgress,
+  journalEntries: UNIQUE_KEYS.journalEntries
 };
 
 function invalidBackup(message) {
@@ -75,6 +78,7 @@ function validateBackupPayload(payload) {
       const getUniqueKey = UNIQUE_KEYS[key];
       if (getUniqueKey) {
         const naturalKey = getUniqueKey(record);
+        if (naturalKey === null) continue;
         if (typeof naturalKey !== 'string' || naturalKey.trim() === '') {
           throw invalidBackup(`Dữ liệu ${key}[${index}] thiếu trường định danh`);
         }
@@ -137,6 +141,7 @@ function validateModulePayload(moduleName, payload) {
       const getUniqueKey = MODULE_UNIQUE_KEYS[key];
       if (getUniqueKey) {
         const naturalKey = getUniqueKey(record);
+        if (naturalKey === null) continue;
         if (typeof naturalKey !== 'string' || naturalKey.trim() === '') {
           throw invalidBackup(`Dữ liệu ${key}[${index}] thiếu trường định danh`);
         }

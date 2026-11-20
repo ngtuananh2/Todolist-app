@@ -9,10 +9,22 @@ test('revalidates HTML, CSS, and JavaScript assets after app updates', async () 
     await new Promise(resolve => server.once('listening', resolve));
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
-    for (const asset of ['/schedule.html', '/schedule.css', '/schedule.js', '/global-utils.js', '/sw.js']) {
+    for (const asset of [
+      '/schedule.html', '/schedule.css', '/schedule.js',
+      '/journal.html', '/journal.css', '/journal.js',
+      '/global-utils.js', '/sw.js'
+    ]) {
       const response = await fetch(`${baseUrl}${asset}`);
       assert.equal(response.status, 200);
       assert.equal(response.headers.get('cache-control'), 'no-cache');
+    }
+
+    for (const page of [
+      '/index.html', '/dashboard.html', '/habit.html', '/brain.html',
+      '/settings.html', '/trading.html', '/schedule.html', '/today.html', '/english.html'
+    ]) {
+      const response = await fetch(`${baseUrl}${page}`);
+      assert.match(await response.text(), /<a href="\/journal\.html" class="nav-link">Nhật ký<\/a>/);
     }
   } finally {
     server.close();

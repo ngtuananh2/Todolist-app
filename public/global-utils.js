@@ -28,7 +28,7 @@
     return url.origin === location.origin
       && url.pathname.startsWith('/api/')
       && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
-      && !/^\/api\/(auth|ai|dashboard\/(?:backup|restore|import)|app-settings|trading\/import\/csv)/.test(url.pathname);
+      && !/^\/api\/(auth|ai|dashboard\/(?:backup|restore|import)|app-settings|trading\/import\/csv|journal(?:\/|$))/.test(url.pathname);
   }
 
   function readOfflineQueue() {
@@ -130,16 +130,18 @@
     { key: '4', label: 'Second Brain', url: '/brain.html' },
     { key: '5', label: 'ForumFlash', url: 'https://www.forumflashstudy.com/', external: true },
     { key: '6', label: 'Trading', url: '/trading.html' },
+    { label: 'Nhật ký', url: '/journal.html' },
     { label: 'Lịch trình', url: '/schedule.html' },
     { label: 'Cài đặt', url: '/settings.html' },
     { label: 'English cũ', url: '/english.html' }
   ];
 
   const MODULE_ICONS = {
-    todo: '📋', note: '📝', vocab: '📖', trade: '📊', habit: '💪'
+    todo: '📋', note: '📝', vocab: '📖', trade: '📊', habit: '💪', journal: '📔'
   };
   const MODULE_URLS = {
-    todo: '/', note: '/brain.html', vocab: '/english.html', trade: '/trading.html', habit: '/habit.html'
+    todo: '/', note: '/brain.html', vocab: '/english.html', trade: '/trading.html',
+    habit: '/habit.html', journal: '/journal.html'
   };
 
   function initNetworkStatus() {

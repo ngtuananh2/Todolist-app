@@ -25,7 +25,7 @@ test('accepts a complete backup and reports optional collections as omitted', ()
   const result = validateBackupPayload(makePayload());
   assert.equal(result.counts.todos, 0);
   assert.equal(result.counts.noteVersions, null);
-  assert.deepEqual(result.omittedCollections, ['noteVersions', 'englishMindmaps', 'schedules']);
+  assert.deepEqual(result.omittedCollections, ['noteVersions', 'englishMindmaps', 'schedules', 'journalEntries']);
 });
 
 test('rejects backups missing required collections', () => {
@@ -65,6 +65,21 @@ test('rejects duplicate values protected by database unique indexes', () => {
   assert.throws(() => validateBackupPayload(payload), /định danh bị trùng trong tags/);
 });
 
+test('accepts journal entries in backups and rejects duplicate daily weights', () => {
+  const payload = makePayload();
+  payload.data.journalEntries = [
+    { _id: 'weight-1', type: 'weight', date: '2026-05-01', weight: 62.4 },
+    { _id: 'memory-1', type: 'memory', date: '2026-05-01', title: 'Một ngày đẹp' },
+    { _id: 'memory-2', type: 'memory', date: '2026-05-01', title: 'Một điều khác' }
+  ];
+  assert.equal(validateBackupPayload(payload).counts.journalEntries, 3);
+
+  payload.data.journalEntries.push({
+    _id: 'weight-2', type: 'weight', date: '2026-05-01', weight: 62.8
+  });
+  assert.throws(() => validateBackupPayload(payload), /định danh bị trùng trong journalEntries/);
+});
+
 test('accepts a complete module export payload', () => {
   const result = validateModulePayload('brain', {
     version: '2.0',
@@ -81,6 +96,24 @@ test('accepts older module exports without newer optional collections', () => {
     data: { notes: [{ _id: 'note-1' }] }
   });
   assert.deepEqual(result.data.noteVersions, []);
+});
+
+test('accepts journal module exports without requiring an existing collection', () => {
+  const result = validateModulePayload('journal', {
+    version: '2.0',
+    module: 'journal',
+    data: {
+      journalEntries: [
+        { _id: 'weight-1', type: 'weight', date: '2026-05-01', weight: 62.4 }
+      ]
+    }
+  });
+  assert.deepEqual(result.counts, { journalEntries: 1 });
+  assert.deepEqual(validateModulePayload('journal', {
+    version: '2.0',
+    module: 'journal',
+    data: {}
+  }).data.journalEntries, []);
 });
 
 test('rejects unsupported modules and malformed module exports', () => {

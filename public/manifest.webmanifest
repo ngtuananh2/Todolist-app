@@ -1,7 +1,7 @@
 {
   "name": "TaskFlow - Quan ly cong viec",
   "short_name": "TaskFlow",
-  "description": "Quan ly cong viec, ghi chu, thoi quen va lich trinh ca nhan",
+  "description": "Theo doi cong viec, thoi quen, can nang, ghi chu va muc tieu ca nhan",
   "lang": "vi",
   "dir": "ltr",
   "start_url": "/",
