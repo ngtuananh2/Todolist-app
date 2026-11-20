@@ -20,12 +20,23 @@ test('revalidates HTML, CSS, and JavaScript assets after app updates', async () 
     }
 
     for (const page of [
-      '/index.html', '/dashboard.html', '/habit.html', '/brain.html',
+      '/index.html', '/dashboard.html', '/habit.html', '/brain.html', '/journal.html',
       '/settings.html', '/trading.html', '/schedule.html', '/today.html', '/english.html'
     ]) {
       const response = await fetch(`${baseUrl}${page}`);
-      assert.match(await response.text(), /<a href="\/journal\.html" class="nav-link">Nhật ký<\/a>/);
+      assert.match(await response.text(), /<a href="\/journal\.html" class="nav-link(?: active)?"(?: aria-current="page")?>Nhật ký<\/a>/);
     }
+
+    const [dashboardHtml, journalHtml] = await Promise.all([
+      fetch(`${baseUrl}/dashboard.html`).then(response => response.text()),
+      fetch(`${baseUrl}/journal.html`).then(response => response.text())
+    ]);
+    const navLinks = html => {
+      const nav = html.match(/<div class="nav-center">([\s\S]*?)<\/div>/);
+      assert.ok(nav, 'Page should have a central navigation menu');
+      return [...nav[1].matchAll(/href="([^"]+)"/g)].map(match => match[1]);
+    };
+    assert.deepEqual(navLinks(journalHtml), navLinks(dashboardHtml));
   } finally {
     server.close();
     server.closeAllConnections();
