@@ -1,4 +1,6 @@
 const { Trade, TradingAccount } = require('../config/database');
+const { getOwnerId } = require('../middleware/ownership');
+const { parseTradingCsv } = require('./trading-csv.service');
 
 // ==================== TRADING SERVICE ====================
 
@@ -121,6 +123,46 @@ async function closeTrade(id, exitPrice, exitDate) {
 async function deleteTrade(id) {
   await Trade.findByIdAndDelete(id);
   return { success: true };
+}
+
+async function importCsv(source, csv) {
+  const ownerId = getOwnerId();
+  if (!ownerId) {
+    const error = new Error('Không xác định được tài khoản nhập dữ liệu');
+    error.status = 401;
+    throw error;
+  }
+
+  const parsedTrades = parseTradingCsv(csv, source);
+  const uniqueTrades = [];
+  const seenKeys = new Set();
+  parsedTrades.forEach(trade => {
+    if (seenKeys.has(trade.importKey)) return;
+    seenKeys.add(trade.importKey);
+    uniqueTrades.push(trade);
+  });
+  const importKeys = uniqueTrades.map(trade => trade.importKey);
+  const existingTrades = await Trade.find({ importKey: { $in: importKeys } })
+    .select('importKey')
+    .lean();
+  const existingKeys = new Set(existingTrades.map(trade => trade.importKey));
+  const tradesToImport = uniqueTrades.filter(trade => !existingKeys.has(trade.importKey));
+  const documents = tradesToImport.map(trade => new Trade({ ...trade, ownerId }));
+
+  documents.forEach((trade, index) => {
+    const validationError = trade.validateSync();
+    if (validationError) {
+      const error = new Error(`Dữ liệu giao dịch ${index + 1} không hợp lệ: ${validationError.message}`);
+      error.status = 400;
+      throw error;
+    }
+  });
+
+  if (documents.length) await Trade.insertMany(documents);
+  return {
+    imported: documents.length,
+    skippedDuplicates: parsedTrades.length - documents.length
+  };
 }
 
 // ===== Trading Accounts =====
@@ -402,6 +444,7 @@ module.exports = {
   updateTrade,
   closeTrade,
   deleteTrade,
+  importCsv,
   getAllAccounts,
   createAccount,
   updateAccount,

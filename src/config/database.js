@@ -288,6 +288,7 @@ const tradeSchema = new mongoose.Schema({
   screenshot:   { type: String, default: '' },
   entryDate:    { type: String, required: true },
   exitDate:     { type: String, default: null },
+  importKey:   { type: String, default: null, select: false },
   createdAt:    { type: String, required: true },
   updatedAt:    { type: String, required: true }
 });
@@ -298,6 +299,10 @@ tradeSchema.index({ entryDate: -1, status: 1 });
 tradeSchema.index({ market: 1 });
 tradeSchema.index({ strategy: 1, status: 1 });
 tradeSchema.index({ strategy: 'text', notes: 'text', symbol: 'text' });
+tradeSchema.index(
+  { ownerId: 1, exchange: 1, importKey: 1 },
+  { unique: true, partialFilterExpression: { importKey: { $type: 'string' } } }
+);
 
 tradeSchema.set('toJSON', {
   virtuals: true,

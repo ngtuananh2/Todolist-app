@@ -80,6 +80,15 @@ router.delete('/accounts/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /api/trading/import/csv
+router.post('/import/csv', async (req, res, next) => {
+  try {
+    const { source, csv } = req.body || {};
+    const result = await tradingService.importCsv(source, csv);
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
 // GET /api/trading/:id
 router.get('/:id', async (req, res, next) => {
   try {

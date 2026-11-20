@@ -18,6 +18,7 @@
     setupDate();
     setupTabs();
     setupModals();
+    setupCsvImport();
     setupFilters();
     setupRating();
     setupRiskCalc();
@@ -168,6 +169,44 @@
     });
     document.getElementById('trade-screenshot-input')?.addEventListener('change', handleScreenshotUpload);
     document.getElementById('btn-remove-screenshot')?.addEventListener('click', removeScreenshot);
+  }
+
+  function setupCsvImport() {
+    [
+      { source: 'binance_futures', buttonId: 'btn-import-binance-csv', inputId: 'input-import-binance-csv' },
+      { source: 'bybit', buttonId: 'btn-import-bybit-csv', inputId: 'input-import-bybit-csv' }
+    ].forEach(({ source, buttonId, inputId }) => {
+      const button = document.getElementById(buttonId);
+      const input = document.getElementById(inputId);
+      if (!button || !input) return;
+
+      button.addEventListener('click', () => input.click());
+      input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        input.value = '';
+        if (!file) return;
+
+        button.disabled = true;
+        try {
+          if (file.size > 4_500_000) throw new Error('File CSV vượt quá giới hạn 4.5 MB');
+          const response = await fetch(`${API}/import/csv`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source, csv: await file.text() })
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.error || `Không thể nhập CSV (HTTP ${response.status})`);
+
+          await Promise.all([loadTrades(), loadStats()]);
+          toast(`Đã nhập ${result.imported} dòng khớp; bỏ qua ${result.skippedDuplicates} dòng trùng.`, 'success');
+        } catch (error) {
+          console.error('Trade CSV import failed:', error);
+          toast(error.message || 'Không thể nhập file CSV', 'error');
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
   }
 
   // ===== Filters =====

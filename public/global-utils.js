@@ -28,7 +28,7 @@
     return url.origin === location.origin
       && url.pathname.startsWith('/api/')
       && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
-      && !/^\/api\/(auth|ai|dashboard\/(?:backup|restore|import)|app-settings)/.test(url.pathname);
+      && !/^\/api\/(auth|ai|dashboard\/(?:backup|restore|import)|app-settings|trading\/import\/csv)/.test(url.pathname);
   }
 
   function readOfflineQueue() {

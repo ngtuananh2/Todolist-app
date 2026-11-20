@@ -84,14 +84,23 @@
       <div class="trading-header-left">
         <h1 class="trading-title">📊 Quản Lý Trading</h1>
         <p class="trading-subtitle">Journal, phân tích & quản lý vị thế giao dịch</p>
+        <p class="trading-import-hint">CSV được nhập theo từng dòng khớp, không gộp thành vị thế. Không hỗ trợ MT5.</p>
       </div>
       <div class="trading-header-actions">
         <button class="btn" style="background:#10b981;color:#fff" onclick="window.globalUtils?.exportModule('trading')" title="Xuất dữ liệu Trading">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Xuất
         </button>
-        <button class="btn" data-import-module="trading" title="Nhập file JSON và gộp dữ liệu Trading">
-          Nhập file
+        <button class="btn" type="button" id="btn-import-binance-csv" title="Nhập từng dòng khớp từ Binance Futures Trade History; không gộp thành vị thế">
+          Binance CSV
+        </button>
+        <input type="file" accept=".csv,text/csv" id="input-import-binance-csv" hidden>
+        <button class="btn" type="button" id="btn-import-bybit-csv" title="Nhập từng dòng khớp từ Bybit Trade History; không gộp thành vị thế">
+          Bybit CSV
+        </button>
+        <input type="file" accept=".csv,text/csv" id="input-import-bybit-csv" hidden>
+        <button class="btn" data-import-module="trading" title="Nhập JSON do TaskFlow Trading xuất và gộp dữ liệu">
+          Nhập JSON
         </button>
         <input type="file" accept=".json,application/json" data-import-module-file="trading" hidden>
         <button class="btn btn-primary" id="btn-new-trade">
