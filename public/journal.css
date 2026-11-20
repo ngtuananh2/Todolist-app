@@ -361,6 +361,7 @@
 .journal-field input,
 .journal-field select,
 .journal-field textarea {
+  box-sizing: border-box;
   width: 100%;
   min-height: 40px;
   padding: 9px 11px;
@@ -614,17 +615,21 @@
 
 .wishlist-form {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(155px, .62fr) minmax(180px, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
   align-items: end;
-  gap: 12px;
+  gap: 16px 18px;
 }
 
-.wishlist-form .journal-card-heading {
+.wishlist-form .journal-card-heading,
+.wishlist-form .wishlist-title-field,
+.wishlist-form .journal-form-actions {
   grid-column: 1 / -1;
 }
 
 .wishlist-form .journal-form-actions {
-  align-self: end;
+  justify-content: flex-end;
+  padding-top: 13px;
+  border-top: 1px solid var(--border);
 }
 
 .wishlist-board {
@@ -728,10 +733,11 @@
     position: static;
   }
   .wishlist-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
   .wishlist-form .journal-card-heading,
-  .wishlist-form .wishlist-note-field {
+  .wishlist-form .wishlist-title-field,
+  .wishlist-form .journal-form-actions {
     grid-column: 1 / -1;
   }
 }
@@ -785,7 +791,8 @@
     grid-template-columns: 1fr;
   }
   .wishlist-form .journal-card-heading,
-  .wishlist-form .wishlist-note-field {
+  .wishlist-form .wishlist-title-field,
+  .wishlist-form .journal-form-actions {
     grid-column: auto;
   }
   .weight-row {
