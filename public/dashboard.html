@@ -164,6 +164,23 @@
         </div>
       </div>
 
+      <!-- ===== GOAL SETTING ===== -->
+      <div class="db-card db-card-full" id="db-goals-card">
+        <div class="db-card-header">
+          <h3>🎯 Mục tiêu</h3>
+          <div class="goal-header-actions">
+            <select class="goal-period-select" id="goal-period">
+              <option value="weekly">Tuần này</option>
+              <option value="monthly">Tháng này</option>
+            </select>
+            <button class="db-btn-sm" id="btn-add-goal" onclick="openGoalModal()">+ Thêm mục tiêu</button>
+          </div>
+        </div>
+        <div class="goal-list" id="goal-list">
+          <div class="goal-empty">Chưa có mục tiêu nào. Nhấn "+ Thêm mục tiêu" để bắt đầu!</div>
+        </div>
+      </div>
+
       <!-- ===== WEEKLY SCHEDULE ===== -->
       <div class="db-card db-card-full" id="db-schedule-card" style="display:none">
         <div class="db-card-header">
@@ -241,23 +258,6 @@
             <div class="db-eng-bars" id="db-eng-bars"></div>
             <div class="db-mini-stats" id="english-mini-stats"></div>
           </div>
-        </div>
-      </div>
-
-      <!-- ===== GOAL SETTING ===== -->
-      <div class="db-card db-card-full">
-        <div class="db-card-header">
-          <h3>🎯 Mục tiêu</h3>
-          <div class="goal-header-actions">
-            <select class="goal-period-select" id="goal-period">
-              <option value="weekly">Tuần này</option>
-              <option value="monthly">Tháng này</option>
-            </select>
-            <button class="db-btn-sm" id="btn-add-goal" onclick="openGoalModal()">+ Thêm mục tiêu</button>
-          </div>
-        </div>
-        <div class="goal-list" id="goal-list">
-          <div class="goal-empty">Chưa có mục tiêu nào. Nhấn "+ Thêm mục tiêu" để bắt đầu!</div>
         </div>
       </div>
 

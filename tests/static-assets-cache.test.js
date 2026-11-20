@@ -31,6 +31,8 @@ test('revalidates HTML, CSS, and JavaScript assets after app updates', async () 
       fetch(`${baseUrl}/dashboard.html`).then(response => response.text()),
       fetch(`${baseUrl}/journal.html`).then(response => response.text())
     ]);
+    assert.ok(dashboardHtml.indexOf('id="db-kpi-row"') < dashboardHtml.indexOf('id="db-goals-card"'));
+    assert.ok(dashboardHtml.indexOf('id="db-goals-card"') < dashboardHtml.indexOf('id="db-schedule-card"'));
     const navLinks = html => {
       const nav = html.match(/<div class="nav-center">([\s\S]*?)<\/div>/);
       assert.ok(nav, 'Page should have a central navigation menu');
