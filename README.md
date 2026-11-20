@@ -43,6 +43,8 @@ Backup đầy đủ bao gồm công việc, nhãn, thói quen và lịch sử, g
 
 Các màn hình Công việc, Habit, Second Brain, English, Trading và Thời khóa biểu có mục nhập file tương ứng với dữ liệu xuất của màn hình đó. Nhập module sẽ gộp dữ liệu và bỏ qua mã đã có; thời khóa biểu nhập từ file sẽ thay thế lịch và danh sách công việc của màn hình sau khi xác nhận. File thời khóa biểu được xuất dưới dạng JSON để có thể nhập lại.
 
+Trong Trading, ngoài JSON xuất từ TaskFlow, có thể nhập CSV **Binance Futures Trade History** hoặc **Bybit Trade History**. Mỗi dòng khớp được lưu thành một mục nhật ký riêng; ứng dụng không gộp các lần khớp thành vị thế. Nhập lại file sẽ bỏ qua dòng trùng. MT5 và các định dạng CSV khác chưa được hỗ trợ.
+
 Trong Second Brain, kéo biểu tượng tay nắm trên thẻ để lưu thứ tự mục. Hãy tắt bộ lọc và tìm kiếm trước khi sắp xếp; mục đã ghim giữ ở nhóm riêng. Nút thư mục mở quản lý danh mục để đổi tên hoặc gỡ danh mục khỏi ghi chú (không xóa ghi chú). Nhấn `/` khi không nhập liệu để tìm nhanh; nút × xóa từ khóa, còn “Xóa bộ lọc” giúp hiện lại mục khi không có kết quả.
 
 Tuỳ chọn giao diện lưu trong trình duyệt và cài đặt khởi động cùng Windows không nằm trong file backup dữ liệu máy chủ. Chạy kiểm thử bằng `npm test`.
