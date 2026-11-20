@@ -82,41 +82,120 @@
     const empty = $('weight-chart-empty');
     svg.replaceChildren();
     wrap.classList.toggle('has-data', weights.length > 0);
-    empty.textContent = 'Ghi lại vài lần cân để thấy nhịp thay đổi.';
+    empty.textContent = 'Ghi lại cân nặng để xem biểu đồ theo ngày trong tháng.';
+    svg.setAttribute('aria-label', `Biểu đồ cân nặng tháng ${selectedMonth}`);
     if (!weights.length) return;
 
     const width = 560;
-    const height = 150;
-    const inset = { top: 16, right: 12, bottom: 20, left: 12 };
-    const values = weights.map(item => Number(item.weight));
+    const height = 176;
+    const inset = { top: 12, right: 18, bottom: 30, left: 52 };
+    const orderedWeights = [...weights].sort((a, b) => a.date.localeCompare(b.date));
+    const values = orderedWeights.map(item => Number(item.weight));
     const minimum = Math.min(...values);
     const maximum = Math.max(...values);
-    const spread = maximum - minimum || 1;
-    const points = values.map((value, index) => {
-      const x = weights.length === 1
-        ? width / 2
-        : inset.left + index / (weights.length - 1) * (width - inset.left - inset.right);
-      const y = inset.top + (maximum - value + spread * .12) / (spread * 1.24) * (height - inset.top - inset.bottom);
-      return { x, y };
+    const padding = Math.max((maximum - minimum) * .2, .5);
+    const chartMinimum = minimum - padding;
+    const chartMaximum = maximum + padding;
+    const plotWidth = width - inset.left - inset.right;
+    const plotHeight = height - inset.top - inset.bottom;
+    const [, monthNumber] = selectedMonth.split('-').map(Number);
+    const daysInMonth = new Date(
+      Number(selectedMonth.slice(0, 4)),
+      monthNumber,
+      0
+    ).getDate();
+    const points = orderedWeights.map(item => {
+      const value = Number(item.weight);
+      const day = Number(item.date.slice(-2));
+      return {
+        item,
+        value,
+        x: inset.left + (day - 1) / Math.max(daysInMonth - 1, 1) * plotWidth,
+        y: inset.top + (chartMaximum - value) / (chartMaximum - chartMinimum) * plotHeight
+      };
     });
 
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    line.setAttribute('points', points.map(point => `${point.x},${point.y}`).join(' '));
-    line.setAttribute('fill', 'none');
-    line.setAttribute('stroke', 'var(--accent)');
-    line.setAttribute('stroke-width', '3');
-    line.setAttribute('stroke-linecap', 'round');
-    line.setAttribute('stroke-linejoin', 'round');
-    svg.append(line);
+    const createSvgElement = (name, attributes = {}) => {
+      const element = document.createElementNS('http://www.w3.org/2000/svg', name);
+      Object.entries(attributes).forEach(([key, value]) => {
+        element.setAttribute(key, String(value));
+      });
+      return element;
+    };
+
+    for (let index = 0; index <= 2; index += 1) {
+      const value = chartMaximum - (chartMaximum - chartMinimum) * index / 2;
+      const y = inset.top + plotHeight * index / 2;
+      svg.append(
+        createSvgElement('line', {
+          x1: inset.left,
+          x2: width - inset.right,
+          y1: y,
+          y2: y,
+          stroke: 'var(--border)',
+          'stroke-dasharray': '3 5'
+        })
+      );
+      const label = createSvgElement('text', {
+        x: inset.left - 9,
+        y: y + 4,
+        fill: 'var(--text-3)',
+        'font-size': 11,
+        'text-anchor': 'end'
+      });
+      label.textContent = formatWeight(value);
+      svg.append(label);
+    }
+
+    const dateTicks = [...new Set([1, Math.ceil(daysInMonth / 2), daysInMonth])];
+    dateTicks.forEach((day, index) => {
+      const x = inset.left + (day - 1) / Math.max(daysInMonth - 1, 1) * plotWidth;
+      const label = createSvgElement('text', {
+        x,
+        y: height - 5,
+        fill: 'var(--text-3)',
+        'font-size': 11,
+        'text-anchor': index === 0 ? 'start' : index === dateTicks.length - 1 ? 'end' : 'middle'
+      });
+      label.textContent = String(day);
+      svg.append(label);
+    });
+
+    const first = points[0];
+    const last = points[points.length - 1];
+    const baseline = height - inset.bottom;
+    const area = createSvgElement('path', {
+      d: `M ${first.x} ${baseline} L ${points.map(point => `${point.x} ${point.y}`).join(' L ')} L ${last.x} ${baseline} Z`,
+      fill: 'var(--accent)',
+      'fill-opacity': '.1'
+    });
+    svg.append(area);
+
+    if (points.length > 1) {
+      svg.append(
+        createSvgElement('polyline', {
+          points: points.map(point => `${point.x},${point.y}`).join(' '),
+          fill: 'none',
+          stroke: 'var(--accent)',
+          'stroke-width': 3,
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round'
+        })
+      );
+    }
 
     points.forEach((point, index) => {
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('cx', String(point.x));
-      circle.setAttribute('cy', String(point.y));
-      circle.setAttribute('r', index === points.length - 1 ? '5' : '3.2');
-      circle.setAttribute('fill', 'var(--surface)');
-      circle.setAttribute('stroke', 'var(--accent)');
-      circle.setAttribute('stroke-width', index === points.length - 1 ? '3' : '2');
+      const circle = createSvgElement('circle', {
+        cx: point.x,
+        cy: point.y,
+        r: index === points.length - 1 ? 5 : 3.2,
+        fill: 'var(--surface)',
+        stroke: 'var(--accent)',
+        'stroke-width': index === points.length - 1 ? 3 : 2
+      });
+      const title = createSvgElement('title');
+      title.textContent = `${formatDate(point.item.date, { day: 'numeric', month: 'long', year: 'numeric' })}: ${formatWeight(point.value)} kg`;
+      circle.append(title);
       svg.append(circle);
     });
   }
