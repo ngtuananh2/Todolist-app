@@ -121,6 +121,7 @@
   const SEARCH_API = '/api/dashboard/search';
   const BACKUP_API = '/api/dashboard/backup';
   const RESTORE_API = '/api/dashboard/restore';
+  const COLOR_PALETTES = ['midnight', 'forest', 'lagoon', 'terracotta'];
 
   const PAGES = [
     { key: '1', label: 'Dashboard', url: '/dashboard.html' },
@@ -164,12 +165,35 @@
   }
 
   // ==================== THEME (centralized) ====================
+  function getColorPalette() {
+    const saved = localStorage.getItem('theme_palette');
+    return COLOR_PALETTES.includes(saved) ? saved : 'midnight';
+  }
+
+  function applyColorPalette(palette) {
+    if (!COLOR_PALETTES.includes(palette)) {
+      throw new Error(`Bảng màu không hợp lệ: ${palette}`);
+    }
+    document.documentElement.setAttribute('data-palette', palette);
+    document.body?.setAttribute('data-palette', palette);
+  }
+
+  function setColorPalette(palette) {
+    if (!COLOR_PALETTES.includes(palette)) {
+      throw new Error(`Bảng màu không hợp lệ: ${palette}`);
+    }
+    localStorage.setItem('theme_palette', palette);
+    applyColorPalette(palette);
+    return palette;
+  }
+
   function initTheme() {
     const saved = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', saved);
     document.documentElement.style.colorScheme = saved;
     // Also set on body for compatibility with brain.js selectors
     document.body?.setAttribute('data-theme', saved);
+    applyColorPalette(getColorPalette());
     updateThemeIcons(saved);
   }
 
@@ -992,7 +1016,7 @@
   // Expose for other scripts
   window.globalUtils = {
     openSearch, closeSearch, openShortcuts, closeShortcuts, exportBackup, exportModule,
-    toggleTheme, isDarkTheme, initTheme, updateThemeIcons,
+    toggleTheme, isDarkTheme, initTheme, updateThemeIcons, getColorPalette, setColorPalette,
     updateNavDateTime,
     showLoading, hideLoading, guToast,
     togglePomodoro, loadNotifications, updatePomoSettings

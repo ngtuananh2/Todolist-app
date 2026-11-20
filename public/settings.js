@@ -103,6 +103,7 @@
   function setThemeByToggle(checked) {
     const next = checked ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', next);
+    document.documentElement.style.colorScheme = next;
     document.body?.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
     if (window.globalUtils?.updateThemeIcons) {
@@ -179,6 +180,11 @@
     if (darkToggle) {
       darkToggle.checked = window.globalUtils?.isDarkTheme?.() || false;
     }
+
+    const activePalette = window.globalUtils?.getColorPalette?.() || 'midnight';
+    document.querySelectorAll('.st-theme-option').forEach(option => {
+      option.setAttribute('aria-pressed', String(option.dataset.palette === activePalette));
+    });
 
     // Font
     const fontSelect = document.getElementById('setting-font');
@@ -363,6 +369,26 @@
     document.getElementById('setting-dark-mode')?.addEventListener('change', () => {
       const darkToggle = document.getElementById('setting-dark-mode');
       setThemeByToggle(Boolean(darkToggle?.checked));
+    });
+
+    document.querySelectorAll('.st-theme-option').forEach(option => {
+      option.addEventListener('click', () => {
+        const palette = option.dataset.palette;
+        if (!window.globalUtils?.setColorPalette) {
+          showToast('Không thể đổi bảng màu lúc này', 'error');
+          return;
+        }
+        try {
+          window.globalUtils.setColorPalette(palette);
+          document.querySelectorAll('.st-theme-option').forEach(item => {
+            item.setAttribute('aria-pressed', String(item === option));
+          });
+          showToast('Đã đổi bảng màu');
+        } catch (error) {
+          console.error('[settings] Cannot change color palette:', error);
+          showToast(error.message || 'Không thể đổi bảng màu', 'error');
+        }
+      });
     });
 
     // Font
