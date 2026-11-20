@@ -1,9 +1,41 @@
 const { Router } = require('express');
 const tradingService = require('../services/trading.service');
+const mt5SyncService = require('../services/mt5-sync.service');
+const { getOwnerId, runWithOwner } = require('../middleware/ownership');
 
 const router = Router();
 
 // ==================== TRADING ROUTES ====================
+
+function withRequestOwner(req, callback) {
+  if (getOwnerId() || !req.user?.id) return callback();
+  return runWithOwner(req.user.id, callback);
+}
+
+router.get('/mt5/connection', async (req, res, next) => {
+  try {
+    res.json(await withRequestOwner(req, () => mt5SyncService.getConnectionStatus()));
+  } catch (err) { next(err); }
+});
+
+router.post('/mt5/connection', async (req, res, next) => {
+  try {
+    const token = await withRequestOwner(req, () => mt5SyncService.issueToken());
+    res.status(201).json({ token });
+  } catch (err) { next(err); }
+});
+
+router.delete('/mt5/connection', async (req, res, next) => {
+  try {
+    res.json(await withRequestOwner(req, () => mt5SyncService.revokeConnection()));
+  } catch (err) { next(err); }
+});
+
+router.get('/mt5/chart', async (req, res, next) => {
+  try {
+    res.json(await withRequestOwner(req, () => mt5SyncService.getMt5ChartData(req.query)));
+  } catch (err) { next(err); }
+});
 
 // GET /api/trading — list trades with filters
 router.get('/', async (req, res, next) => {

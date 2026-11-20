@@ -19,6 +19,10 @@ test('revalidates HTML, CSS, and JavaScript assets after app updates', async () 
       assert.equal(response.headers.get('cache-control'), 'no-cache');
     }
 
+    const mt5EaResponse = await fetch(`${baseUrl}/mt5/TaskFlowSync.mq5`);
+    assert.equal(mt5EaResponse.status, 200);
+    assert.match(await mt5EaResponse.text(), /Read-only MT5 position and history sync/);
+
     for (const page of [
       '/index.html', '/dashboard.html', '/habit.html', '/brain.html', '/journal.html',
       '/settings.html', '/trading.html', '/schedule.html', '/today.html', '/english.html'

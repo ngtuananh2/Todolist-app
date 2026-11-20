@@ -9,6 +9,7 @@
   let currentRating = 0;
   let deleteTradeId = null;
   let currentScreenshot = ''; // base64 screenshot data
+  let availableMt5Charts = [];
 
   // ===== DOM Ready =====
   document.addEventListener('DOMContentLoaded', init);
@@ -19,6 +20,8 @@
     setupTabs();
     setupModals();
     setupCsvImport();
+    setupMt5SyncUi();
+    setupMt5LiveChart();
     setupFilters();
     setupRating();
     setupRiskCalc();
@@ -207,6 +210,228 @@
         }
       });
     });
+  }
+
+  function setupMt5SyncUi() {
+    const origin = document.getElementById('mt5-sync-origin');
+    if (origin) origin.textContent = window.location.origin;
+    const syncUrl = document.getElementById('mt5-sync-url');
+    if (syncUrl) syncUrl.textContent = `${window.location.origin}/api/trading/mt5/sync`;
+
+    document.getElementById('btn-open-mt5-tools')?.addEventListener('click', () => {
+      document.querySelector('.trading-tab[data-tab="tools"]')?.click();
+      document.getElementById('mt5-connect-title')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    document.getElementById('btn-mt5-create-token')?.addEventListener('click', async () => {
+      const status = await loadMt5Connection();
+      if (status?.connected && !window.confirm('Tạo mã mới sẽ thu hồi mã đang dùng. Tiếp tục?')) return;
+
+      const button = document.getElementById('btn-mt5-create-token');
+      button.disabled = true;
+      try {
+        const response = await fetch(`${API}/mt5/connection`, { method: 'POST' });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `Không thể tạo mã (HTTP ${response.status})`);
+        document.getElementById('mt5-token').value = result.token;
+        document.getElementById('mt5-token-box').hidden = false;
+        toast('Đã tạo mã kết nối. Hãy sao chép mã vào EA trong MT5.', 'success');
+        await loadMt5Connection();
+      } catch (error) {
+        toast(error.message || 'Không thể tạo mã kết nối MT5', 'error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+    document.getElementById('btn-mt5-revoke-token')?.addEventListener('click', async () => {
+      if (!window.confirm('Thu hồi mã sẽ dừng đồng bộ MT5. Các giao dịch đã nhập vẫn được giữ lại. Tiếp tục?')) return;
+      try {
+        const response = await fetch(`${API}/mt5/connection`, { method: 'DELETE' });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `Không thể thu hồi mã (HTTP ${response.status})`);
+        document.getElementById('mt5-token-box').hidden = true;
+        document.getElementById('mt5-token').value = '';
+        toast('Đã thu hồi mã kết nối MT5.', 'success');
+        await loadMt5Connection();
+      } catch (error) {
+        toast(error.message || 'Không thể thu hồi mã MT5', 'error');
+      }
+    });
+    document.getElementById('btn-mt5-copy-token')?.addEventListener('click', async () => {
+      const tokenInput = document.getElementById('mt5-token');
+      tokenInput.select();
+      try {
+        await navigator.clipboard.writeText(tokenInput.value);
+        toast('Đã sao chép mã kết nối.', 'success');
+      } catch {
+        toast('Không thể tự sao chép. Hãy chọn và sao chép mã trong ô.', 'error');
+      }
+    });
+    loadMt5Connection();
+  }
+
+  async function loadMt5Connection() {
+    const statusEl = document.getElementById('mt5-connection-status');
+    if (!statusEl) return null;
+    try {
+      const response = await fetch(`${API}/mt5/connection`);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || `Không thể đọc trạng thái (HTTP ${response.status})`);
+      document.getElementById('btn-mt5-revoke-token').hidden = !result.connected;
+      if (!result.connected) {
+        statusEl.textContent = 'Chưa tạo mã kết nối';
+        statusEl.className = 'mt5-connection-status is-offline';
+      } else if (!result.lastSyncAt) {
+        statusEl.textContent = 'Đã tạo mã — đang chờ MT5 gửi dữ liệu';
+        statusEl.className = 'mt5-connection-status is-pending';
+      } else {
+        const lastSync = new Date(result.lastSyncAt).toLocaleString('vi-VN');
+        statusEl.textContent = `MT5 ${result.accountServer} (${result.accountLogin}) · Đồng bộ ${lastSync}`;
+        statusEl.className = 'mt5-connection-status is-online';
+      }
+      return result;
+    } catch (error) {
+      statusEl.textContent = error.message || 'Không thể tải trạng thái MT5';
+      statusEl.className = 'mt5-connection-status is-offline';
+      return null;
+    }
+  }
+
+  function setupMt5LiveChart() {
+    const symbolSelect = document.getElementById('mt5-chart-symbol');
+    const timeframeSelect = document.getElementById('mt5-chart-timeframe');
+    if (!symbolSelect || !timeframeSelect) return;
+
+    symbolSelect.addEventListener('change', () => {
+      updateMt5TimeframeOptions();
+      loadMt5Chart();
+    });
+    timeframeSelect.addEventListener('change', loadMt5Chart);
+    document.getElementById('btn-mt5-chart-refresh')?.addEventListener('click', loadMt5ChartOptions);
+    loadMt5ChartOptions();
+    window.setInterval(loadMt5ChartOptions, 30000);
+  }
+
+  async function loadMt5ChartOptions() {
+    const status = document.getElementById('mt5-chart-status');
+    try {
+      const response = await fetch(`${API}/mt5/chart`);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || `Không thể tải dữ liệu nến (HTTP ${response.status})`);
+      availableMt5Charts = Array.isArray(result.charts) ? result.charts : [];
+
+      const symbolSelect = document.getElementById('mt5-chart-symbol');
+      const previousSymbol = symbolSelect.value;
+      const symbols = [...new Set(availableMt5Charts.map(chart => chart.symbol))];
+      symbolSelect.innerHTML = symbols.map(symbol => `<option value="${escapeHtml(symbol)}">${escapeHtml(symbol)}</option>`).join('');
+      if (symbols.includes(previousSymbol)) symbolSelect.value = previousSymbol;
+      else if (availableMt5Charts.length) symbolSelect.value = availableMt5Charts[0].symbol;
+
+      updateMt5TimeframeOptions();
+      if (!availableMt5Charts.length) {
+        status.textContent = 'Chưa nhận dữ liệu nến từ MT5. Hãy tạo mã và chạy EA trên biểu đồ.';
+        status.className = 'live-market-status is-empty';
+        drawMt5Candles([]);
+        return;
+      }
+      await loadMt5Chart();
+    } catch (error) {
+      status.textContent = error.message || 'Không thể tải biểu đồ MT5';
+      status.className = 'live-market-status is-error';
+      drawMt5Candles([]);
+    }
+  }
+
+  function updateMt5TimeframeOptions() {
+    const symbol = document.getElementById('mt5-chart-symbol')?.value;
+    const timeframeSelect = document.getElementById('mt5-chart-timeframe');
+    if (!timeframeSelect) return;
+    const previousTimeframe = timeframeSelect.value;
+    const timeframes = [...new Set(availableMt5Charts
+      .filter(chart => chart.symbol === symbol)
+      .map(chart => chart.timeframe))];
+    timeframeSelect.innerHTML = timeframes.map(timeframe => `<option value="${escapeHtml(timeframe)}">${escapeHtml(timeframe)}</option>`).join('');
+    if (timeframes.includes(previousTimeframe)) timeframeSelect.value = previousTimeframe;
+    else if (timeframes.length) timeframeSelect.value = timeframes[0];
+  }
+
+  async function loadMt5Chart() {
+    const status = document.getElementById('mt5-chart-status');
+    const symbol = document.getElementById('mt5-chart-symbol')?.value;
+    const timeframe = document.getElementById('mt5-chart-timeframe')?.value;
+    if (!symbol || !timeframe) return;
+
+    try {
+      const query = new URLSearchParams({ symbol, timeframe });
+      const response = await fetch(`${API}/mt5/chart?${query}`);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || `Không thể tải dữ liệu nến (HTTP ${response.status})`);
+      const chart = result.chart;
+      if (!chart?.candles?.length) {
+        status.textContent = `Chưa có nến ${symbol} · ${timeframe} từ MT5.`;
+        status.className = 'live-market-status is-empty';
+        drawMt5Candles([]);
+        return;
+      }
+      const lastCandle = new Date(chart.lastCandleAt * 1000).toLocaleString('vi-VN');
+      const stale = Date.now() - new Date(chart.lastSyncAt).getTime() > 90000;
+      status.textContent = `${chart.symbol} · ${chart.timeframe} · MT5 ${chart.accountServer} (${chart.accountLogin}) · Nến mới nhất ${lastCandle}${stale ? ' · DỮ LIỆU CŨ — kiểm tra EA/MT5' : ''}`;
+      status.className = stale ? 'live-market-status is-stale' : 'live-market-status';
+      drawMt5Candles(chart.candles);
+    } catch (error) {
+      status.textContent = error.message || 'Không thể tải biểu đồ MT5';
+      status.className = 'live-market-status is-error';
+      drawMt5Candles([]);
+    }
+  }
+
+  function drawMt5Candles(candles) {
+    const svg = document.getElementById('mt5-candle-chart');
+    const empty = document.getElementById('mt5-chart-empty');
+    if (!svg || !empty) return;
+    empty.hidden = candles.length > 0;
+    svg.innerHTML = '';
+    if (!candles.length) return;
+
+    const width = 1000;
+    const height = 380;
+    const plot = { left: 76, right: 16, top: 16, bottom: 38 };
+    const plotWidth = width - plot.left - plot.right;
+    const plotHeight = height - plot.top - plot.bottom;
+    const low = Math.min(...candles.map(candle => candle.low));
+    const high = Math.max(...candles.map(candle => candle.high));
+    const padding = (high - low || Math.abs(high) * 0.002 || 1) * 0.08;
+    const minPrice = low - padding;
+    const maxPrice = high + padding;
+    const y = price => plot.top + ((maxPrice - price) / (maxPrice - minPrice)) * plotHeight;
+    const priceLabel = price => Number(price).toLocaleString('en-US', { maximumFractionDigits: 6 });
+    const step = plotWidth / candles.length;
+    const bodyWidth = Math.max(1.5, Math.min(9, step * 0.65));
+    const parts = [];
+
+    for (let i = 0; i <= 4; i++) {
+      const price = maxPrice - ((maxPrice - minPrice) * i / 4);
+      const lineY = y(price);
+      parts.push(`<line x1="${plot.left}" y1="${lineY}" x2="${width - plot.right}" y2="${lineY}" stroke="currentColor" opacity="0.12"/>`);
+      parts.push(`<text x="${plot.left - 8}" y="${lineY + 4}" text-anchor="end" class="mt5-axis-label">${priceLabel(price)}</text>`);
+    }
+
+    const labelEvery = Math.max(1, Math.ceil(candles.length / 6));
+    candles.forEach((candle, index) => {
+      const centerX = plot.left + step * (index + 0.5);
+      const rising = candle.close >= candle.open;
+      const color = rising ? '#10b981' : '#ef4444';
+      const openY = y(candle.open);
+      const closeY = y(candle.close);
+      const candleTime = new Date(candle.time * 1000);
+      const title = `${candleTime.toLocaleString('vi-VN')} · O ${priceLabel(candle.open)} · H ${priceLabel(candle.high)} · L ${priceLabel(candle.low)} · C ${priceLabel(candle.close)}`;
+      parts.push(`<g><title>${title}</title><line x1="${centerX}" y1="${y(candle.high)}" x2="${centerX}" y2="${y(candle.low)}" stroke="${color}" stroke-width="1"/>`);
+      parts.push(`<rect x="${centerX - bodyWidth / 2}" y="${Math.min(openY, closeY)}" width="${bodyWidth}" height="${Math.max(1, Math.abs(closeY - openY))}" fill="${color}"/></g>`);
+      if (index % labelEvery === 0 || index === candles.length - 1) {
+        const label = candleTime.toLocaleString('vi-VN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        parts.push(`<text x="${centerX}" y="${height - 10}" text-anchor="middle" class="mt5-axis-label">${label}</text>`);
+      }
+    });
+    svg.innerHTML = parts.join('');
   }
 
   // ===== Filters =====
@@ -640,7 +865,11 @@
     tbody.innerHTML = allTrades.map(t => `
       <tr>
         <td>${formatDate(t.entryDate)}</td>
-        <td><strong>${escapeHtml(t.symbol)}</strong></td>
+        <td>
+          <strong>${escapeHtml(t.symbol)}</strong>
+          ${t.importSource === 'mt5' ? '<small class="mt5-trade-badge">MT5</small>' : ''}
+          ${t.importSource === 'mt5' && t.status === 'open' && t.currentPrice ? `<small class="mt5-current-price">Hiện tại ${formatNum(t.currentPrice)}</small>` : ''}
+        </td>
         <td><span class="trade-type-badge ${t.type}">${t.type.toUpperCase()}</span></td>
         <td>${formatNum(t.entryPrice)}</td>
         <td>${t.exitPrice ? formatNum(t.exitPrice) : '—'}</td>
@@ -649,14 +878,16 @@
           <span style="color:var(--green);font-size:0.78rem">${t.takeProfit ? formatNum(t.takeProfit) : '—'}</span>
         </td>
         <td>${formatNum(t.quantity)}${t.leverage > 1 ? ` <small>(${t.leverage}x)</small>` : ''}</td>
-        <td class="trade-pnl ${t.pnl > 0 ? 'positive' : t.pnl < 0 ? 'negative' : ''}">${t.status === 'closed' ? formatMoney(t.pnl) : '—'}</td>
+        <td class="trade-pnl ${t.pnl > 0 ? 'positive' : t.pnl < 0 ? 'negative' : ''}">${t.status === 'closed' || t.importSource === 'mt5' ? formatMoney(t.pnl) : '—'}</td>
         <td class="trade-pnl ${t.pnlPercent > 0 ? 'positive' : t.pnlPercent < 0 ? 'negative' : ''}">${t.status === 'closed' ? `${t.pnlPercent > 0 ? '+' : ''}${t.pnlPercent}%` : '—'}</td>
         <td><span class="trade-status-badge ${t.status}">${statusLabel(t.status)}</span></td>
         <td>
           <div style="display:flex;gap:4px">
-            ${t.status === 'open' ? `<button class="btn btn-sm btn-primary" onclick="openCloseModal('${t.id}')">Đóng</button>` : ''}
-            <button class="btn-icon" onclick="openTradeModal('${t.id}')" title="Sửa">✏️</button>
-            <button class="btn-icon" onclick="confirmDelete('${t.id}','${escapeHtml(t.symbol)}')" title="Xóa">🗑️</button>
+            ${t.importSource === 'mt5' ? '<span class="mt5-readonly-label">Quản lý trong MT5</span>' : `
+              ${t.status === 'open' ? `<button class="btn btn-sm btn-primary" onclick="openCloseModal('${t.id}')">Đóng</button>` : ''}
+              <button class="btn-icon" onclick="openTradeModal('${t.id}')" title="Sửa">✏️</button>
+              <button class="btn-icon" onclick="confirmDelete('${t.id}','${escapeHtml(t.symbol)}')" title="Xóa">🗑️</button>
+            `}
           </div>
         </td>
       </tr>
@@ -942,6 +1173,10 @@
       // Edit mode
       const trade = allTrades.find(t => t.id === id);
       if (!trade) return;
+      if (trade.importSource === 'mt5') {
+        toast('Lệnh đồng bộ MT5 chỉ có thể chỉnh sửa trực tiếp trong MT5.', 'info');
+        return;
+      }
 
       title.textContent = 'Sửa lệnh giao dịch';
       document.getElementById('trade-id').value = trade.id;

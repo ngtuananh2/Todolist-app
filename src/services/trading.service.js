@@ -79,6 +79,7 @@ async function createTrade(data) {
 async function updateTrade(id, data) {
   const trade = await Trade.findById(id);
   if (!trade) return null;
+  assertManualTrade(trade);
 
   const now = new Date().toISOString();
   const fields = ['symbol', 'type', 'status', 'entryPrice', 'exitPrice', 'quantity', 'leverage',
@@ -109,6 +110,7 @@ async function updateTrade(id, data) {
 async function closeTrade(id, exitPrice, exitDate) {
   const trade = await Trade.findById(id);
   if (!trade) return null;
+  assertManualTrade(trade);
 
   const now = new Date().toISOString();
   trade.exitPrice = exitPrice;
@@ -121,8 +123,18 @@ async function closeTrade(id, exitPrice, exitDate) {
 }
 
 async function deleteTrade(id) {
+  const trade = await Trade.findById(id);
+  if (!trade) return { success: true };
+  assertManualTrade(trade);
   await Trade.findByIdAndDelete(id);
   return { success: true };
+}
+
+function assertManualTrade(trade) {
+  if (trade.importSource !== 'mt5') return;
+  const error = new Error('Lệnh đồng bộ từ MT5 chỉ có thể chỉnh sửa trực tiếp trong MT5');
+  error.status = 409;
+  throw error;
 }
 
 async function importCsv(source, csv) {

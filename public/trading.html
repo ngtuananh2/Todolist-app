@@ -85,7 +85,7 @@
       <div class="trading-header-left">
         <h1 class="trading-title">📊 Quản Lý Trading</h1>
         <p class="trading-subtitle">Journal, phân tích & quản lý vị thế giao dịch</p>
-        <p class="trading-import-hint">CSV được nhập theo từng dòng khớp, không gộp thành vị thế. Không hỗ trợ MT5.</p>
+        <p class="trading-import-hint">CSV được nhập theo từng dòng khớp. Có thể đồng bộ vị thế MT5 trong mục Công cụ.</p>
       </div>
       <div class="trading-header-actions">
         <button class="btn" style="background:#10b981;color:#fff" onclick="window.globalUtils?.exportModule('trading')" title="Xuất dữ liệu Trading">
@@ -100,6 +100,7 @@
           Bybit CSV
         </button>
         <input type="file" accept=".csv,text/csv" id="input-import-bybit-csv" hidden>
+        <button class="btn" type="button" id="btn-open-mt5-tools">Kết nối MT5</button>
         <button class="btn" data-import-module="trading" title="Nhập JSON do TaskFlow Trading xuất và gộp dữ liệu">
           Nhập JSON
         </button>
@@ -217,6 +218,32 @@
           </div>
         </div>
       </div>
+
+      <section class="live-market-panel" aria-labelledby="mt5-live-chart-title">
+        <div class="live-market-heading">
+          <div>
+            <p class="mt5-eyebrow">GIÁ THỰC TỪ MT5</p>
+            <h2 id="mt5-live-chart-title">Biểu đồ nến</h2>
+            <p class="tools-desc">Dữ liệu OHLC thật được đọc từ MT5; EA mặc định lấy symbol của biểu đồ đang gắn, khung M5 và 200 nến. Có thể chỉnh <code>ChartSymbol</code>, <code>ChartTimeframe</code> và <code>CandleCount</code> trong EA.</p>
+          </div>
+          <div class="live-market-controls">
+            <label>
+              <span>Symbol</span>
+              <select id="mt5-chart-symbol" aria-label="Symbol biểu đồ MT5"></select>
+            </label>
+            <label>
+              <span>Khung</span>
+              <select id="mt5-chart-timeframe" aria-label="Khung thời gian biểu đồ MT5"></select>
+            </label>
+            <button class="btn btn-outline" type="button" id="btn-mt5-chart-refresh">Làm mới</button>
+          </div>
+        </div>
+        <p class="live-market-status" id="mt5-chart-status" role="status">Đang tải dữ liệu MT5...</p>
+        <div class="live-market-chart-wrap">
+          <svg id="mt5-candle-chart" viewBox="0 0 1000 380" role="img" aria-label="Biểu đồ nến giá MT5"></svg>
+          <div class="live-market-empty" id="mt5-chart-empty" hidden>Chưa có dữ liệu nến. Tạo mã kết nối, chạy EA MT5 và bật đồng bộ.</div>
+        </div>
+      </section>
 
       <div class="overview-grid">
         <div class="overview-panel">
@@ -438,6 +465,37 @@
 
     <!-- ===== TAB: TOOLS (Risk Calculator + Equity Curve) ===== -->
     <div class="tab-content" id="tab-tools">
+      <section class="mt5-connect-card" aria-labelledby="mt5-connect-title">
+        <div class="mt5-connect-heading">
+          <div>
+            <p class="mt5-eyebrow">ĐỒNG BỘ CHỈ ĐỌC</p>
+            <h2 id="mt5-connect-title">Kết nối MetaTrader 5</h2>
+            <p class="tools-desc">EA chỉ gửi vị thế và lịch sử lệnh lên TaskFlow; không thể đặt hoặc sửa lệnh. Không nhập mật khẩu MT5 vào đây.</p>
+          </div>
+          <span id="mt5-connection-status" class="mt5-connection-status" role="status">Đang kiểm tra kết nối...</span>
+        </div>
+        <div class="mt5-connect-actions">
+          <button class="btn btn-primary" type="button" id="btn-mt5-create-token">Tạo mã kết nối</button>
+          <button class="btn btn-outline" type="button" id="btn-mt5-revoke-token" hidden>Thu hồi mã</button>
+          <a class="btn btn-outline" href="/mt5/TaskFlowSync.mq5" download="TaskFlowSync.mq5">Tải EA MQL5</a>
+        </div>
+        <div class="mt5-token-box" id="mt5-token-box" hidden>
+          <label for="mt5-token">Mã bí mật — chỉ hiển thị sau khi tạo, hãy sao chép vào EA</label>
+          <div class="mt5-token-row">
+            <input id="mt5-token" type="text" readonly autocomplete="off" spellcheck="false">
+            <button class="btn btn-outline" type="button" id="btn-mt5-copy-token">Sao chép</button>
+          </div>
+          <p>Không gửi mã này cho người khác. Tạo mã mới sẽ thu hồi mã đang dùng.</p>
+        </div>
+        <ol class="mt5-setup-steps">
+          <li>Tạo mã kết nối rồi tải EA. Trong MT5, mở <strong>File → Open Data Folder → MQL5 → Experts</strong>, chép file vào đó và khởi động lại MetaEditor/MT5.</li>
+          <li>Mở EA trong MetaEditor, nhập mã vào <code>ApiToken</code>, đặt <code>SyncUrl</code> theo endpoint bên dưới rồi lưu. Kéo EA lên một biểu đồ MT5 đã đăng nhập tài khoản cần đồng bộ.</li>
+          <li>Trong MT5, bật <strong>Allow WebRequest for listed URL</strong> ở Tools → Options → Expert Advisors và thêm đúng địa chỉ này: <code id="mt5-sync-origin"></code></li>
+          <li>Bật Algo Trading. Giữ MT5 đang chạy để đồng bộ liên tục; lần đồng bộ đầu gửi tối đa 500 vị thế đã đóng trong 365 ngày gần nhất.</li>
+        </ol>
+        <p class="mt5-endpoint">Endpoint đồng bộ: <code id="mt5-sync-url"></code></p>
+        <p class="mt5-sync-note">EA hiện yêu cầu tài khoản MT5 ở chế độ Hedging để tránh gộp sai lệnh đảo chiều Netting. Vị thế mở được cập nhật theo MT5; lệnh đồng bộ được khóa chỉnh sửa trong TaskFlow và không ghi đè dữ liệu thủ công.</p>
+      </section>
       <div class="tools-grid">
 
         <!-- Risk Calculator -->

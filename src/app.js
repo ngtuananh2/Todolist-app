@@ -16,6 +16,7 @@ const habitRoutes = require('./routes/habit.routes');
 const noteRoutes = require('./routes/note.routes');
 const englishRoutes = require('./routes/english.routes');
 const tradingRoutes = require('./routes/trading.routes');
+const mt5SyncRoutes = require('./routes/mt5-sync.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const scheduleRoutes = require('./routes/schedule.routes');
@@ -55,6 +56,7 @@ function createApp({ databaseReady } = {}) {
   }
   app.use(cacheMiddleware);
   app.use('/api/auth', authRoutes);
+  app.use('/api/trading/mt5', mt5SyncRoutes);
   app.use('/api', attachUser, requireAuth);
 
   // ---- Rate Limiting for AI routes ----

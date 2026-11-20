@@ -269,6 +269,7 @@ const tradeSchema = new mongoose.Schema({
   status:       { type: String, default: 'open', enum: ['open', 'closed', 'cancelled'] },
   entryPrice:   { type: Number, required: true },
   exitPrice:    { type: Number, default: null },
+  currentPrice: { type: Number, default: null },
   quantity:     { type: Number, required: true },
   leverage:     { type: Number, default: 1 },
   stopLoss:     { type: Number, default: null },
@@ -289,6 +290,7 @@ const tradeSchema = new mongoose.Schema({
   entryDate:    { type: String, required: true },
   exitDate:     { type: String, default: null },
   importKey:   { type: String, default: null, select: false },
+  importSource: { type: String, default: null, enum: [null, 'mt5'] },
   createdAt:    { type: String, required: true },
   updatedAt:    { type: String, required: true }
 });
@@ -325,6 +327,43 @@ const tradingAccountSchema = new mongoose.Schema({
   createdAt:    { type: String, required: true },
   updatedAt:    { type: String, required: true }
 });
+
+const mt5ConnectionSchema = new mongoose.Schema({
+  tokenHash: { type: String, required: true, unique: true, select: false },
+  active: { type: Boolean, default: true },
+  accountLogin: { type: String, default: '' },
+  accountServer: { type: String, default: '' },
+  lastSyncAt: { type: Date, default: null },
+  lastSyncCounts: { type: mongoose.Schema.Types.Mixed, default: null },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+mt5ConnectionSchema.index({ ownerId: 1 }, { unique: true });
+
+const mt5CandleSchema = new mongoose.Schema({
+  time: { type: Number, required: true },
+  open: { type: Number, required: true },
+  high: { type: Number, required: true },
+  low: { type: Number, required: true },
+  close: { type: Number, required: true },
+  volume: { type: Number, default: 0 }
+}, { _id: false });
+
+const mt5MarketDataSchema = new mongoose.Schema({
+  accountKey: { type: String, required: true },
+  accountLogin: { type: String, required: true },
+  accountServer: { type: String, required: true },
+  symbol: { type: String, required: true },
+  timeframe: { type: String, required: true },
+  candles: { type: [mt5CandleSchema], default: [] },
+  lastCandleAt: { type: Number, required: true },
+  lastSyncAt: { type: Date, required: true },
+  updatedAt: { type: Date, required: true }
+});
+mt5MarketDataSchema.index(
+  { ownerId: 1, accountKey: 1, symbol: 1, timeframe: 1 },
+  { unique: true }
+);
 
 tradingAccountSchema.set('toJSON', {
   virtuals: true,
@@ -422,7 +461,7 @@ noteVersionSchema.set('toJSON', {
 for (const schema of [
   todoSchema, scheduleSchema, tagSchema, habitSchema, habitLogSchema, noteSchema,
   noteVersionSchema, englishProgressSchema, vocabSchema, englishMindmapSchema,
-  tradeSchema, tradingAccountSchema, journalEntrySchema
+  tradeSchema, tradingAccountSchema, mt5ConnectionSchema, mt5MarketDataSchema, journalEntrySchema
 ]) {
   schema.plugin(ownershipPlugin);
 }
@@ -441,11 +480,13 @@ const Vocab = mongoose.model('Vocab', vocabSchema);
 const EnglishMindmap = mongoose.model('EnglishMindmap', englishMindmapSchema);
 const Trade = mongoose.model('Trade', tradeSchema);
 const TradingAccount = mongoose.model('TradingAccount', tradingAccountSchema);
+const Mt5Connection = mongoose.model('Mt5Connection', mt5ConnectionSchema);
+const Mt5MarketData = mongoose.model('Mt5MarketData', mt5MarketDataSchema);
 const JournalEntry = mongoose.model('JournalEntry', journalEntrySchema);
 const User = mongoose.model('User', userSchema);
 
 module.exports = {
   connectDB, Todo, Schedule, Tag, Habit, HabitLog, Note, NoteVersion,
-  EnglishProgress, Vocab, EnglishMindmap, Trade, TradingAccount, JournalEntry,
+  EnglishProgress, Vocab, EnglishMindmap, Trade, TradingAccount, Mt5Connection, Mt5MarketData, JournalEntry,
   User, mongoose
 };
