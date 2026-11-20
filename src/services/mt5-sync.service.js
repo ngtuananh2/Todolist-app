@@ -33,7 +33,7 @@ async function issueToken() {
         lastSyncCounts: null,
         updatedAt: now
       },
-      $setOnInsert: { ownerId: getOwnerId() || null, createdAt: now, accountLogin: '', accountServer: '' }
+      $setOnInsert: { ownerId: getOwnerId() || null, createdAt: now }
     },
     { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
   );

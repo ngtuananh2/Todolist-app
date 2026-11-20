@@ -56,9 +56,24 @@ test('issues a high-entropy MT5 token and stores only its hash', async () => {
     assert.equal(savedUpdate.$set.tokenHash, mt5SyncService.hashToken(token));
     assert.notEqual(savedUpdate.$set.tokenHash, token);
     assert.equal(savedUpdate.$setOnInsert.ownerId, ownerId);
+    assert.deepEqual(
+      Object.keys(savedUpdate.$set).filter(key => key in savedUpdate.$setOnInsert),
+      []
+    );
   } finally {
     Mt5Connection.findOneAndUpdate = originalFindOneAndUpdate;
   }
+});
+
+test('declares no duplicate MT5 connection index keys', () => {
+  const indexes = Mt5Connection.schema.indexes();
+  const keyPatterns = indexes.map(([keys]) => JSON.stringify(keys));
+  assert.equal(new Set(keyPatterns).size, keyPatterns.length);
+  assert.ok(indexes.some(([keys, options]) =>
+    JSON.stringify(keys) === JSON.stringify({ ownerId: 1, active: 1 })
+      && options.unique
+      && options.partialFilterExpression.active === true
+  ));
 });
 
 test('normalizes open and closed positions and rejects duplicate or malformed identifiers', () => {

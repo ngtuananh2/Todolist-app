@@ -338,7 +338,10 @@ const mt5ConnectionSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
-mt5ConnectionSchema.index({ ownerId: 1 }, { unique: true });
+mt5ConnectionSchema.index(
+  { ownerId: 1, active: 1 },
+  { unique: true, partialFilterExpression: { active: true } }
+);
 
 const mt5CandleSchema = new mongoose.Schema({
   time: { type: Number, required: true },
