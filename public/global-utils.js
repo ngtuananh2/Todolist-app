@@ -127,10 +127,11 @@
     { key: '2', label: 'Công việc', url: '/' },
     { key: '3', label: 'Habit Tracker', url: '/habit.html' },
     { key: '4', label: 'Second Brain', url: '/brain.html' },
-    { key: '5', label: 'English', url: 'https://www.forumflashstudy.com/', external: true },
+    { key: '5', label: 'ForumFlash', url: 'https://www.forumflashstudy.com/', external: true },
     { key: '6', label: 'Trading', url: '/trading.html' },
     { label: 'Lịch trình', url: '/schedule.html' },
-    { label: 'Cài đặt', url: '/settings.html' }
+    { label: 'Cài đặt', url: '/settings.html' },
+    { label: 'English cũ', url: '/english.html' }
   ];
 
   const MODULE_ICONS = {
@@ -949,7 +950,7 @@
       // Alt+1-6 — navigate pages
       if (e.altKey && e.key >= '1' && e.key <= '6') {
         e.preventDefault();
-        const page = PAGES[parseInt(e.key) - 1];
+        const page = PAGES.find(item => item.key === e.key);
         if (page?.external) window.open(page.url, '_blank', 'noopener,noreferrer');
         else if (page) window.location.href = page.url;
       }
