@@ -367,7 +367,15 @@ const journalEntrySchema = new mongoose.Schema({
     default: '',
     trim: true,
     maxlength: 160,
-    required() { return this.type !== 'weight'; }
+    required() {
+      if (typeof this.getFilter === 'function' && typeof this.getUpdate === 'function') {
+        const filter = this.getFilter();
+        const update = this.getUpdate();
+        const type = filter.type || update?.$set?.type || update?.$setOnInsert?.type;
+        return type !== 'weight';
+      }
+      return this.type !== 'weight';
+    }
   },
   content: { type: String, default: '', maxlength: 5000 },
   status: {

@@ -48,3 +48,14 @@ test('requires titles for memories and wishlist entries', () => {
   assert.equal(wishlist.validateSync(), undefined);
   assert.equal(wishlist.status, 'want');
 });
+
+test('does not require a title for daily-weight upserts', () => {
+  const query = JournalEntry.findOneAndUpdate(
+    { type: 'weight', date: '2026-05-01' },
+    { $setOnInsert: { type: 'weight', title: '' } },
+    { upsert: true, runValidators: true }
+  );
+  const required = JournalEntry.schema.path('title').options.required;
+
+  assert.equal(required.call(query), false);
+});
